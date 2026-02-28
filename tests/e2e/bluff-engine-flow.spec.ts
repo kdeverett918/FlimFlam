@@ -34,7 +34,10 @@ test("bluff engine game completes end-to-end", async ({ page, browser }) => {
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible();
+    await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
     return { context, controllerPage };
   };
 

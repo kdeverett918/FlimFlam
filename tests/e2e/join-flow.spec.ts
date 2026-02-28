@@ -35,9 +35,10 @@ test("host creates room and players join", async ({ page, browser }) => {
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
-
-    // Ensure the controller is connected and waiting in the lobby.
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible();
+    await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
 
     return { context, controllerPage };
   };
