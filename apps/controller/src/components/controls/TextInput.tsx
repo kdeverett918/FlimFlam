@@ -38,12 +38,15 @@ export function TextInput({
     }
   }, [resetNonce]);
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    if (value.length <= maxChars) {
-      setText(value);
-    }
-  }, [maxChars]);
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      if (value.length <= maxChars) {
+        setText(value);
+      }
+    },
+    [maxChars],
+  );
 
   const handleFocus = useCallback(() => {
     // Scroll into view for keyboard awareness

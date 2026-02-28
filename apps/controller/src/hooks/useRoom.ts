@@ -172,50 +172,53 @@ export function useRoom(): UseRoomReturn {
     [vibrate],
   );
 
-  const reconnect = useCallback(async (opts?: { clearStaleTokens?: boolean }): Promise<boolean> => {
-    if (reconnectInProgress.current) return false;
-    reconnectInProgress.current = true;
+  const reconnect = useCallback(
+    async (opts?: { clearStaleTokens?: boolean }): Promise<boolean> => {
+      if (reconnectInProgress.current) return false;
+      reconnectInProgress.current = true;
 
-    const clearStaleTokens = opts?.clearStaleTokens ?? true;
+      const clearStaleTokens = opts?.clearStaleTokens ?? true;
 
-    try {
-      if (typeof sessionStorage === "undefined") {
+      try {
+        if (typeof sessionStorage === "undefined") {
+          return false;
+        }
+
+        const token = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
+        if (!token) {
+          return false;
+        }
+
+        const client = getColyseusClient();
+        // Avoid an indefinite loading state if the server is unreachable.
+        const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
+          client.reconnect(token).then(
+            (joinedRoom) => {
+              clearTimeout(timeout);
+              resolve(joinedRoom);
+            },
+            (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            },
+          );
+        });
+
+        setupRoomListeners(reconnectedRoom);
+        return true;
+      } catch {
+        if (clearStaleTokens && typeof sessionStorage !== "undefined") {
+          sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
+          sessionStorage.removeItem(ROOM_ID_KEY);
+        }
         return false;
+      } finally {
+        reconnectInProgress.current = false;
       }
-
-      const token = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
-      if (!token) {
-        return false;
-      }
-
-      const client = getColyseusClient();
-      // Avoid an indefinite loading state if the server is unreachable.
-      const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
-        const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
-        client.reconnect(token).then(
-          (joinedRoom) => {
-            clearTimeout(timeout);
-            resolve(joinedRoom);
-          },
-          (err) => {
-            clearTimeout(timeout);
-            reject(err);
-          },
-        );
-      });
-
-      setupRoomListeners(reconnectedRoom);
-      return true;
-    } catch {
-      if (clearStaleTokens && typeof sessionStorage !== "undefined") {
-        sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
-        sessionStorage.removeItem(ROOM_ID_KEY);
-      }
-      return false;
-    } finally {
-      reconnectInProgress.current = false;
-    }
-  }, [setupRoomListeners]);
+    },
+    [setupRoomListeners],
+  );
 
   useEffect(() => {
     reconnectFnRef.current = () => {

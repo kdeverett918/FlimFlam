@@ -175,8 +175,10 @@ export function GameController({
   }
 
   function renderBluffEngine(currentPhase: string) {
-    const question = typeof privateData?.question === "string" ? (privateData.question as string) : "";
-    const category = typeof privateData?.category === "string" ? (privateData.category as string) : "";
+    const question =
+      typeof privateData?.question === "string" ? (privateData.question as string) : "";
+    const category =
+      typeof privateData?.category === "string" ? (privateData.category as string) : "";
 
     switch (currentPhase) {
       case "answer-input":
