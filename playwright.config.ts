@@ -27,6 +27,7 @@ export default defineConfig({
       NEXT_PUBLIC_HOST_URL: process.env.NEXT_PUBLIC_HOST_URL ?? "http://127.0.0.1:3000",
       NEXT_PUBLIC_CONTROLLER_URL: process.env.NEXT_PUBLIC_CONTROLLER_URL ?? "http://127.0.0.1:3001",
       PARTYLINE_TIMER_SCALE: process.env.PARTYLINE_TIMER_SCALE ?? "0.05",
+      PARTYLINE_DISABLE_AI: process.env.PARTYLINE_DISABLE_AI ?? "1",
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

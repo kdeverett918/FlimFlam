@@ -106,16 +106,35 @@ export default function RoomPage() {
       )}
 
       {gameState.screenView === "game" && (
-        <GameView
-          gameId={gameState.selectedGameId}
-          phase={gameState.phase}
-          round={gameState.round}
-          totalRounds={gameState.totalRounds}
-          players={gameState.playerList}
-          gamePayload={gameState.gamePayload}
-          timerEndTime={gameState.timerEndTime}
-          room={room}
-        />
+        <>
+          <GameView
+            gameId={gameState.selectedGameId}
+            phase={gameState.phase}
+            round={gameState.round}
+            totalRounds={gameState.totalRounds}
+            players={gameState.playerList}
+            gamePayload={gameState.gamePayload}
+            timerEndTime={gameState.timerEndTime}
+            room={room}
+          />
+
+          <div className="pointer-events-none absolute bottom-8 right-8 flex gap-3">
+            <button
+              type="button"
+              onClick={() => sendMessage("host:skip")}
+              className="pointer-events-auto h-12 rounded-xl border border-text-muted/20 bg-bg-card/80 px-5 font-display text-sm text-text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-bg-card active:scale-95"
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              onClick={() => sendMessage("host:end-game")}
+              className="pointer-events-auto h-12 rounded-xl border border-accent-1/30 bg-accent-1/10 px-5 font-display text-sm text-accent-1 uppercase tracking-wider backdrop-blur transition-all hover:bg-accent-1/15 active:scale-95"
+            >
+              End
+            </button>
+          </div>
+        </>
       )}
     </main>
   );
