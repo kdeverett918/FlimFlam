@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatedBackground } from "@partyline/ui";
 import { useEffect, useState } from "react";
 
 const MESSAGES = [
@@ -19,24 +20,12 @@ interface WaitingScreenProps {
 
 export function WaitingScreen({ phase }: WaitingScreenProps) {
   const [messageIndex, setMessageIndex] = useState(0);
-  const [dots, setDots] = useState("");
 
   // Cycle through messages every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setMessageIndex((prev) => (prev + 1) % MESSAGES.length);
     }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Animate dots
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => {
-        if (prev.length >= 3) return "";
-        return `${prev}.`;
-      });
-    }, 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -64,24 +53,29 @@ export function WaitingScreen({ phase }: WaitingScreenProps) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-6 px-8 py-16">
-      {/* Spinner */}
-      <div className="relative h-16 w-16">
-        <div className="absolute inset-0 rounded-full border-4 border-text-muted/10" />
-        <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-accent-1 animate-spin-slow" />
+      <AnimatedBackground variant="subtle" />
+
+      {/* 3 accent-colored dots with staggered pulse */}
+      <div className="flex items-center gap-3">
         <div
-          className="absolute inset-2 rounded-full border-4 border-transparent border-t-accent-2 animate-spin-slow"
-          style={{ animationDirection: "reverse", animationDuration: "2s" }}
+          className="h-3 w-3 rounded-full bg-accent-1 animate-dot-pulse"
+          style={{ animationDelay: "0s" }}
+        />
+        <div
+          className="h-3 w-3 rounded-full bg-accent-2 animate-dot-pulse"
+          style={{ animationDelay: "0.2s" }}
+        />
+        <div
+          className="h-3 w-3 rounded-full bg-accent-4 animate-dot-pulse"
+          style={{ animationDelay: "0.4s" }}
         />
       </div>
 
-      {/* Message */}
-      <p className="text-center text-lg text-text-muted">
-        {contextualMessage}
-        {dots}
-      </p>
+      {/* Rotating flavor text */}
+      <p className="text-center font-body text-lg text-text-muted">{contextualMessage}</p>
 
-      {/* Subtle hint */}
-      <p className="text-center text-xs text-text-muted/50">Hang tight while the magic happens</p>
+      {/* Bottom hint */}
+      <p className="text-center font-body text-xs text-text-dim">Watch the main screen!</p>
     </div>
   );
 }

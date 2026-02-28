@@ -1,5 +1,8 @@
 "use client";
 
+import { AnimatedBackground } from "@partyline/ui";
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
@@ -13,65 +16,77 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
-      {/* Background grid effect */}
-      <div className="pointer-events-none absolute inset-0 opacity-5">
-        <div
-          className="h-full w-full"
-          style={{
-            backgroundImage:
-              "linear-gradient(oklch(0.65 0.29 12 / 0.3) 1px, transparent 1px), linear-gradient(90deg, oklch(0.65 0.29 12 / 0.3) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
-
-      {/* Floating particles effect */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 6 }, (_, i) => (
-          <div
-            key={`particle-${i + 1}`}
-            className="animate-float absolute rounded-full"
-            style={{
-              width: `${8 + i * 4}px`,
-              height: `${8 + i * 4}px`,
-              left: `${15 + i * 14}%`,
-              top: `${20 + (i % 3) * 25}%`,
-              background: `oklch(0.65 0.29 ${i * 60} / 0.15)`,
-              animationDelay: `${i * 0.5}s`,
-              animationDuration: `${3 + i * 0.5}s`,
-            }}
-          />
-        ))}
-      </div>
+    <main className="flex min-h-screen flex-col items-center justify-center">
+      <AnimatedBackground />
 
       {/* Main content */}
       <div className="relative z-10 flex flex-col items-center gap-12">
         {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
-          <h1 className="animate-glow-pulse font-display text-[96px] leading-none tracking-wider text-text-primary md:text-[128px]">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="flex flex-col items-center gap-4"
+        >
+          <h1
+            className="font-display text-[120px] font-extrabold leading-none tracking-[-0.02em] text-text-primary"
+            style={{
+              textShadow: "0 0 40px oklch(0.7 0.18 265 / 0.4), 0 0 80px oklch(0.7 0.2 330 / 0.2)",
+            }}
+          >
             PARTYLINE
           </h1>
-          <p className="text-[28px] tracking-widest text-text-muted">AI PARTY GAMES</p>
-        </div>
+        </motion.div>
+
+        {/* Tagline */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="font-body text-[28px] text-text-muted"
+        >
+          Party games. Reimagined.
+        </motion.p>
 
         {/* Create room button */}
-        <button
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
           type="button"
           onClick={handleCreateRoom}
           disabled={loading}
-          className="group relative overflow-hidden rounded-2xl border-2 border-accent-1/50 bg-accent-1/10 px-16 py-6 font-display text-[36px] text-accent-1 transition-all duration-300 hover:border-accent-1 hover:bg-accent-1/20 hover:shadow-[0_0_40px_oklch(0.65_0.29_12/0.3)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="group relative h-[72px] overflow-hidden rounded-2xl border border-accent-1/50 bg-white/[0.04] px-16 font-display text-[36px] font-semibold text-accent-1 transition-all duration-300 hover:border-accent-1 hover:shadow-[0_0_40px_oklch(0.7_0.18_265/0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            backdropFilter: "blur(16px)",
+          }}
         >
           {/* Button shimmer effect */}
           <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-accent-1/10 to-transparent" />
-          <span className="relative">{loading ? "CONNECTING..." : "CREATE ROOM"}</span>
-        </button>
+          <span className="relative flex items-center gap-3">
+            {loading ? (
+              <>
+                <Loader2 className="h-8 w-8 animate-spin" />
+                CONNECTING...
+              </>
+            ) : (
+              "CREATE ROOM"
+            )}
+          </span>
+        </motion.button>
 
         {/* Footer info */}
-        <div className="flex flex-col items-center gap-2 text-[20px] text-text-muted">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 1.1 }}
+          className="flex flex-col items-center gap-2 text-[20px] text-text-muted"
+        >
           <p>Display this screen on a shared TV or monitor</p>
           <p>Players join from their phones</p>
-        </div>
+        </motion.div>
       </div>
     </main>
   );

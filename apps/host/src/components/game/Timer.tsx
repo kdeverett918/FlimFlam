@@ -36,18 +36,20 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
   let strokeColor: string;
   let textColor: string;
   let shouldPulse = false;
+  let glowIntensity = 8;
 
   if (fraction > 0.5) {
-    strokeColor = "oklch(0.7 0.2 145)"; // green
-    textColor = "text-green-400";
+    strokeColor = "oklch(0.7 0.2 145)";
+    textColor = "text-accent-5";
   } else if (fraction > 0.25) {
-    strokeColor = "oklch(0.85 0.18 85)"; // yellow
+    strokeColor = "oklch(0.75 0.18 85)";
     textColor = "text-accent-3";
   } else {
-    strokeColor = "oklch(0.65 0.29 12)"; // red
-    textColor = "text-accent-1";
+    strokeColor = "oklch(0.65 0.25 25)";
+    textColor = "text-accent-6";
     if (remaining < 10000) {
       shouldPulse = true;
+      glowIntensity = 16;
     }
   }
 
@@ -64,7 +66,7 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="oklch(0.17 0.02 285)"
+          stroke="oklch(0.15 0.04 270)"
           strokeWidth={8}
         />
         {/* Progress arc */}
@@ -80,12 +82,12 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
           strokeDashoffset={strokeDashoffset}
           style={{
             transition: "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
-            filter: `drop-shadow(0 0 6px ${strokeColor})`,
+            filter: `drop-shadow(0 0 ${glowIntensity}px ${strokeColor})`,
           }}
         />
       </svg>
       <span
-        className={`absolute font-display text-[48px] ${textColor}`}
+        className={`absolute font-mono font-bold ${textColor}`}
         style={{ fontSize: size * 0.34 }}
       >
         {seconds}

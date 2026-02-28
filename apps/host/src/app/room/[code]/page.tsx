@@ -78,7 +78,7 @@ export default function RoomPage() {
           <p className="font-display text-[36px] text-text-muted">
             {routeCode.length === 4 ? `Connecting to room ${routeCode}...` : "Creating room..."}
           </p>
-          {error && <p className="text-[24px] text-red-400">{error}</p>}
+          {error && <p className="text-[24px] text-accent-6">{error}</p>}
         </div>
       </main>
     );
@@ -122,7 +122,7 @@ export default function RoomPage() {
             <button
               type="button"
               onClick={() => sendMessage("host:skip")}
-              className="pointer-events-auto h-12 rounded-xl border border-text-muted/20 bg-bg-card/80 px-5 font-display text-sm text-text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-bg-card active:scale-95"
+              className="pointer-events-auto h-12 rounded-xl border border-text-muted/20 bg-bg-surface/80 px-5 font-display text-sm text-text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-bg-surface active:scale-95"
             >
               Skip
             </button>

@@ -2,9 +2,11 @@
 
 import type { Complexity, PlayerData } from "@partyline/shared";
 import { MIN_PLAYERS } from "@partyline/shared";
+import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@partyline/ui";
+import type { GameTheme } from "@partyline/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import QRCode from "qrcode";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ComplexityPicker } from "./ComplexityPicker";
 import { GameSelector } from "./GameSelector";
 
@@ -21,7 +23,25 @@ interface LobbyScreenProps {
   onStartGame: () => void;
 }
 
-export function LobbyScreen({
+const GAME_ID_TO_THEME: Record<string, GameTheme> = {
+  "world-builder": "world-builder",
+  "bluff-engine": "bluff-engine",
+  "quick-draw": "quick-draw",
+  "reality-drift": "reality-drift",
+  "hot-take": "hot-take",
+};
+
+export function LobbyScreen(props: LobbyScreenProps) {
+  const theme = GAME_ID_TO_THEME[props.selectedGameId] ?? "default";
+
+  return (
+    <GameThemeProvider defaultTheme={theme}>
+      <LobbyContent {...props} />
+    </GameThemeProvider>
+  );
+}
+
+function LobbyContent({
   roomCode,
   players,
   selectedGameId,
@@ -33,8 +53,8 @@ export function LobbyScreen({
   onSetHotTakePlayerInput,
   onStartGame,
 }: LobbyScreenProps) {
-  const [qrSvg, setQrSvg] = useState<string>("");
-  const qrGenerated = useRef(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const { setTheme } = useGameTheme();
 
   const controllerUrl =
     typeof window !== "undefined"
@@ -49,11 +69,13 @@ export function LobbyScreen({
   const hotTakeToggleDisabled = complexity !== "standard";
 
   useEffect(() => {
-    if (qrGenerated.current && qrSvg) return;
-    qrGenerated.current = true;
+    const theme = GAME_ID_TO_THEME[selectedGameId] ?? "default";
+    setTheme(theme);
+  }, [selectedGameId, setTheme]);
 
-    QRCode.toString(joinUrl, {
-      type: "svg",
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(joinUrl, {
       color: {
         dark: "#e8e6f0",
         light: "#00000000",
@@ -61,48 +83,58 @@ export function LobbyScreen({
       margin: 1,
       width: 200,
     })
-      .then((svg) => setQrSvg(svg))
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
       .catch(console.error);
-  }, [joinUrl, qrSvg]);
+    return () => {
+      cancelled = true;
+    };
+  }, [joinUrl]);
 
   return (
-    <div className="flex min-h-screen flex-col p-8 lg:p-12">
+    <div className="relative flex min-h-screen flex-col p-8 lg:p-10">
+      <AnimatedBackground variant="subtle" />
+
       {/* Top section: Room code + QR */}
-      <div className="flex flex-wrap items-start justify-between gap-8">
+      <div className="relative z-10 flex flex-wrap items-start justify-between gap-8">
         {/* Room Code */}
-        <div className="flex flex-col gap-4">
-          <p className="text-[28px] font-medium tracking-widest text-text-muted">
+        <div className="flex flex-col gap-3">
+          <p className="font-body text-[24px] tracking-widest text-text-muted">
             JOIN AT{" "}
-            <span className="text-accent-2">{controllerUrl.replace(/^https?:\/\//, "")}</span>
+            <span className="text-accent-4">{controllerUrl.replace(/^https?:\/\//, "")}</span>
           </p>
-          <div className="flex items-center gap-4">
-            <div className="rounded-2xl border-2 border-accent-2/30 bg-bg-card px-10 py-4">
-              <span className="font-display text-[120px] leading-none tracking-[0.2em] text-text-primary">
-                {roomCode}
-              </span>
-            </div>
-          </div>
-          <p className="text-[24px] text-text-muted">Enter this code on your phone</p>
+          <GlassPanel
+            glow
+            glowColor="oklch(0.75 0.15 195 / 0.2)"
+            rounded="2xl"
+            className="px-10 py-4"
+          >
+            <span className="font-mono text-[96px] leading-none tracking-[8px] text-text-primary">
+              {roomCode}
+            </span>
+          </GlassPanel>
+          <p className="font-body text-[20px] text-text-muted">Enter this code on your phone</p>
         </div>
 
         {/* QR Code */}
         <div className="flex flex-col items-center gap-3">
-          <div
-            className="rounded-2xl border-2 border-accent-2/20 bg-bg-card p-4"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: QR code SVG from trusted library
-            dangerouslySetInnerHTML={{ __html: qrSvg }}
-          />
-          <p className="text-[20px] text-text-muted">Scan to join</p>
+          <GlassPanel rounded="2xl" className="p-4">
+            {qrDataUrl && (
+              <img src={qrDataUrl} alt="QR code to join the game" className="h-[200px] w-[200px]" />
+            )}
+          </GlassPanel>
+          <p className="font-body text-[18px] text-text-muted">Scan to join</p>
         </div>
       </div>
 
       {/* Player list */}
-      <div className="my-8">
+      <div className="relative z-10 my-6">
         <div className="mb-4 flex items-baseline gap-4">
-          <h2 className="font-display text-[36px] text-text-primary">PLAYERS</h2>
-          <span className="text-[28px] text-text-muted">{playerCount} / 8</span>
+          <h2 className="font-display text-[36px] font-bold text-text-primary">PLAYERS</h2>
+          <span className="font-mono text-[28px] text-text-muted">{playerCount} / 8</span>
           {playerCount < MIN_PLAYERS && (
-            <span className="text-[24px] text-accent-3">
+            <span className="font-body text-[22px] text-accent-3">
               (need {MIN_PLAYERS - playerCount} more)
             </span>
           )}
@@ -125,18 +157,18 @@ export function LobbyScreen({
                 className="flex flex-col items-center gap-2"
               >
                 <div
-                  className="flex h-[80px] w-[80px] items-center justify-center rounded-full text-[36px] font-bold text-bg-dark shadow-lg"
+                  className="flex h-[80px] w-[80px] items-center justify-center rounded-full text-[36px] font-bold text-bg-deep"
                   style={{
                     backgroundColor: player.avatarColor,
-                    boxShadow: `0 0 20px ${player.avatarColor}40`,
+                    boxShadow: `0 0 20px ${player.avatarColor}50, 0 0 40px ${player.avatarColor}20`,
                   }}
                 >
                   {player.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="max-w-[100px] truncate text-[22px] font-medium text-text-primary">
+                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary">
                   {player.name}
                 </span>
-                {player.ready && <span className="text-[18px] text-accent-2">Ready</span>}
+                {player.ready && <span className="font-mono text-[16px] text-accent-5">Ready</span>}
               </motion.div>
             ))}
           </AnimatePresence>
@@ -150,33 +182,35 @@ export function LobbyScreen({
               transition={{ delay: 0.3 + i * 0.1 }}
               className="flex flex-col items-center gap-2"
             >
-              <div className="flex h-[80px] w-[80px] items-center justify-center rounded-full border-2 border-dashed border-text-muted/30 text-[36px] text-text-muted/30">
+              <div className="flex h-[80px] w-[80px] animate-glow-breathe items-center justify-center rounded-full border-2 border-dashed border-text-dim/40 text-[36px] text-text-dim/40">
                 ?
               </div>
-              <span className="text-[22px] text-text-muted/30">Waiting...</span>
+              <span className="font-body text-[20px] text-text-dim/40">Waiting...</span>
             </motion.div>
           ))}
         </div>
       </div>
 
       {/* Game selection */}
-      <div className="mb-6">
-        <h2 className="mb-4 font-display text-[36px] text-text-primary">SELECT GAME</h2>
+      <div className="relative z-10 mb-4">
+        <h2 className="mb-3 font-display text-[36px] font-bold text-text-primary">SELECT GAME</h2>
         <GameSelector selectedGameId={selectedGameId} onSelect={onSelectGame} />
       </div>
 
       {/* Complexity picker */}
-      <div className="mb-8">
-        <h2 className="mb-4 font-display text-[36px] text-text-primary">DIFFICULTY</h2>
+      <div className="relative z-10 mb-4">
+        <h2 className="mb-3 font-display text-[36px] font-bold text-text-primary">DIFFICULTY</h2>
         <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
       </div>
 
       {showHotTakeToggle && (
-        <div className="mb-8 rounded-2xl border-2 border-accent-2/30 bg-bg-card p-6">
+        <GlassPanel glow rounded="2xl" className="relative z-10 mb-4 p-6">
           <div className="mb-3 flex items-center justify-between gap-6">
             <div>
-              <h3 className="font-display text-[30px] text-text-primary">AI PLAYER INPUT</h3>
-              <p className="text-[20px] text-text-muted">
+              <h3 className="font-display text-[28px] font-bold text-text-primary">
+                AI PLAYER INPUT
+              </h3>
+              <p className="font-body text-[20px] text-text-muted">
                 Players submit topics and AI tailors prompts to the group.
               </p>
             </div>
@@ -186,8 +220,8 @@ export function LobbyScreen({
               onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
               className={`relative h-14 w-28 rounded-full border-2 transition-all ${
                 effectiveHotTakePlayerInputEnabled
-                  ? "border-accent-2 bg-accent-2/30"
-                  : "border-text-muted/30 bg-bg-dark"
+                  ? "border-accent-5 bg-accent-5/30"
+                  : "border-text-dim/30 bg-bg-dark"
               } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-[1.03]"}`}
               aria-pressed={effectiveHotTakePlayerInputEnabled}
               aria-label="Toggle Hot Take player input mode"
@@ -199,7 +233,7 @@ export function LobbyScreen({
               />
             </button>
           </div>
-          <p className="text-[18px] text-text-muted">
+          <p className="font-body text-[18px] text-text-muted">
             {complexity === "advanced" && "Advanced mode always enables player input."}
             {complexity === "kids" && "Kids mode always uses static prompts."}
             {complexity === "standard" &&
@@ -207,19 +241,24 @@ export function LobbyScreen({
                 ? "Enabled for this game."
                 : "Disabled - Hot Take will use static prompts.")}
           </p>
-        </div>
+        </GlassPanel>
       )}
 
       {/* Start game button */}
-      <div className="mt-auto flex justify-center pb-8">
-        <button
+      <div className="relative z-10 mt-auto flex justify-center pb-6">
+        <motion.button
+          whileHover={canStart ? { scale: 1.03 } : {}}
+          whileTap={canStart ? { scale: 0.97 } : {}}
           type="button"
           onClick={onStartGame}
           disabled={!canStart}
-          className="rounded-2xl border-2 border-accent-2/50 bg-accent-2/10 px-20 py-6 font-display text-[42px] text-accent-2 transition-all duration-300 hover:border-accent-2 hover:bg-accent-2/20 hover:shadow-[0_0_40px_oklch(0.83_0.18_195/0.3)] active:scale-95 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-accent-2/50 disabled:hover:bg-accent-2/10 disabled:hover:shadow-none"
+          className="w-full max-w-2xl rounded-2xl border border-accent-1/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-accent-1 transition-all duration-300 hover:border-accent-1 hover:shadow-[0_0_40px_oklch(0.7_0.18_265/0.3)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-accent-1/50 disabled:hover:shadow-none"
+          style={{
+            backdropFilter: "blur(16px)",
+          }}
         >
           {canStart ? "START GAME" : "WAITING FOR PLAYERS..."}
-        </button>
+        </motion.button>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { GlassPanel, haptics } from "@partyline/ui";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VoteOption {
@@ -38,6 +40,7 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
     (index: number, disabled?: boolean) => {
       if (confirmed) return;
       if (disabled) return;
+      haptics.tap();
       setSelected((prev) => (prev === index ? null : index));
     },
     [confirmed],
@@ -46,9 +49,7 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
   const handleConfirm = useCallback(() => {
     if (selected === null || confirmed) return;
 
-    if (navigator.vibrate) {
-      navigator.vibrate(50);
-    }
+    haptics.confirm();
     onConfirm(selected);
     setConfirmed(true);
   }, [selected, confirmed, onConfirm]);
@@ -56,28 +57,22 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
   if (confirmed) {
     return (
       <div className="flex flex-col items-center gap-4 px-4 py-8 animate-fade-in-up">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
-          <svg
-            className="h-8 w-8 text-accent-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={3}
-            role="img"
-          >
-            <title>Confirmed</title>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <p className="text-xl font-medium text-accent-2">Vote Confirmed!</p>
-        <p className="text-sm text-text-muted">Waiting for other players...</p>
+        <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-5/15">
+            <Check className="h-7 w-7 text-accent-5" strokeWidth={3} />
+          </div>
+          <p className="font-display text-xl font-bold text-accent-5">Vote Confirmed!</p>
+          <p className="font-body text-sm text-text-muted">Waiting for other players...</p>
+        </GlassPanel>
       </div>
     );
   }
 
   return (
     <div className="flex w-full flex-col gap-4 px-4">
-      {prompt && <p className="text-center text-lg font-medium text-text-primary">{prompt}</p>}
+      {prompt && (
+        <p className="text-center font-body text-lg font-medium text-text-primary">{prompt}</p>
+      )}
 
       <div className="flex flex-col gap-3">
         {options.map((option) => {
@@ -89,17 +84,23 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
               type="button"
               disabled={isDisabled}
               onClick={() => handleSelect(option.index, option.disabled)}
-              className={`min-h-14 w-full rounded-xl border-2 px-4 py-3 text-left text-lg transition-all ${
-                isDisabled ? "opacity-40 cursor-not-allowed" : "active:scale-[0.98]"
+              className={`min-h-14 w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${
+                isDisabled ? "cursor-not-allowed opacity-40" : "active:scale-[0.98]"
               } ${
                 isSelected
-                  ? "border-accent-1 bg-accent-1/15 shadow-[0_0_12px_rgba(255,51,102,0.3)]"
-                  : "border-text-muted/20 bg-bg-card"
+                  ? "border-accent-1/50 bg-white/[0.08] shadow-[0_0_16px_oklch(0.7_0.18_265_/_0.2)]"
+                  : "border-white/[0.08] bg-white/[0.04]"
               }`}
+              style={{
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+              }}
             >
-              <span className="text-text-primary">{option.label}</span>
+              <span className={isSelected ? "text-text-primary" : "text-text-muted"}>
+                {option.label}
+              </span>
               {option.author && (
-                <span className="mt-1 block text-sm text-text-muted">{option.author}</span>
+                <span className="mt-1 block font-body text-sm text-text-dim">{option.author}</span>
               )}
             </button>
           );
@@ -111,6 +112,9 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
         onClick={handleConfirm}
         disabled={selected === null}
         className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        style={{
+          boxShadow: selected !== null ? "0 0 16px oklch(0.7 0.18 265 / 0.25)" : "none",
+        }}
       >
         Confirm Vote
       </button>

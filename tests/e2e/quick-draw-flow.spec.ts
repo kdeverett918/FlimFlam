@@ -14,8 +14,8 @@ async function canvasHasInkAtCenter(canvas: HTMLCanvasElement): Promise<boolean>
   const y = Math.max(0, Math.min(canvas.height - 1, Math.floor(canvas.height / 2)));
   const [r, g, b, a] = Array.from(ctx.getImageData(x, y, 1, 1).data);
 
-  // "#1a1625" background
-  const bg = { r: 26, g: 22, b: 37 };
+  // "#0d0b14" background (Neon Arena dark canvas)
+  const bg = { r: 13, g: 11, b: 20 };
   const diff = Math.abs((r ?? 0) - bg.r) + Math.abs((g ?? 0) - bg.g) + Math.abs((b ?? 0) - bg.b);
 
   return (a ?? 0) > 0 && diff > 25;

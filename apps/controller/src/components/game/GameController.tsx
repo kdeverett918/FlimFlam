@@ -7,6 +7,9 @@ import { Slider } from "@/components/controls/Slider";
 import { TextInput } from "@/components/controls/TextInput";
 import { TopicSetup } from "@/components/controls/TopicSetup";
 import { VoteGrid } from "@/components/controls/VoteGrid";
+import { GameThemeProvider, GlassPanel, haptics } from "@partyline/ui";
+import type { GameTheme } from "@partyline/ui";
+import { Check, Monitor } from "lucide-react";
 import { useCallback } from "react";
 import { RoleCard } from "./RoleCard";
 import { WaitingScreen } from "./WaitingScreen";
@@ -29,6 +32,30 @@ interface GameControllerProps {
   errorNonce?: number;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
 }
+
+const GAME_THEME_MAP: Record<string, GameTheme> = {
+  "world-builder": "world-builder",
+  "bluff-engine": "bluff-engine",
+  "quick-draw": "quick-draw",
+  "reality-drift": "reality-drift",
+  "hot-take": "hot-take",
+};
+
+const GAME_DISPLAY_NAMES: Record<string, string> = {
+  "world-builder": "World Builder",
+  "bluff-engine": "Bluff Engine",
+  "quick-draw": "Quick Draw",
+  "reality-drift": "Reality Drift",
+  "hot-take": "Hot Take",
+};
+
+const GAME_ACCENT_CLASSES: Record<string, string> = {
+  "world-builder": "text-accent-2 bg-accent-2/15",
+  "bluff-engine": "text-accent-3 bg-accent-3/15",
+  "quick-draw": "text-accent-4 bg-accent-4/15",
+  "reality-drift": "text-accent-5 bg-accent-5/15",
+  "hot-take": "text-accent-6 bg-accent-6/15",
+};
 
 export function GameController({
   gameId,
@@ -87,21 +114,46 @@ export function GameController({
     return <WaitingScreen phase={phase} />;
   }
 
+  const themeKey = GAME_THEME_MAP[gameId] ?? "default";
+  const gameName = GAME_DISPLAY_NAMES[gameId] ?? gameId;
+  const accentClass = GAME_ACCENT_CLASSES[gameId] ?? "text-accent-1 bg-accent-1/15";
+
   // Render based on game + phase
+  let content: React.ReactNode;
   switch (gameId) {
     case "world-builder":
-      return renderWorldBuilder(phase);
+      content = renderWorldBuilder(phase);
+      break;
     case "bluff-engine":
-      return renderBluffEngine(phase);
+      content = renderBluffEngine(phase);
+      break;
     case "quick-draw":
-      return renderQuickDraw(phase);
+      content = renderQuickDraw(phase);
+      break;
     case "reality-drift":
-      return renderRealityDrift(phase);
+      content = renderRealityDrift(phase);
+      break;
     case "hot-take":
-      return renderHotTake(phase);
+      content = renderHotTake(phase);
+      break;
     default:
-      return renderGenericPhase(phase);
+      content = renderGenericPhase(phase);
+      break;
   }
+
+  return (
+    <GameThemeProvider defaultTheme={themeKey}>
+      {/* Game-specific header bar */}
+      <div className="flex items-center justify-center gap-2 px-4 py-2">
+        <div
+          className={`rounded-full px-3 py-1 font-display text-xs font-bold uppercase tracking-wider ${accentClass}`}
+        >
+          {gameName}
+        </div>
+      </div>
+      {content}
+    </GameThemeProvider>
+  );
 
   function renderWorldBuilder(currentPhase: string) {
     switch (currentPhase) {
@@ -121,8 +173,14 @@ export function GameController({
             <div className="px-4">
               <button
                 type="button"
-                onClick={() => sendMessage("player:ready")}
-                className="h-14 w-full rounded-xl bg-accent-2 font-display text-lg text-bg-dark uppercase tracking-wider transition-all active:scale-95"
+                onClick={() => {
+                  haptics.confirm();
+                  sendMessage("player:ready");
+                }}
+                className="h-14 w-full rounded-xl bg-accent-2 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
+                style={{
+                  boxShadow: "0 0 16px oklch(0.7 0.2 330 / 0.25)",
+                }}
               >
                 Ready
               </button>
@@ -141,7 +199,7 @@ export function GameController({
               />
             )}
             <TextInput
-              prompt={`Round ${round}/${totalRounds} — What does your character do?`}
+              prompt={`Round ${round}/${totalRounds} -- What does your character do?`}
               placeholder="Describe your action..."
               onSubmit={handleTextSubmit}
             />
@@ -156,22 +214,10 @@ export function GameController({
           </div>
         );
       case "narration-display":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Watch the story unfold on the main screen...
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Watch the story unfold on the main screen...");
       case "reveal":
       case "final-scores":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for results!
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Check the main screen for results!");
       default:
         return <WaitingScreen phase={currentPhase} />;
     }
@@ -188,15 +234,17 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             {category && (
-              <div className="mx-4 rounded-full bg-accent-4/15 px-3 py-1 text-center text-xs font-medium uppercase tracking-wider text-accent-4">
+              <div className="mx-4 rounded-full bg-accent-3/15 px-3 py-1 text-center font-body text-xs font-medium uppercase tracking-wider text-accent-3">
                 {category}
               </div>
             )}
             {question && (
-              <p className="px-4 text-center text-lg font-medium text-text-primary">{question}</p>
+              <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
+                {question}
+              </p>
             )}
             <TextInput
-              prompt={`Round ${round}/${totalRounds} — Write a convincing fake answer!`}
+              prompt={`Round ${round}/${totalRounds} -- Write a convincing fake answer!`}
               placeholder="Write your bluff..."
               onSubmit={handleTextSubmit}
               maxChars={80}
@@ -205,7 +253,6 @@ export function GameController({
           </div>
         );
       case "voting": {
-        // The options will come from game-data messages
         const options = (privateData?.voteOptions as { index: number; label: string }[]) ?? [];
         const disallowedVoteIndex =
           typeof privateData?.disallowedVoteIndex === "number"
@@ -214,7 +261,9 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             {question && (
-              <p className="px-4 text-center text-base font-medium text-text-primary">{question}</p>
+              <p className="px-4 text-center font-body text-base font-medium text-text-primary">
+                {question}
+              </p>
             )}
             <VoteGrid
               prompt="Which answer do you think is real? (You can't vote for your own answer.)"
@@ -231,13 +280,7 @@ export function GameController({
       }
       case "results":
       case "final-scores":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for results!
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Check the main screen for results!");
       default:
         return <WaitingScreen phase={currentPhase} />;
     }
@@ -248,20 +291,21 @@ export function GameController({
     const word = typeof privateData?.word === "string" ? (privateData.word as string) : null;
     const guessedCorrectly = Boolean(privateData?.qdCorrect);
 
-    // Drawer keeps drawing even after the host transitions to "guessing" (phases overlap).
     if ((currentPhase === "drawing" || currentPhase === "guessing") && isDrawer) {
       return (
         <div className="flex flex-col gap-4 pb-16 pt-4">
           {word && (
-            <div className="mx-4 rounded-xl border-2 border-accent-2/40 bg-accent-2/10 px-4 py-3 text-center">
-              <div className="text-xs font-medium uppercase tracking-wider text-accent-2">
+            <GlassPanel className="mx-4 border-accent-4/30 px-4 py-3 text-center">
+              <div className="font-body text-xs font-medium uppercase tracking-wider text-accent-4">
                 Your Word
               </div>
-              <div className="font-display text-2xl text-text-primary">{word.toUpperCase()}</div>
-            </div>
+              <div className="font-display text-2xl font-bold text-text-primary">
+                {word.toUpperCase()}
+              </div>
+            </GlassPanel>
           )}
-          <p className="px-4 text-center text-lg font-medium text-text-primary">
-            Draw the word — be quick!
+          <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
+            Draw the word -- be quick!
           </p>
           <DrawCanvas onStrokeSend={handleDrawStroke} />
         </div>
@@ -273,23 +317,7 @@ export function GameController({
         return <WaitingScreen phase="drawing" />;
       case "guessing":
         return guessedCorrectly ? (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
-              <svg
-                className="h-8 w-8 text-accent-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={3}
-                role="img"
-              >
-                <title>Correct</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-xl font-medium text-accent-2">You got it!</p>
-            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
-          </div>
+          renderSuccessCard("You got it!", "Keep watching the main screen...")
         ) : (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             <QuickGuessInput
@@ -300,39 +328,11 @@ export function GameController({
           </div>
         );
       case "word-reveal":
-        return guessedCorrectly ? (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
-              <svg
-                className="h-8 w-8 text-accent-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={3}
-                role="img"
-              >
-                <title>Correct</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-xl font-medium text-accent-2">You got it!</p>
-            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for the reveal!
-            </p>
-          </div>
-        );
+        return guessedCorrectly
+          ? renderSuccessCard("You got it!", "Keep watching the main screen...")
+          : renderWatchScreen("Check the main screen for the reveal!");
       case "final-scores":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for the reveal!
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Check the main screen for the reveal!");
       default:
         return <WaitingScreen phase={currentPhase} />;
     }
@@ -347,7 +347,7 @@ export function GameController({
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <VoteGrid
                 key={`reality-drift-answering-${round}`}
-                prompt={`Round ${round}/${totalRounds} — Fill the blank`}
+                prompt={`Round ${round}/${totalRounds} -- Fill the blank`}
                 options={options.map((opt) => ({
                   index: opt.index,
                   label: opt.label,
@@ -360,7 +360,7 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             <TextInput
-              prompt={`Round ${round}/${totalRounds} — What's your answer?`}
+              prompt={`Round ${round}/${totalRounds} -- What's your answer?`}
               placeholder="Type your answer..."
               onSubmit={handleTextSubmit}
             />
@@ -374,8 +374,8 @@ export function GameController({
               key={`reality-drift-drift-check-${round}`}
               prompt="Is this headline real or made up?"
               options={[
-                { index: 0, label: "Real — this actually happened" },
-                { index: 1, label: "Hallucination — completely made up" },
+                { index: 0, label: "Real -- this actually happened" },
+                { index: 1, label: "Hallucination -- completely made up" },
               ]}
               onConfirm={handleVoteConfirm}
             />
@@ -383,13 +383,7 @@ export function GameController({
         );
       case "results":
       case "final-scores":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for results!
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Check the main screen for results!");
       default:
         return <WaitingScreen phase={currentPhase} />;
     }
@@ -411,13 +405,7 @@ export function GameController({
       case "ai-generating":
         return <WaitingScreen phase="ai-generating" />;
       case "showing-prompt":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Read the statement on the main screen...
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Read the statement on the main screen...");
       case "voting":
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
@@ -426,20 +414,13 @@ export function GameController({
         );
       case "results":
       case "final-scores":
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Check the main screen for results!
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Check the main screen for results!");
       default:
         return <WaitingScreen phase={currentPhase} />;
     }
   }
 
   function renderGenericPhase(currentPhase: string) {
-    // Fallback for unknown games/phases
     if (
       currentPhase.includes("input") ||
       currentPhase.includes("answer") ||
@@ -452,11 +433,7 @@ export function GameController({
       );
     }
     if (currentPhase.includes("vote") || currentPhase.includes("voting")) {
-      return (
-        <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-          <p className="text-center text-lg text-text-muted">Waiting for vote options...</p>
-        </div>
-      );
+      return renderWatchScreen("Waiting for vote options...");
     }
     if (currentPhase.includes("draw")) {
       return (
@@ -465,9 +442,30 @@ export function GameController({
         </div>
       );
     }
+    return renderWatchScreen("Watch the main screen...");
+  }
+
+  function renderWatchScreen(message: string) {
     return (
-      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-        <p className="text-center text-lg text-text-muted">Watch the main screen...</p>
+      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
+        <GlassPanel className="flex flex-col items-center gap-3 px-8 py-6">
+          <Monitor className="h-6 w-6 text-text-muted" />
+          <p className="text-center font-body text-lg text-text-muted">{message}</p>
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  function renderSuccessCard(title: string, subtitle: string) {
+    return (
+      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
+        <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-5/15">
+            <Check className="h-7 w-7 text-accent-5" strokeWidth={3} />
+          </div>
+          <p className="font-display text-xl font-bold text-accent-5">{title}</p>
+          <p className="text-center font-body text-sm text-text-muted">{subtitle}</p>
+        </GlassPanel>
       </div>
     );
   }

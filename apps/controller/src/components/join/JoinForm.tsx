@@ -1,6 +1,7 @@
 "use client";
 
 import { AVATAR_COLORS, MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "@partyline/shared";
+import { GlassPanel, haptics } from "@partyline/ui";
 import { useCallback, useRef, useState } from "react";
 import { AvatarPicker } from "./AvatarPicker";
 
@@ -22,7 +23,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
     return chars;
   });
   const [name, setName] = useState("");
-  const [selectedColor, setSelectedColor] = useState<string>(AVATAR_COLORS[0] ?? "#FF3366");
+  const [selectedColor, setSelectedColor] = useState<string>(AVATAR_COLORS[0] ?? "#6366f1");
   const [isJoining, setIsJoining] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -34,7 +35,6 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
   );
 
   const handleCodeInput = useCallback((index: number, value: string) => {
-    // Only allow valid room code chars (alphanumeric)
     const char = value
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
@@ -46,7 +46,6 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
       return next;
     });
 
-    // Auto-advance to next input
     if (char && index < ROOM_CODE_LENGTH - 1) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -55,7 +54,6 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
   const handleCodeKeyDown = useCallback(
     (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Backspace" && !codeChars[index] && index > 0) {
-        // Go to previous input on backspace when current is empty
         inputRefs.current[index - 1]?.focus();
         setCodeChars((prev) => {
           const next = [...prev];
@@ -82,7 +80,6 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
     }
     setCodeChars(newChars);
 
-    // Focus the input after the last pasted character
     const focusIndex = Math.min(pasted.length, ROOM_CODE_LENGTH - 1);
     inputRefs.current[focusIndex]?.focus();
   }, []);
@@ -95,6 +92,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
       e.preventDefault();
       if (!canJoin) return;
 
+      haptics.confirm();
       setIsJoining(true);
       try {
         await onJoin(code, name.trim(), selectedColor);
@@ -109,7 +107,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col items-center gap-6">
       {/* Room code inputs */}
       <div className="w-full">
-        <span className="mb-2 block text-sm font-medium text-text-muted">Room Code</span>
+        <span className="mb-2 block font-body text-sm font-medium text-text-muted">Room Code</span>
         <div className="flex justify-center gap-3">
           {codeChars.map((char, index) => (
             <input
@@ -124,8 +122,9 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
               onChange={(e) => handleCodeInput(index, e.target.value)}
               onKeyDown={(e) => handleCodeKeyDown(index, e)}
               onPaste={handleCodePaste}
+              onFocus={() => haptics.tap()}
               disabled={disabled || isJoining}
-              className="h-16 w-16 rounded-xl border-3 border-text-muted/30 bg-bg-card text-center font-display text-2xl text-text-primary uppercase transition-colors focus:border-accent-1 focus:outline-none disabled:opacity-50"
+              className="glass-input h-16 w-16 rounded-xl text-center font-mono text-2xl text-text-primary uppercase transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
               aria-label={`Room code character ${index + 1}`}
             />
           ))}
@@ -134,7 +133,10 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
 
       {/* Name input */}
       <div className="w-full">
-        <label className="mb-2 block text-sm font-medium text-text-muted" htmlFor="player-name">
+        <label
+          className="mb-2 block font-body text-sm font-medium text-text-muted"
+          htmlFor="player-name"
+        >
           Your Name
         </label>
         <input
@@ -144,16 +146,19 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
           value={name}
           onChange={(e) => setName(e.target.value)}
           onFocus={(e) => {
-            // Scroll into view for keyboard awareness
+            haptics.tap();
+            const el = e.target;
             setTimeout(() => {
-              e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+              if (document.activeElement === el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
             }, 300);
           }}
           disabled={disabled || isJoining}
           placeholder="Enter your name"
-          className="h-14 w-full rounded-xl border-2 border-text-muted/30 bg-bg-card px-4 text-lg text-text-primary placeholder:text-text-muted/50 transition-colors focus:border-accent-1 focus:outline-none disabled:opacity-50"
+          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
         />
-        <span className="mt-1 block text-right text-xs text-text-muted">
+        <span className="mt-1 block text-right font-mono text-xs text-text-muted">
           {name.length}/{MAX_NAME_LENGTH}
         </span>
       </div>
@@ -163,9 +168,9 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
 
       {/* Error message */}
       {error && (
-        <div className="w-full rounded-lg bg-accent-1/20 px-4 py-3 text-center text-sm text-accent-1">
+        <GlassPanel className="w-full border-accent-6/30 bg-accent-6/10 px-4 py-3 text-center font-body text-sm text-accent-6">
           {error}
-        </div>
+        </GlassPanel>
       )}
 
       {/* Join button */}
@@ -173,6 +178,9 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
         type="submit"
         disabled={!canJoin || disabled}
         className="h-14 w-full rounded-xl bg-accent-1 font-display text-xl text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        style={{
+          boxShadow: canJoin && !disabled ? "0 0 20px oklch(0.7 0.18 265 / 0.3)" : "none",
+        }}
       >
         {isJoining ? (
           <span className="inline-flex items-center gap-2">

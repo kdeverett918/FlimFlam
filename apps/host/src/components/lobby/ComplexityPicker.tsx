@@ -1,6 +1,7 @@
 "use client";
 
 import type { Complexity } from "@partyline/shared";
+import { GlassPanel } from "@partyline/ui";
 
 interface ComplexityPickerProps {
   complexity: Complexity;
@@ -11,28 +12,28 @@ const OPTIONS: {
   value: Complexity;
   label: string;
   color: string;
-  activeColor: string;
+  glowColor: string;
   description: string;
 }[] = [
   {
     value: "kids",
     label: "KIDS",
-    color: "text-green-400",
-    activeColor: "border-green-400 bg-green-400/15 shadow-[0_0_20px_oklch(0.7_0.2_145/0.3)]",
+    color: "text-accent-5",
+    glowColor: "oklch(0.7 0.2 145 / 0.3)",
     description: "Ages 8+ / Silly & fun",
   },
   {
     value: "standard",
     label: "STANDARD",
-    color: "text-yellow-400",
-    activeColor: "border-yellow-400 bg-yellow-400/15 shadow-[0_0_20px_oklch(0.85_0.18_85/0.3)]",
+    color: "text-accent-3",
+    glowColor: "oklch(0.75 0.18 85 / 0.3)",
     description: "Ages 13+ / Balanced",
   },
   {
     value: "advanced",
     label: "ADVANCED",
-    color: "text-red-400",
-    activeColor: "border-red-400 bg-red-400/15 shadow-[0_0_20px_oklch(0.65_0.29_12/0.3)]",
+    color: "text-accent-6",
+    glowColor: "oklch(0.65 0.25 25 / 0.3)",
     description: "Ages 16+ / Strategic",
   },
 ];
@@ -46,17 +47,24 @@ export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps
           <button
             key={opt.value}
             type="button"
+            aria-pressed={isActive}
             onClick={() => onChange(opt.value)}
-            className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-10 py-5 transition-all duration-300 ${
-              isActive ? opt.activeColor : "border-bg-card bg-bg-card hover:border-text-muted/30"
-            }`}
           >
-            <span
-              className={`font-display text-[32px] ${isActive ? opt.color : "text-text-muted"}`}
+            <GlassPanel
+              glow={isActive}
+              glowColor={isActive ? opt.glowColor : undefined}
+              rounded="2xl"
+              className={`flex flex-col items-center gap-2 px-10 py-5 transition-all duration-300 ${
+                isActive ? "border-white/20" : "hover:border-white/[0.16]"
+              }`}
             >
-              {opt.label}
-            </span>
-            <span className="text-[18px] text-text-muted">{opt.description}</span>
+              <span
+                className={`font-display text-[32px] font-bold ${isActive ? opt.color : "text-text-muted"}`}
+              >
+                {opt.label}
+              </span>
+              <span className="font-body text-[18px] text-text-muted">{opt.description}</span>
+            </GlassPanel>
           </button>
         );
       })}

@@ -3,8 +3,10 @@
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
 import type { DrawStrokeBroadcast, PlayerData, ScoreEntry } from "@partyline/shared";
+import { AnimatedBackground, GlassPanel } from "@partyline/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
+import { Pencil } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
 interface QuickDrawHostProps {
@@ -50,6 +52,7 @@ export function QuickDrawHost({
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
+          <AnimatedBackground variant="subtle" />
           <p className="font-display text-[36px] text-text-muted">Quick Draw - {phase}</p>
         </div>
       );
@@ -67,24 +70,30 @@ function PickingDrawerView({
   const drawer = players.find((p) => p.sessionId === drawerId);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8">
+      <AnimatedBackground />
       <motion.div
         animate={{ scale: [1, 1.2, 1] }}
         transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY }}
-        className="text-[96px]"
+        className="relative z-10"
       >
-        {"\u270F\uFE0F"}
+        <Pencil className="h-24 w-24 text-accent-4" />
       </motion.div>
-      <h2 className="font-display text-[56px] text-text-primary">PICKING THE ARTIST...</h2>
+      <h2
+        className="relative z-10 font-display text-[56px] font-bold text-text-primary"
+        style={{ textShadow: "0 0 30px oklch(0.75 0.15 195 / 0.4)" }}
+      >
+        PICKING THE ARTIST...
+      </h2>
       {drawer && (
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5, type: "spring" }}
-          className="flex flex-col items-center gap-4"
+          className="relative z-10 flex flex-col items-center gap-4"
         >
           <div
-            className="flex h-[100px] w-[100px] items-center justify-center rounded-full text-[48px] font-bold text-bg-dark"
+            className="flex h-[100px] w-[100px] items-center justify-center rounded-full font-body text-[48px] font-bold text-bg-deep"
             style={{
               backgroundColor: drawer.avatarColor,
               boxShadow: `0 0 30px ${drawer.avatarColor}60`,
@@ -92,7 +101,9 @@ function PickingDrawerView({
           >
             {drawer.name.charAt(0).toUpperCase()}
           </div>
-          <span className="font-display text-[40px] text-accent-2">{drawer.name} is drawing!</span>
+          <span className="font-display text-[40px] font-bold text-accent-4">
+            {drawer.name} is drawing!
+          </span>
         </motion.div>
       )}
     </div>
@@ -124,32 +135,37 @@ function ActiveRoundView({
   const isGuessing = phase === "guessing";
 
   return (
-    <div className="flex min-h-screen flex-col p-8">
-      <div className="mb-4 flex items-center justify-between">
+    <div className="relative flex min-h-screen flex-col p-8">
+      <AnimatedBackground variant="subtle" />
+      <div className="relative z-10 mb-4 flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <span className="font-display text-[28px] text-text-muted">
+          <span className="font-display text-[28px] font-semibold text-text-muted">
             ROUND {round} / {totalRounds}
           </span>
           {drawer && (
-            <span className="text-[28px] text-accent-2">
+            <span className="font-body text-[28px] text-accent-4">
               {isGuessing ? `Artist: ${drawer.name}` : `${drawer.name} is drawing`}
             </span>
           )}
-          {isGuessing && <h2 className="font-display text-[36px] text-accent-1">GUESS!</h2>}
+          {isGuessing && (
+            <h2 className="font-display text-[36px] font-bold text-accent-4">GUESS!</h2>
+          )}
         </div>
         {timerEndTime && <Timer endTime={timerEndTime} />}
       </div>
 
-      <div className={`flex flex-1 gap-6 ${isGuessing ? "" : "justify-center"}`}>
+      <div className={`relative z-10 flex flex-1 gap-6 ${isGuessing ? "" : "justify-center"}`}>
         <div className={isGuessing ? "flex-1" : "w-full max-w-[960px]"}>
           <div className="mx-auto aspect-[4/3] max-h-[70vh] max-w-[960px]">
-            <CanvasMirror room={room} />
+            <GlassPanel rounded="2xl" className="h-full w-full overflow-hidden p-1">
+              <CanvasMirror room={room} />
+            </GlassPanel>
           </div>
         </div>
 
         {isGuessing && (
-          <div className="w-[320px] overflow-hidden rounded-2xl border border-bg-card bg-bg-card/50 p-4">
-            <h3 className="mb-4 font-display text-[24px] text-accent-2">GUESSES</h3>
+          <GlassPanel rounded="2xl" className="w-[320px] overflow-hidden p-4">
+            <h3 className="mb-4 font-display text-[24px] font-bold text-accent-4">GUESSES</h3>
             <div className="flex max-h-[65vh] flex-col gap-2 overflow-y-auto pr-1">
               <AnimatePresence>
                 {guesses.map((guess, i) => (
@@ -157,25 +173,29 @@ function ActiveRoundView({
                     key={`${guess.playerName}-${i}`}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className={`rounded-xl p-3 ${
-                      guess.correct ? "border border-accent-2/50 bg-accent-2/10" : "bg-bg-dark/50"
-                    }`}
                   >
-                    <span className="text-[18px] font-medium text-text-muted">
-                      {guess.playerName}:
-                    </span>{" "}
-                    <span
-                      className={`text-[20px] ${
-                        guess.correct ? "font-bold text-accent-2" : "text-text-primary"
-                      }`}
+                    <GlassPanel
+                      glow={guess.correct}
+                      glowColor="oklch(0.75 0.15 195 / 0.3)"
+                      rounded="lg"
+                      className="p-3"
                     >
-                      {guess.correct ? "GOT IT!" : guess.guess}
-                    </span>
+                      <span className="font-body text-[18px] font-medium text-text-muted">
+                        {guess.playerName}:
+                      </span>{" "}
+                      <span
+                        className={`font-body text-[20px] ${
+                          guess.correct ? "font-bold text-accent-4" : "text-text-primary"
+                        }`}
+                      >
+                        {guess.correct ? "GOT IT!" : guess.guess}
+                      </span>
+                    </GlassPanel>
                   </motion.div>
                 ))}
               </AnimatePresence>
             </div>
-          </div>
+          </GlassPanel>
         )}
       </div>
     </div>
@@ -254,7 +274,7 @@ function CanvasMirror({ room }: { room: Room | null }) {
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = "#1a1625";
+    ctx.fillStyle = "#0d0b14";
     ctx.fillRect(0, 0, width, height);
 
     for (const stroke of strokesRef.current) {
@@ -262,7 +282,6 @@ function CanvasMirror({ room }: { room: Room | null }) {
     }
   }, [drawStroke]);
 
-  // Resize to match container.
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -335,7 +354,7 @@ function CanvasMirror({ room }: { room: Room | null }) {
     <div ref={containerRef} className="h-full w-full">
       <canvas
         ref={canvasRef}
-        className="h-full w-full rounded-2xl border-2 border-bg-card"
+        className="h-full w-full rounded-xl"
         style={{ imageRendering: "auto" }}
       />
     </div>
@@ -353,20 +372,32 @@ function WordRevealView({
   const correctGuessers = (payload.correctGuessers as string[]) ?? [];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10">
-      <h2 className="font-display text-[48px] text-text-muted">THE WORD WAS</h2>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10">
+      <AnimatedBackground variant="subtle" />
+      <h2 className="relative z-10 font-display text-[48px] font-semibold text-text-muted">
+        THE WORD WAS
+      </h2>
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 200 }}
-        className="font-display text-[96px] text-accent-3"
+        className="relative z-10"
       >
-        {word.toUpperCase()}
+        <GlassPanel
+          glow
+          glowColor="oklch(0.75 0.15 195 / 0.4)"
+          rounded="2xl"
+          className="px-12 py-6"
+        >
+          <span className="font-display text-[96px] font-bold text-accent-4">
+            {word.toUpperCase()}
+          </span>
+        </GlassPanel>
       </motion.div>
 
       {correctGuessers.length > 0 && (
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-[28px] text-accent-2">Correct guessers:</p>
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <p className="font-body text-[28px] text-accent-4">Correct guessers:</p>
           <div className="flex gap-4">
             {correctGuessers.map((id) => {
               const player = players.find((p) => p.sessionId === id);
@@ -379,12 +410,12 @@ function WordRevealView({
                   className="flex flex-col items-center gap-2"
                 >
                   <div
-                    className="flex h-[60px] w-[60px] items-center justify-center rounded-full text-[28px] font-bold text-bg-dark"
+                    className="flex h-[60px] w-[60px] items-center justify-center rounded-full font-body text-[28px] font-bold text-bg-deep"
                     style={{ backgroundColor: player.avatarColor }}
                   >
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-[22px] text-text-primary">{player.name}</span>
+                  <span className="font-body text-[22px] text-text-primary">{player.name}</span>
                 </motion.div>
               );
             })}
@@ -408,9 +439,12 @@ function DrawFinalScoresView({ players }: { players: PlayerData[] }) {
     .map((s, i) => ({ ...s, rank: i + 1 }));
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <h1 className="font-display text-[64px] text-accent-3">FINAL SCORES</h1>
-      <div className="w-full max-w-4xl">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <AnimatedBackground variant="subtle" />
+      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-4">
+        FINAL SCORES
+      </h1>
+      <div className="relative z-10 w-full max-w-4xl">
         <Scoreboard scores={scores} />
       </div>
     </div>
