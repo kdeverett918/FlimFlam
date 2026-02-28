@@ -280,6 +280,9 @@ importers:
       express:
         specifier: ^4.21.2
         version: 4.22.1
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17
@@ -287,9 +290,6 @@ importers:
       '@types/express':
         specifier: ^5.0.1
         version: 5.0.6
-      tsx:
-        specifier: ^4.19.3
-        version: 4.21.0
 
   packages/shared:
     dependencies:
