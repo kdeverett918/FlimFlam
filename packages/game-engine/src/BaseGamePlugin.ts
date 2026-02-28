@@ -209,6 +209,7 @@ export abstract class BaseGamePlugin implements GamePlugin {
     if (activeCount < MIN_PLAYERS) {
       this.setPhase(state, "final-scores");
       this.clearTimer();
+      this.setTimerEndsAt(state, 0);
     }
   }
 

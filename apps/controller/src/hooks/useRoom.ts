@@ -35,7 +35,9 @@ interface UseRoomReturn {
   joinRoom: (code: string, name: string, color: string) => Promise<boolean>;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
   error: string | null;
+  errorNonce: number;
   connected: boolean;
+  everConnected: boolean;
   myPlayer: PlayerData | null;
   ready: boolean;
 }
@@ -46,12 +48,16 @@ export function useRoom(): UseRoomReturn {
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [privateData, setPrivateData] = useState<PrivateData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorNonce, setErrorNonce] = useState(0);
   const [connected, setConnected] = useState(false);
+  const [everConnected, setEverConnected] = useState(false);
   const [myPlayer, setMyPlayer] = useState<PlayerData | null>(null);
   const [ready, setReady] = useState(false);
   const previousPhaseRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
   const reconnectAttempted = useRef(false);
+  const reconnectInProgress = useRef(false);
+  const reconnectFnRef = useRef<(() => void) | null>(null);
 
   const vibrate = useCallback((duration: number) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -64,6 +70,7 @@ export function useRoom(): UseRoomReturn {
       roomRef.current = activeRoom;
       setRoom(activeRoom);
       setConnected(true);
+      setEverConnected(true);
       setError(null);
 
       // Store reconnection data
@@ -146,6 +153,7 @@ export function useRoom(): UseRoomReturn {
       // Error messages
       activeRoom.onMessage("error", (data: { message: string }) => {
         setError(data.message);
+        setErrorNonce((prev) => prev + 1);
       });
 
       // Connection handlers
@@ -153,6 +161,7 @@ export function useRoom(): UseRoomReturn {
         setConnected(false);
         if (code !== 1000) {
           setError("Connection lost. Trying to reconnect...");
+          reconnectFnRef.current?.();
         }
       });
 
@@ -163,52 +172,95 @@ export function useRoom(): UseRoomReturn {
     [vibrate],
   );
 
-  // Try reconnection on mount
-  useEffect(() => {
-    const tryReconnect = async () => {
-      if (reconnectAttempted.current) return;
-      reconnectAttempted.current = true;
+  const reconnect = useCallback(async (opts?: { clearStaleTokens?: boolean }): Promise<boolean> => {
+    if (reconnectInProgress.current) return false;
+    reconnectInProgress.current = true;
 
+    const clearStaleTokens = opts?.clearStaleTokens ?? true;
+
+    try {
       if (typeof sessionStorage === "undefined") {
-        setReady(true);
-        return;
+        return false;
       }
 
       const token = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
       if (!token) {
-        setReady(true);
-        return;
+        return false;
       }
 
-      try {
-        const client = getColyseusClient();
-        // Avoid an indefinite loading state if the server is unreachable.
-        const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
-          client.reconnect(token).then(
-            (joinedRoom) => {
-              clearTimeout(timeout);
-              resolve(joinedRoom);
-            },
-            (err) => {
-              clearTimeout(timeout);
-              reject(err);
-            },
-          );
-        });
-        setupRoomListeners(reconnectedRoom);
-      } catch {
-        // Clear stale tokens
+      const client = getColyseusClient();
+      // Avoid an indefinite loading state if the server is unreachable.
+      const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
+        client.reconnect(token).then(
+          (joinedRoom) => {
+            clearTimeout(timeout);
+            resolve(joinedRoom);
+          },
+          (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          },
+        );
+      });
+
+      setupRoomListeners(reconnectedRoom);
+      return true;
+    } catch {
+      if (clearStaleTokens && typeof sessionStorage !== "undefined") {
         sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
         sessionStorage.removeItem(ROOM_ID_KEY);
+      }
+      return false;
+    } finally {
+      reconnectInProgress.current = false;
+    }
+  }, [setupRoomListeners]);
+
+  useEffect(() => {
+    reconnectFnRef.current = () => {
+      void reconnect({ clearStaleTokens: false });
+    };
+  }, [reconnect]);
+
+  // Try reconnection on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    const tryReconnect = async () => {
+      if (reconnectAttempted.current) return;
+      reconnectAttempted.current = true;
+
+      try {
+        const hasToken =
+          typeof sessionStorage !== "undefined" &&
+          Boolean(sessionStorage.getItem(RECONNECT_TOKEN_KEY));
+
+        if (!hasToken) {
+          return;
+        }
+
+        // In dev/StrictMode and during route transitions, the server may not have
+        // processed the prior disconnect yet. Retry a few times before giving up.
+        const maxAttempts = 4;
+        for (let attempt = 0; attempt < maxAttempts && !cancelled; attempt++) {
+          const ok = await reconnect({ clearStaleTokens: attempt === maxAttempts - 1 });
+          if (ok) break;
+
+          // Small backoff helps avoid reconnect races.
+          await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+        }
       } finally {
-        setReady(true);
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     };
 
-    tryReconnect();
+    void tryReconnect();
 
     return () => {
+      cancelled = true;
       if (roomRef.current) {
         // Treat route transitions like an unconsented disconnect so the next page can reconnect
         // using the saved reconnection token.
@@ -216,7 +268,7 @@ export function useRoom(): UseRoomReturn {
         roomRef.current = null;
       }
     };
-  }, [setupRoomListeners]);
+  }, [reconnect]);
 
   const joinRoom = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
@@ -266,7 +318,9 @@ export function useRoom(): UseRoomReturn {
     joinRoom,
     sendMessage,
     error,
+    errorNonce,
     connected,
+    everConnected,
     myPlayer,
     ready,
   };

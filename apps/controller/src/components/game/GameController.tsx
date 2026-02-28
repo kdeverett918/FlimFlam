@@ -24,6 +24,7 @@ interface GameControllerProps {
   round: number;
   totalRounds: number;
   privateData: PrivateData | null;
+  errorNonce?: number;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
 }
 
@@ -33,6 +34,7 @@ export function GameController({
   round,
   totalRounds,
   privateData,
+  errorNonce,
   sendMessage,
 }: GameControllerProps) {
   const handleTextSubmit = useCallback(
@@ -173,29 +175,51 @@ export function GameController({
   }
 
   function renderBluffEngine(currentPhase: string) {
+    const question = typeof privateData?.question === "string" ? (privateData.question as string) : "";
+    const category = typeof privateData?.category === "string" ? (privateData.category as string) : "";
+
     switch (currentPhase) {
       case "answer-input":
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
+            {category && (
+              <div className="mx-4 rounded-full bg-accent-4/15 px-3 py-1 text-center text-xs font-medium uppercase tracking-wider text-accent-4">
+                {category}
+              </div>
+            )}
+            {question && (
+              <p className="px-4 text-center text-lg font-medium text-text-primary">{question}</p>
+            )}
             <TextInput
               prompt={`Round ${round}/${totalRounds} — Write a convincing fake answer!`}
               placeholder="Write your bluff..."
               onSubmit={handleTextSubmit}
+              maxChars={80}
+              resetNonce={errorNonce}
             />
           </div>
         );
       case "voting": {
         // The options will come from game-data messages
         const options = (privateData?.voteOptions as { index: number; label: string }[]) ?? [];
+        const disallowedVoteIndex =
+          typeof privateData?.disallowedVoteIndex === "number"
+            ? (privateData.disallowedVoteIndex as number)
+            : null;
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
+            {question && (
+              <p className="px-4 text-center text-base font-medium text-text-primary">{question}</p>
+            )}
             <VoteGrid
-              prompt="Which answer do you think is real?"
+              prompt="Which answer do you think is real? (You can't vote for your own answer.)"
               options={options.map((opt) => ({
                 index: opt.index,
                 label: opt.label,
+                disabled: disallowedVoteIndex === opt.index,
               }))}
               onConfirm={handleVoteConfirm}
+              resetNonce={errorNonce}
             />
           </div>
         );

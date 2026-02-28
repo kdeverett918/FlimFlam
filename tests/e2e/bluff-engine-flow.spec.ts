@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("hot take game completes end-to-end", async ({ page, browser }) => {
+test("bluff engine game completes end-to-end", async ({ page, browser }) => {
   await page.goto("/");
 
   // Ensure the Colyseus server is ready before attempting to create a room.
@@ -41,7 +41,7 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
   const c3 = await joinController("Casey");
 
   // Select game and set difficulty.
-  await page.getByRole("button", { name: /hot take/i }).click();
+  await page.getByRole("button", { name: /bluff engine/i }).click();
   await page.getByRole("button", { name: /^kids/i }).click();
 
   // Start game.
@@ -51,11 +51,25 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
 
   // Play 3 rounds (kids mode).
   for (let i = 0; i < 3; i++) {
+    const a = `alice bluff ${i}`;
+    const b = `bob bluff ${i}`;
+    const c = `casey bluff ${i}`;
+
+    await Promise.all([
+      c1.controllerPage.locator("textarea").waitFor(),
+      c2.controllerPage.locator("textarea").waitFor(),
+      c3.controllerPage.locator("textarea").waitFor(),
+    ]);
+
+    await Promise.all([
+      c1.controllerPage.locator("textarea").fill(a),
+      c2.controllerPage.locator("textarea").fill(b),
+      c3.controllerPage.locator("textarea").fill(c),
+    ]);
+
     const submit1 = c1.controllerPage.getByRole("button", { name: /^submit$/i });
     const submit2 = c2.controllerPage.getByRole("button", { name: /^submit$/i });
     const submit3 = c3.controllerPage.getByRole("button", { name: /^submit$/i });
-
-    await Promise.all([submit1.waitFor(), submit2.waitFor(), submit3.waitFor()]);
 
     await Promise.all([submit1.click(), submit2.click(), submit3.click()]);
 
@@ -65,12 +79,26 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
       expect(c3.controllerPage.getByText(/submitted!/i)).toBeVisible(),
     ]);
 
-    if (i === 0) {
-      // Results view may be brief with timer scaling, so wait for it to appear at least once.
-      await page.waitForFunction(() => document.body.innerText.includes("THE RESULTS"), null, {
-        timeout: 20_000,
-      });
-    }
+    const confirm1 = c1.controllerPage.getByRole("button", { name: /confirm vote/i });
+    const confirm2 = c2.controllerPage.getByRole("button", { name: /confirm vote/i });
+    const confirm3 = c3.controllerPage.getByRole("button", { name: /confirm vote/i });
+
+    await Promise.all([confirm1.waitFor(), confirm2.waitFor(), confirm3.waitFor()]);
+
+    // Select any enabled option (the server disables each player's own answer).
+    await Promise.all([
+      c1.controllerPage.locator("button:not([disabled])").first().click(),
+      c2.controllerPage.locator("button:not([disabled])").first().click(),
+      c3.controllerPage.locator("button:not([disabled])").first().click(),
+    ]);
+
+    await Promise.all([confirm1.click(), confirm2.click(), confirm3.click()]);
+
+    await Promise.all([
+      expect(c1.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
+      expect(c2.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
+      expect(c3.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
+    ]);
   }
 
   await page.waitForFunction(() => document.body.innerText.includes("FINAL SCORES"), null, {
