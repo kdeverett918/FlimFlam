@@ -6,17 +6,39 @@ import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function PlayPage() {
   const router = useRouter();
-  const { state, players, privateData, sendMessage, connected, myPlayer, error, ready } = useRoom();
+  const {
+    state,
+    players,
+    privateData,
+    sendMessage,
+    connected,
+    everConnected,
+    myPlayer,
+    error,
+    errorNonce,
+    ready,
+  } = useRoom();
+  const [toast, setToast] = useState<{ message: string; nonce: number } | null>(null);
 
   // Only redirect after we've finished attempting an auto-reconnect.
   useEffect(() => {
     if (!ready || connected) return;
+    if (everConnected) return;
     router.push("/");
-  }, [connected, ready, router]);
+  }, [connected, ready, everConnected, router]);
+
+  useEffect(() => {
+    if (!error) return;
+    setToast({ message: error, nonce: errorNonce });
+    const timeout = setTimeout(() => {
+      setToast((current) => (current?.nonce === errorNonce ? null : current));
+    }, 4000);
+    return () => clearTimeout(timeout);
+  }, [error, errorNonce]);
 
   if (!connected) {
     return (
@@ -105,6 +127,15 @@ export default function PlayPage() {
       {/* Timer bar */}
       <TimerBar timerEndsAt={timerEndsAt} />
 
+      {/* Error toast */}
+      {toast && (
+        <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+          <div className="max-w-md rounded-xl border border-accent-1/30 bg-bg-dark/90 px-4 py-3 text-center text-sm text-accent-1 backdrop-blur-sm">
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       {/* Game content */}
       <GameController
         gameId={gameId}
@@ -112,6 +143,7 @@ export default function PlayPage() {
         round={round}
         totalRounds={totalRounds}
         privateData={privateData}
+        errorNonce={errorNonce}
         sendMessage={sendMessage}
       />
 

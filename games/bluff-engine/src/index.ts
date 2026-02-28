@@ -210,6 +210,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     this.resetSubmissions(state);
 
     this.setPhase(state, "generating-prompt");
+    this.setTimerEndsAt(state, 0);
     this._broadcastHost(room, state, {});
 
     // Generate prompt via AI
@@ -218,26 +219,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
         ? this.internal.correctVoteCount / this.internal.totalVoteCount
         : undefined;
 
-    try {
-      const result = await enqueueAIRequest(room.roomId, async () => {
-        const prompts = buildBluffPromptGeneration(
-          this.internal.complexity,
-          this.internal.round,
-          previousAccuracy,
-        );
-        return aiRequest<BluffPromptRaw>(prompts.system, prompts.user, BluffPromptSchema, {
-          maxTokens: 1024,
-        });
-      });
-
-      const raw = result.parsed;
-      this.internal.currentPrompt = {
-        question: raw.question,
-        realAnswer: raw.realAnswer ?? raw.real_answer ?? "",
-        category: raw.category,
-      };
-    } catch (error) {
-      console.warn("AI prompt generation failed, using fallback:", error);
+    const useFallbackPrompt = () => {
       // Pick an unused fallback prompt
       let promptIndex = 0;
       for (let i = 0; i < FALLBACK_BLUFF_PROMPTS.length; i++) {
@@ -254,15 +236,60 @@ export class BluffEnginePlugin extends BaseGamePlugin {
         realAnswer: "Canberra",
         category: "Geography",
       };
+    };
+
+    const hasAiKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+    if (!hasAiKey) {
+      if (this.internal.round === 1) {
+        console.warn("Bluff Engine: ANTHROPIC_API_KEY not set. Using fallback prompts.");
+      }
+      useFallbackPrompt();
+    } else {
+      try {
+        const result = await enqueueAIRequest(room.roomId, async () => {
+          const prompts = buildBluffPromptGeneration(
+            this.internal.complexity,
+            this.internal.round,
+            previousAccuracy,
+          );
+          return aiRequest<BluffPromptRaw>(prompts.system, prompts.user, BluffPromptSchema, {
+            maxTokens: 1024,
+          });
+        });
+
+        const raw = result.parsed;
+        this.internal.currentPrompt = {
+          question: raw.question,
+          realAnswer: raw.realAnswer ?? raw.real_answer ?? "",
+          category: raw.category,
+        };
+      } catch (error) {
+        console.warn("AI prompt generation failed, using fallback:", error);
+        useFallbackPrompt();
+      }
     }
+
+    const prompt = this.internal.currentPrompt ?? {
+      question: "What is the capital of Australia?",
+      realAnswer: "Canberra",
+      category: "Geography",
+    };
+    this.internal.currentPrompt = prompt;
 
     this.setPhase(state, "answer-input");
 
     this._broadcastHost(room, state, {
-      question: this.internal.currentPrompt.question,
-      category: this.internal.currentPrompt.category,
+      question: prompt.question,
+      category: prompt.category,
       submittedPlayerIds: [],
     });
+
+    for (const client of room.clients) {
+      room.send(client, "private-data", {
+        question: prompt.question,
+        category: prompt.category,
+      });
+    }
 
     this.startPhaseTimer(room, "answer-input", this.internal.complexity, () => {
       this._startVoting(room, state);
@@ -283,9 +310,22 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     }
 
     // Add fake answers for players who didn't submit
+    let missingCount = 0;
     players.forEach((player: Record<string, unknown>, key: string) => {
       if (player.connected && !this.internal.fakeAnswers.has(key)) {
-        options.push({ text: "No answer submitted", isReal: false, authorSessionId: key });
+        missingCount++;
+      }
+    });
+
+    let missingIndex = 0;
+    players.forEach((player: Record<string, unknown>, key: string) => {
+      if (player.connected && !this.internal.fakeAnswers.has(key)) {
+        missingIndex++;
+        options.push({
+          text: missingCount > 1 ? `No answer submitted #${missingIndex}` : "No answer submitted",
+          isReal: false,
+          authorSessionId: null,
+        });
       }
     });
 
@@ -307,9 +347,12 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     });
 
     // Send voting options to controllers
+    const voteOptions = options.map((o, index) => ({ index, label: o.text }));
     for (const client of room.clients) {
+      const disallowedVoteIndex = options.findIndex((o) => o.authorSessionId === client.sessionId);
       room.send(client, "private-data", {
-        voteOptions: options.map((o, index) => ({ index, label: o.text })),
+        voteOptions,
+        disallowedVoteIndex: disallowedVoteIndex >= 0 ? disallowedVoteIndex : null,
       });
     }
 
@@ -407,6 +450,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
   private async _advanceAfterResults(room: Room, state: Schema): Promise<void> {
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
+      this.setTimerEndsAt(state, 0);
       this._broadcastHost(room, state, {});
     } else {
       await this._startRound(room, state);

@@ -3,6 +3,21 @@ import { expect, test } from "@playwright/test";
 test("host creates room and players join", async ({ page, browser }) => {
   await page.goto("/");
 
+  // Ensure the Colyseus server is ready before attempting to create a room.
+  await expect
+    .poll(
+      async () => {
+        try {
+          const res = await page.request.get("http://127.0.0.1:2567/health");
+          return res.status();
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(200);
+
   await page.getByRole("button", { name: /create room/i }).click();
   await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 

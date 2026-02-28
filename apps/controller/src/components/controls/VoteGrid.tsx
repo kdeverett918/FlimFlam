@@ -1,26 +1,43 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VoteOption {
   index: number;
   label: string;
   author?: string;
+  disabled?: boolean;
 }
 
 interface VoteGridProps {
   options: VoteOption[];
   prompt?: string;
   onConfirm: (selectedIndex: number) => void;
+  resetNonce?: number;
 }
 
-export function VoteGrid({ options, prompt, onConfirm }: VoteGridProps) {
+export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const lastResetNonceRef = useRef<number | undefined>(resetNonce);
+
+  useEffect(() => {
+    if (resetNonce === undefined) return;
+    if (lastResetNonceRef.current === undefined) {
+      lastResetNonceRef.current = resetNonce;
+      return;
+    }
+    if (resetNonce !== lastResetNonceRef.current) {
+      lastResetNonceRef.current = resetNonce;
+      setConfirmed(false);
+      setSelected(null);
+    }
+  }, [resetNonce]);
 
   const handleSelect = useCallback(
-    (index: number) => {
+    (index: number, disabled?: boolean) => {
       if (confirmed) return;
+      if (disabled) return;
       setSelected((prev) => (prev === index ? null : index));
     },
     [confirmed],
@@ -65,12 +82,16 @@ export function VoteGrid({ options, prompt, onConfirm }: VoteGridProps) {
       <div className="flex flex-col gap-3">
         {options.map((option) => {
           const isSelected = selected === option.index;
+          const isDisabled = Boolean(option.disabled);
           return (
             <button
               key={option.index}
               type="button"
-              onClick={() => handleSelect(option.index)}
-              className={`min-h-14 w-full rounded-xl border-2 px-4 py-3 text-left text-lg transition-all active:scale-[0.98] ${
+              disabled={isDisabled}
+              onClick={() => handleSelect(option.index, option.disabled)}
+              className={`min-h-14 w-full rounded-xl border-2 px-4 py-3 text-left text-lg transition-all ${
+                isDisabled ? "opacity-40 cursor-not-allowed" : "active:scale-[0.98]"
+              } ${
                 isSelected
                   ? "border-accent-1 bg-accent-1/15 shadow-[0_0_12px_rgba(255,51,102,0.3)]"
                   : "border-text-muted/20 bg-bg-card"
