@@ -27,11 +27,13 @@ export type {
   ClientMessageType,
   ServerMessageType,
   PlayerSubmitMessage,
+  PlayerTopicSubmitMessage,
   PlayerVoteMessage,
   PlayerDrawStrokeMessage,
   PlayerUseAbilityMessage,
   HostSelectGameMessage,
   HostStartGameMessage,
+  HostSetPlayerInputMessage,
   SliderVoteMessage,
   GameDataMessage,
   PrivateDataMessage,
@@ -52,6 +54,9 @@ export type {
   BonusJudgingResult,
   BluffPrompt,
   TriviaQuestion,
+  HotTakePlayerProfile,
+  HotTakeRoundHistory,
+  GeneratedHotTakePrompt,
 } from "./types/ai";
 
 // Schemas
@@ -62,6 +67,8 @@ export {
   BluffPromptSchema,
   TriviaQuestionSchema,
   TriviaBatchSchema,
+  HotTakePromptSchema,
+  HotTakeBatchSchema,
 } from "./schemas/ai-responses";
 
 export type {
@@ -71,6 +78,8 @@ export type {
   BluffPromptRaw,
   TriviaQuestionRaw,
   TriviaBatchRaw,
+  HotTakePromptRaw,
+  HotTakeBatchRaw,
 } from "./schemas/ai-responses";
 
 // Constants

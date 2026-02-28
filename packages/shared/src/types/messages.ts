@@ -10,11 +10,18 @@ export type ClientMessageType =
   | "host:next-round"
   | "host:skip"
   | "host:end-game"
-  | "host:set-complexity";
+  | "host:set-complexity"
+  | "host:set-player-input";
 
 export interface PlayerSubmitMessage {
   type: "player:submit";
   content: string;
+}
+
+export interface PlayerTopicSubmitMessage {
+  type: "player:submit";
+  content: string;
+  category?: string;
 }
 
 export interface PlayerVoteMessage {
@@ -42,6 +49,11 @@ export interface HostStartGameMessage {
 export interface HostSelectGameMessage {
   type: "host:select-game";
   gameId: string;
+}
+
+export interface HostSetPlayerInputMessage {
+  type: "host:set-player-input";
+  enabled: boolean;
 }
 
 export interface SliderVoteMessage {

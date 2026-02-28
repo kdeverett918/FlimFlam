@@ -120,9 +120,22 @@ export const TriviaBatchSchema = z.object({
   questions: z.array(TriviaQuestionSchema),
 });
 
+export const HotTakePromptSchema = z.object({
+  statement: z.string(),
+  reasoning: z.string().optional(),
+  escalation_level: z.number().min(1).max(10).optional(),
+  escalationLevel: z.number().min(1).max(10).optional(),
+});
+
+export const HotTakeBatchSchema = z.object({
+  prompts: z.array(HotTakePromptSchema),
+});
+
 export type GeneratedScenarioRaw = z.infer<typeof GeneratedScenarioRawSchema>;
 export type RoundNarrationRaw = z.infer<typeof RoundNarrationRawSchema>;
 export type BonusJudgingRaw = z.infer<typeof BonusJudgingRawSchema>;
 export type BluffPromptRaw = z.infer<typeof BluffPromptSchema>;
 export type TriviaQuestionRaw = z.infer<typeof TriviaQuestionSchema>;
 export type TriviaBatchRaw = z.infer<typeof TriviaBatchSchema>;
+export type HotTakePromptRaw = z.infer<typeof HotTakePromptSchema>;
+export type HotTakeBatchRaw = z.infer<typeof HotTakeBatchSchema>;

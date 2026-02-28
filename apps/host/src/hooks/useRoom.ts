@@ -9,6 +9,7 @@ interface RoomState {
   phase: string;
   selectedGameId: string;
   complexity: Complexity;
+  hotTakePlayerInputEnabled: boolean;
   round: number;
   totalRounds: number;
   timerEndsAt: number;
@@ -69,6 +70,7 @@ export function useRoom(): UseRoomReturn {
       phase: (roomState.phase as string) ?? "lobby",
       selectedGameId: (roomState.selectedGameId as string) ?? "",
       complexity: (roomState.complexity as Complexity) ?? "standard",
+      hotTakePlayerInputEnabled: (roomState.hotTakePlayerInputEnabled as boolean) ?? false,
       round: (roomState.round as number) ?? 0,
       totalRounds: (roomState.totalRounds as number) ?? 0,
       timerEndsAt: (roomState.timerEndsAt as number) ?? 0,
@@ -84,6 +86,10 @@ export function useRoom(): UseRoomReturn {
 
     listenField("complexity", (value) => {
       setState((prev) => (prev ? { ...prev, complexity: value as Complexity } : prev));
+    });
+
+    listenField("hotTakePlayerInputEnabled", (value) => {
+      setState((prev) => (prev ? { ...prev, hotTakePlayerInputEnabled: value as boolean } : prev));
     });
 
     listenField("round", (value) => {

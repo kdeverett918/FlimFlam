@@ -10,6 +10,7 @@ export interface GameUIState {
   phase: string;
   selectedGameId: string;
   complexity: Complexity;
+  hotTakePlayerInputEnabled: boolean;
   round: number;
   totalRounds: number;
   playerCount: number;
@@ -24,6 +25,7 @@ interface UseGameStateParams {
     phase: string;
     selectedGameId: string;
     complexity: Complexity;
+    hotTakePlayerInputEnabled: boolean;
     round: number;
     totalRounds: number;
     timerEndsAt: number;
@@ -65,6 +67,7 @@ export function useGameState({ state, players, gameData }: UseGameStateParams): 
     phase,
     selectedGameId: state?.selectedGameId ?? "",
     complexity: state?.complexity ?? "standard",
+    hotTakePlayerInputEnabled: state?.hotTakePlayerInputEnabled ?? false,
     round: state?.round ?? 0,
     totalRounds: state?.totalRounds ?? 0,
     playerCount: playerList.length,

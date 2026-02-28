@@ -96,9 +96,11 @@ export default function RoomPage() {
           players={gameState.playerList}
           selectedGameId={gameState.selectedGameId}
           complexity={gameState.complexity}
+          hotTakePlayerInputEnabled={gameState.hotTakePlayerInputEnabled}
           playerCount={gameState.playerCount}
           onSelectGame={(gameId) => sendMessage("host:select-game", { gameId })}
           onSetComplexity={(complexity) => sendMessage("host:set-complexity", { complexity })}
+          onSetHotTakePlayerInput={(enabled) => sendMessage("host:set-player-input", { enabled })}
           onStartGame={() => sendMessage("host:start-game", { gameId: gameState.selectedGameId })}
         />
       )}
@@ -138,6 +140,8 @@ function formatPhaseLabel(phase: string): string {
     "generating-questions": "Generating Questions...",
     answering: "Answer Time",
     "drift-check": "Reality or Drift?",
+    "topic-setup": "Pick Your Topic",
+    "ai-generating": "Generating Hot Takes...",
     "showing-prompt": "Hot Take Incoming",
     "final-scores": "Final Scores",
   };
