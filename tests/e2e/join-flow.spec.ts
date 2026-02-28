@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+
 test("host creates room and players join", async ({ page, browser }) => {
   await page.goto("/");
 
@@ -28,14 +30,15 @@ test("host creates room and players join", async ({ page, browser }) => {
   const joinController = async (name: string) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const controllerPage = await context.newPage();
-    await controllerPage.goto(`http://127.0.0.1:3001/?code=${code}`);
+    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
 
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
-
-    // Ensure the controller is connected and waiting in the lobby.
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible();
+    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
 
     return { context, controllerPage };
   };

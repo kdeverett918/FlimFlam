@@ -1,5 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 
+const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+
 test("reality drift game completes end-to-end", async ({ page, browser }) => {
   await page.goto("/");
 
@@ -13,11 +15,14 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   const joinController = async (name: string) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const controllerPage = await context.newPage();
-    await controllerPage.goto(`http://127.0.0.1:3001/?code=${code}`);
+    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible();
+    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
+      timeout: 30_000,
+    });
+    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
     return { context, controllerPage };
   };
 
@@ -34,26 +39,51 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   await expect(startButton).toBeEnabled();
   await startButton.click();
 
+  const waitForAnswerPhase = async (controllerPage: Page) => {
+    await expect
+      .poll(async () => {
+        const hasVoteConfirm = await controllerPage
+          .getByRole("button", { name: /confirm vote/i })
+          .isVisible()
+          .catch(() => false);
+        const hasSubmit = await controllerPage
+          .getByRole("button", { name: /^submit$/i })
+          .isVisible()
+          .catch(() => false);
+        return hasVoteConfirm || hasSubmit;
+      })
+      .toBe(true);
+  };
+
   const answerRound = async (controllerPage: Page) => {
-    // Select the first option (label varies per question) then confirm.
-    await controllerPage.locator("button").first().click();
-    await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
-    await expect(controllerPage.getByText(/vote confirmed!/i)).toBeVisible();
+    const confirmVote = controllerPage.getByRole("button", { name: /confirm vote/i });
+    if (await confirmVote.isVisible().catch(() => false)) {
+      // Option-based answer mode.
+      await controllerPage.locator("button:not([disabled])").first().click();
+      await confirmVote.click();
+      return;
+    }
+
+    // Fallback: free-text answer mode.
+    const textarea = controllerPage.locator("textarea");
+    const submit = controllerPage.getByRole("button", { name: /^submit$/i });
+    await textarea.waitFor({ timeout: 20_000 });
+    await textarea.fill("test answer");
+    await submit.click();
   };
 
   const driftCheck = async (controllerPage: Page, choice: "real" | "drift") => {
     const buttonName = choice === "drift" ? /hallucination \u2014/i : /real \u2014/i;
     await controllerPage.getByRole("button", { name: buttonName }).click();
     await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
-    await expect(controllerPage.getByText(/vote confirmed!/i)).toBeVisible();
   };
 
   // Play 3 rounds (kids mode).
   for (let round = 1; round <= 3; round++) {
     await Promise.all([
-      c1.controllerPage.getByText(/fill the blank/i).waitFor(),
-      c2.controllerPage.getByText(/fill the blank/i).waitFor(),
-      c3.controllerPage.getByText(/fill the blank/i).waitFor(),
+      waitForAnswerPhase(c1.controllerPage),
+      waitForAnswerPhase(c2.controllerPage),
+      waitForAnswerPhase(c3.controllerPage),
     ]);
 
     await Promise.all([

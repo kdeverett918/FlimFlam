@@ -2,6 +2,8 @@ import { spawn } from "node:child_process";
 
 const isWin = process.platform === "win32";
 const pnpm = "pnpm";
+const hostPort = process.env.PARTYLINE_E2E_HOST_PORT ?? "3300";
+const controllerPort = process.env.PARTYLINE_E2E_CONTROLLER_PORT ?? "3301";
 
 let shuttingDown = false;
 const children = [];
@@ -54,8 +56,28 @@ process.on("SIGTERM", () => shutdown(0));
 process.on("exit", () => shutdown(0));
 
 children.push(spawnService("server", ["--filter", "@partyline/server", "start:e2e"]));
-children.push(spawnService("host", ["--filter", "@partyline/host", "start"]));
-children.push(spawnService("controller", ["--filter", "@partyline/controller", "start"]));
+children.push(
+  spawnService("host", [
+    "--filter",
+    "@partyline/host",
+    "exec",
+    "next",
+    "start",
+    "--port",
+    hostPort,
+  ]),
+);
+children.push(
+  spawnService("controller", [
+    "--filter",
+    "@partyline/controller",
+    "exec",
+    "next",
+    "start",
+    "--port",
+    controllerPort,
+  ]),
+);
 
 // Keep this parent process alive for Playwright.
 setInterval(() => {}, 1000);
