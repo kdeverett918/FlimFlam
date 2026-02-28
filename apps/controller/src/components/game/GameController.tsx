@@ -4,6 +4,7 @@ import { AbilityButton } from "@/components/controls/AbilityButton";
 import { DrawCanvas } from "@/components/controls/DrawCanvas";
 import { Slider } from "@/components/controls/Slider";
 import { TextInput } from "@/components/controls/TextInput";
+import { TopicSetup } from "@/components/controls/TopicSetup";
 import { VoteGrid } from "@/components/controls/VoteGrid";
 import { useCallback } from "react";
 import { RoleCard } from "./RoleCard";
@@ -76,7 +77,8 @@ export function GameController({
     phase === "ai-narrating" ||
     phase === "generating-prompt" ||
     phase === "generating-questions" ||
-    phase === "picking-drawer";
+    phase === "picking-drawer" ||
+    phase === "ai-generating";
 
   if (isWaitingPhase) {
     return <WaitingScreen phase={phase} />;
@@ -273,7 +275,8 @@ export function GameController({
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <VoteGrid
-                prompt={`Round ${round}/${totalRounds} — Pick the correct answer`}
+                key={`reality-drift-answering-${round}`}
+                prompt={`Round ${round}/${totalRounds} — Fill the blank`}
                 options={options.map((opt) => ({
                   index: opt.index,
                   label: opt.label,
@@ -297,10 +300,11 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             <VoteGrid
-              prompt="Is this question real or made up?"
+              key={`reality-drift-drift-check-${round}`}
+              prompt="Is this headline real or made up?"
               options={[
-                { index: 0, label: "Real — this is a genuine question" },
-                { index: 1, label: "Drift — this is completely fake" },
+                { index: 0, label: "Real — this actually happened" },
+                { index: 1, label: "Hallucination — completely made up" },
               ]}
               onConfirm={handleVoteConfirm}
             />
@@ -322,6 +326,19 @@ export function GameController({
 
   function renderHotTake(currentPhase: string) {
     switch (currentPhase) {
+      case "topic-setup":
+        return (
+          <TopicSetup
+            categories={((privateData?.categories as string[]) ?? []).filter(
+              (category): category is string => typeof category === "string" && category.length > 0,
+            )}
+            onSubmit={(topic, category) => {
+              sendMessage("player:submit", { content: topic, category });
+            }}
+          />
+        );
+      case "ai-generating":
+        return <WaitingScreen phase="ai-generating" />;
       case "showing-prompt":
         return (
           <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">

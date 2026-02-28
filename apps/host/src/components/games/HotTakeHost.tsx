@@ -25,6 +25,10 @@ export function HotTakeHost({
   timerEndTime,
 }: HotTakeHostProps) {
   switch (phase) {
+    case "topic-setup":
+      return <TopicSetupHostView payload={payload} players={players} timerEndTime={timerEndTime} />;
+    case "ai-generating":
+      return <AIGeneratingView />;
     case "showing-prompt":
       return (
         <ShowingPromptView
@@ -47,6 +51,85 @@ export function HotTakeHost({
         </div>
       );
   }
+}
+
+function TopicSetupHostView({
+  payload,
+  players,
+  timerEndTime,
+}: {
+  payload: Record<string, unknown>;
+  players: PlayerData[];
+  timerEndTime: number | null;
+}) {
+  const submittedIds = (payload.submittedPlayerIds as string[]) ?? [];
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <div className="mb-4 flex w-full max-w-5xl items-center justify-between">
+        <h1 className="font-display text-[64px] text-accent-1">WHAT&apos;S THE TOPIC?</h1>
+        {timerEndTime && <Timer endTime={timerEndTime} />}
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="max-w-4xl text-center text-[32px] text-text-muted"
+      >
+        Pick a category and submit your angle from your phone
+      </motion.p>
+
+      <div className="flex flex-wrap justify-center gap-4">
+        {players.map((player) => {
+          const hasSubmitted = submittedIds.includes(player.sessionId);
+          return (
+            <motion.div
+              key={player.sessionId}
+              animate={{ opacity: hasSubmitted ? 1 : 0.3, scale: hasSubmitted ? 1.06 : 0.9 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div
+                className="flex h-[72px] w-[72px] items-center justify-center rounded-full text-[30px] font-bold text-bg-dark"
+                style={{
+                  backgroundColor: player.avatarColor,
+                  boxShadow: hasSubmitted ? `0 0 20px ${player.avatarColor}66` : "none",
+                }}
+              >
+                {hasSubmitted ? "\u2713" : player.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[18px] text-text-muted">{player.name}</span>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <motion.p
+        initial={{ opacity: 0.4 }}
+        animate={{ opacity: 0.8 }}
+        transition={{ duration: 1.3, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
+        className="text-[24px] text-text-muted"
+      >
+        Grab your phone and submit your topic...
+      </motion.p>
+    </div>
+  );
+}
+
+function AIGeneratingView() {
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+        className="text-[84px]"
+      >
+        {"🔥"}
+      </motion.div>
+      <h2 className="font-display text-[54px] text-accent-3">COOKING UP YOUR HOT TAKES...</h2>
+      <p className="text-[28px] text-text-muted">The AI is crafting personalized provocations</p>
+    </div>
+  );
 }
 
 function ShowingPromptView({

@@ -32,6 +32,7 @@ export const COMPLEXITY_ROUND_COUNTS: Record<Complexity, number> = {
 export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "role-reveal": 15_000,
   "action-input": 45_000,
+  "topic-setup": 45_000,
   "narration-display": 12_000,
   "answer-input": 30_000,
   "showing-prompt": 3_000,
@@ -98,7 +99,7 @@ export const GAME_MANIFESTS: GameManifest[] = [
     id: "reality-drift",
     name: "Reality Drift",
     description:
-      "Trivia with a twist — some questions are completely made up. Can you spot the drift?",
+      "Headline or Hallucination — fill the blank, then decide if the headline is real or made up.",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 10,
@@ -110,13 +111,14 @@ export const GAME_MANIFESTS: GameManifest[] = [
   {
     id: "hot-take",
     name: "Hot Take",
-    description: "Rate opinion statements and score by matching the group — or standing alone!",
+    description:
+      "Rate spicy opinions on a slider. Player Input mode lets AI craft prompts for your group.",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 8,
     aiRequired: false,
     complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["opinions", "social", "debate"],
+    tags: ["opinions", "social", "ai"],
     icon: "🔥",
   },
 ];

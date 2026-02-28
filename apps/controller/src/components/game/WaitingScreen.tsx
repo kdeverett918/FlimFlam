@@ -51,6 +51,8 @@ export function WaitingScreen({ phase }: WaitingScreenProps) {
         return "Cooking up a question";
       case "generating-questions":
         return "Reality is shifting";
+      case "ai-generating":
+        return "AI is crafting hot takes based on your topics";
       default:
         return MESSAGES[messageIndex];
     }
