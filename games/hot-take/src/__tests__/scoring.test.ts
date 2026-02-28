@@ -1,4 +1,9 @@
-import { calculateLoneWolfScores, calculateMajorityScores } from "../scoring";
+import {
+  SCORING,
+  calculateLoneWolfScores,
+  calculateMajorityScores,
+  computeMedianVoteValue,
+} from "../scoring";
 import { getRoundType, validateSliderVote } from "../state";
 
 describe("hot-take/state", () => {
@@ -18,6 +23,11 @@ describe("hot-take/state", () => {
 });
 
 describe("hot-take/scoring", () => {
+  it("computeMedianVoteValue matches majority scoring median", () => {
+    expect(computeMedianVoteValue([-2, -1, 2])).toBe(-1);
+    expect(computeMedianVoteValue([-2, -1, 1, 2])).toBe(0);
+  });
+
   it("calculateMajorityScores rewards proximity to median", () => {
     const votes = new Map([
       ["a", -2],
@@ -38,5 +48,19 @@ describe("hot-take/scoring", () => {
     ]);
     const scores = calculateLoneWolfScores(votes);
     expect(scores.get("c")?.points).toBeGreaterThanOrEqual(scores.get("a")?.points ?? 0);
+  });
+
+  it("calculateLoneWolfScores awards no lone wolves when everyone ties", () => {
+    const votes = new Map([
+      ["a", -2],
+      ["b", 2],
+      ["c", -2],
+      ["d", 2],
+    ]);
+    const scores = calculateLoneWolfScores(votes);
+    expect(scores.get("a")?.points).toBe(SCORING.LONE_WOLF_DEFAULT);
+    expect(scores.get("b")?.points).toBe(SCORING.LONE_WOLF_DEFAULT);
+    expect(scores.get("c")?.points).toBe(SCORING.LONE_WOLF_DEFAULT);
+    expect(scores.get("d")?.points).toBe(SCORING.LONE_WOLF_DEFAULT);
   });
 });
