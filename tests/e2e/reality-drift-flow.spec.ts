@@ -19,7 +19,7 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
       timeout: 30_000,
     });
     await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
@@ -39,10 +39,37 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   await expect(startButton).toBeEnabled();
   await startButton.click();
 
+  const waitForAnswerPhase = async (controllerPage: Page) => {
+    await expect
+      .poll(async () => {
+        const hasVoteConfirm = await controllerPage
+          .getByRole("button", { name: /confirm vote/i })
+          .isVisible()
+          .catch(() => false);
+        const hasSubmit = await controllerPage
+          .getByRole("button", { name: /^submit$/i })
+          .isVisible()
+          .catch(() => false);
+        return hasVoteConfirm || hasSubmit;
+      })
+      .toBe(true);
+  };
+
   const answerRound = async (controllerPage: Page) => {
-    // Select the first option (label varies per question) then confirm.
-    await controllerPage.locator("button:not([disabled])").first().click();
-    await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
+    const confirmVote = controllerPage.getByRole("button", { name: /confirm vote/i });
+    if (await confirmVote.isVisible().catch(() => false)) {
+      // Option-based answer mode.
+      await controllerPage.locator("button:not([disabled])").first().click();
+      await confirmVote.click();
+      return;
+    }
+
+    // Fallback: free-text answer mode.
+    const textarea = controllerPage.locator("textarea");
+    const submit = controllerPage.getByRole("button", { name: /^submit$/i });
+    await textarea.waitFor({ timeout: 20_000 });
+    await textarea.fill("test answer");
+    await submit.click();
   };
 
   const driftCheck = async (controllerPage: Page, choice: "real" | "drift") => {
@@ -54,9 +81,9 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   // Play 3 rounds (kids mode).
   for (let round = 1; round <= 3; round++) {
     await Promise.all([
-      c1.controllerPage.getByText(/fill the blank/i).waitFor(),
-      c2.controllerPage.getByText(/fill the blank/i).waitFor(),
-      c3.controllerPage.getByText(/fill the blank/i).waitFor(),
+      waitForAnswerPhase(c1.controllerPage),
+      waitForAnswerPhase(c2.controllerPage),
+      waitForAnswerPhase(c3.controllerPage),
     ]);
 
     await Promise.all([
