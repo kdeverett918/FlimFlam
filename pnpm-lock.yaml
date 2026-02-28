@@ -53,6 +53,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.4
         version: 4.2.1
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
     devDependencies:
       '@types/react':
         specifier: ^19.1.2
@@ -96,6 +99,9 @@ importers:
       tailwindcss:
         specifier: ^4.1.4
         version: 4.2.1
+      tw-animate-css:
+        specifier: ^1.4.0
+        version: 1.4.0
     devDependencies:
       '@types/qrcode':
         specifier: ^1.5.5
@@ -124,6 +130,9 @@ importers:
       '@partyline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
   games/hot-take:
     dependencies:
@@ -136,6 +145,9 @@ importers:
       '@partyline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
   games/quick-draw:
     dependencies:
@@ -148,6 +160,9 @@ importers:
       '@partyline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
   games/reality-drift:
     dependencies:
@@ -163,6 +178,9 @@ importers:
       '@partyline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
   games/world-builder:
     dependencies:
@@ -178,6 +196,9 @@ importers:
       '@partyline/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
   packages/ai:
     dependencies:
@@ -214,12 +235,27 @@ importers:
       '@partyline/ai':
         specifier: workspace:*
         version: link:../ai
+      '@partyline/bluff-engine':
+        specifier: workspace:*
+        version: link:../../games/bluff-engine
       '@partyline/game-engine':
         specifier: workspace:*
         version: link:../game-engine
+      '@partyline/hot-take':
+        specifier: workspace:*
+        version: link:../../games/hot-take
+      '@partyline/quick-draw':
+        specifier: workspace:*
+        version: link:../../games/quick-draw
+      '@partyline/reality-drift':
+        specifier: workspace:*
+        version: link:../../games/reality-drift
       '@partyline/shared':
         specifier: workspace:*
         version: link:../shared
+      '@partyline/world-builder':
+        specifier: workspace:*
+        version: link:../../games/world-builder
       colyseus:
         specifier: ^0.15.55
         version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)

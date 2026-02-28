@@ -44,11 +44,7 @@ export type RealityDriftPhase =
   | "results"
   | "final-scores";
 
-export type HotTakePhase =
-  | "showing-prompt"
-  | "voting"
-  | "results"
-  | "final-scores";
+export type HotTakePhase = "showing-prompt" | "voting" | "results" | "final-scores";
 
 export type GamePhase =
   | WorldBuilderPhase

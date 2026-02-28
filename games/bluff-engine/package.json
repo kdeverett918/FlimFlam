@@ -16,6 +16,7 @@
     "@partyline/shared": "workspace:*",
     "@partyline/game-engine": "workspace:*",
     "@partyline/ai": "workspace:*",
-    "@colyseus/schema": "^2.0.35"
+    "@colyseus/schema": "^2.0.35",
+    "colyseus": "^0.15.55"
   }
 }

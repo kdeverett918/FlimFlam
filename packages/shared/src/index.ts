@@ -92,3 +92,27 @@ export {
   AVATAR_COLORS,
   GAME_MANIFESTS,
 } from "./constants.js";
+
+// Test Utilities
+export {
+  createMockClient,
+  resetClientIdCounter,
+  createMockRoom,
+  mockScenarioKids,
+  mockScenarioStandard,
+  mockScenarioAdvanced,
+  mockScenarios,
+  mockNarrationResults,
+  mockBonusJudging,
+  mockBluffPrompts,
+  mockTriviaQuestions,
+  malformedJsonString,
+  partialValidJsonString,
+} from "./test-utils/index.js";
+
+export type {
+  MockClient,
+  MockRoom,
+  MockClock,
+  CreateMockRoomOptions,
+} from "./test-utils/index.js";

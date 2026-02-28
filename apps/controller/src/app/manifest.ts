@@ -1,0 +1,26 @@
+import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "PARTYLINE",
+    short_name: "PARTYLINE",
+    description: "AI-powered party games — join from your phone!",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#0a0a0f",
+    theme_color: "#ff3366",
+    orientation: "portrait",
+    icons: [
+      {
+        src: "/icon-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: "/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+      },
+    ],
+  };
+}

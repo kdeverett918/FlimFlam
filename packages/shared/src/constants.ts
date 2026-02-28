@@ -1,4 +1,5 @@
-import type { Complexity, GameManifest } from "./types/game.js";
+import type { GameManifest } from "./types/game.js";
+import type { Complexity } from "./types/room.js";
 
 export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -57,7 +58,8 @@ export const GAME_MANIFESTS: GameManifest[] = [
   {
     id: "world-builder",
     name: "World Builder",
-    description: "AI-powered collaborative storytelling. Take on secret roles and shape the narrative!",
+    description:
+      "AI-powered collaborative storytelling. Take on secret roles and shape the narrative!",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 15,
@@ -69,7 +71,8 @@ export const GAME_MANIFESTS: GameManifest[] = [
   {
     id: "bluff-engine",
     name: "Bluff Engine",
-    description: "Fibbage-style bluffing. Write fake answers to obscure trivia and fool your friends!",
+    description:
+      "Fibbage-style bluffing. Write fake answers to obscure trivia and fool your friends!",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 12,
@@ -93,7 +96,8 @@ export const GAME_MANIFESTS: GameManifest[] = [
   {
     id: "reality-drift",
     name: "Reality Drift",
-    description: "Trivia with a twist — some questions are completely made up. Can you spot the drift?",
+    description:
+      "Trivia with a twist — some questions are completely made up. Can you spot the drift?",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 10,
