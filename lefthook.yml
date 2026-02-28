@@ -3,3 +3,9 @@ pre-commit:
     biome:
       glob: "*.{ts,tsx,js,jsx,json,css}"
       run: pnpm biome check --write {staged_files}
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm typecheck
+    test:
+      run: pnpm test
