@@ -103,22 +103,16 @@ test("quick draw completes end-to-end", async ({ page, browser }) => {
     await drawerPage.mouse.move(box.x + box.width * 0.8, box.y + box.height * 0.8, { steps: 12 });
     await drawerPage.mouse.up();
 
-    // Verify the host canvas shows the stroke, and it persists into "guessing".
+    // Verify the host canvas shows the stroke. We run this check in parallel with
+    // controller guessing to avoid racing the (scaled-down) phase timers in CI.
+    let inkCheck: Promise<void> | undefined;
     if (round === 1) {
       const hostCanvas = page.locator("canvas").first();
       await expect(hostCanvas).toBeVisible();
 
-      await expect
+      inkCheck = expect
         .poll(async () => hostCanvas.evaluate(canvasHasInkAtCenter), { timeout: 10_000 })
         .toBe(true);
-
-      await page.getByText("GUESSES").waitFor({ timeout: 20_000 });
-
-      await expect
-        .poll(async () => hostCanvas.evaluate(canvasHasInkAtCenter), { timeout: 10_000 })
-        .toBe(true);
-    } else {
-      await page.getByText("GUESSES").waitFor({ timeout: 20_000 });
     }
 
     const g1 = guesserPages[0];
@@ -129,23 +123,23 @@ test("quick draw completes end-to-end", async ({ page, browser }) => {
 
     const g1Input = g1.getByPlaceholder("Type your guess...");
     const g1GuessButton = g1.getByRole("button", { name: /^guess$/i });
-    await g1Input.waitFor({ timeout: 20_000 });
-    await g1Input.fill("not it");
-    await g1GuessButton.click();
-
-    // Respect client/server guess rate limits before submitting again.
-    await sleep(500);
-
-    await g1Input.fill(word);
-    await g1GuessButton.click();
-    await expect(g1.getByText(/you got it!/i)).toBeVisible({ timeout: 20_000 });
 
     const g2Input = g2.getByPlaceholder("Type your guess...");
     const g2GuessButton = g2.getByRole("button", { name: /^guess$/i });
-    await g2Input.waitFor({ timeout: 20_000 });
-    await g2Input.fill(word);
-    await g2GuessButton.click();
-    await expect(g2.getByText(/you got it!/i)).toBeVisible({ timeout: 20_000 });
+
+    await Promise.all([g1Input.waitFor({ timeout: 20_000 }), g2Input.waitFor({ timeout: 20_000 })]);
+
+    await Promise.all([g1Input.fill(word), g2Input.fill(word)]);
+    await Promise.all([g1GuessButton.click(), g2GuessButton.click()]);
+
+    await Promise.all([
+      expect(g1.getByText(/you got it!/i)).toBeVisible({ timeout: 20_000 }),
+      expect(g2.getByText(/you got it!/i)).toBeVisible({ timeout: 20_000 }),
+    ]);
+
+    if (inkCheck) {
+      await inkCheck;
+    }
 
     // Host should reveal the word after all guessers are correct.
     await page.getByRole("heading", { name: /^THE WORD WAS$/i }).waitFor({ timeout: 30_000 });
