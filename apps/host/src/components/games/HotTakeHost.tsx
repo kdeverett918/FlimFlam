@@ -30,7 +30,14 @@ export function HotTakeHost({
     case "ai-generating":
       return <AIGeneratingView />;
     case "showing-prompt":
-      return <ShowingPromptView payload={payload} round={round} totalRounds={totalRounds} />;
+      return (
+        <ShowingPromptView
+          payload={payload}
+          round={round}
+          totalRounds={totalRounds}
+          players={players}
+        />
+      );
     case "voting":
       return <HotTakeVotingView payload={payload} players={players} timerEndTime={timerEndTime} />;
     case "results":
@@ -129,12 +136,19 @@ function ShowingPromptView({
   payload,
   round,
   totalRounds,
+  players,
 }: {
   payload: Record<string, unknown>;
   round: number;
   totalRounds: number;
+  players: PlayerData[];
 }) {
   const statement = (payload.statement as string) ?? "Loading hot take...";
+  const roundType = payload.roundType === "lone-wolf" ? "lone-wolf" : "majority";
+  const activeCount = players.filter((p) => p.connected).length;
+
+  const goalText =
+    roundType === "lone-wolf" ? "Be the most unique opinion" : "Match the group's vibe";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
@@ -164,9 +178,9 @@ function ShowingPromptView({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="text-[28px] text-accent-2"
+        className="text-center text-[28px] text-accent-2"
       >
-        Get ready to share your opinion!
+        {goalText} {activeCount > 0 ? `• ${activeCount} players` : ""}
       </motion.p>
     </div>
   );
@@ -182,9 +196,11 @@ function HotTakeVotingView({
   timerEndTime: number | null;
 }) {
   const statement = (payload.statement as string) ?? "";
+  const roundType = payload.roundType === "lone-wolf" ? "lone-wolf" : "majority";
   const votedIds = (payload.votedPlayerIds as string[]) ?? [];
+  const activePlayers = players.filter((p) => p.connected);
   const voted = votedIds.length;
-  const total = players.length;
+  const total = activePlayers.length;
 
   // Opinion spectrum labels
   const labels = [
@@ -233,7 +249,12 @@ function HotTakeVotingView({
 
       {/* Voting status */}
       <div className="mt-auto flex flex-col items-center gap-6">
-        <p className="font-display text-[32px] text-accent-2">RATE YOUR OPINION</p>
+        <div className="flex flex-col items-center gap-2">
+          <p className="font-display text-[32px] text-accent-2">RATE YOUR OPINION</p>
+          <p className="text-[18px] text-text-muted">
+            {roundType === "lone-wolf" ? "Try to stand out" : "Try to match the crowd"}
+          </p>
+        </div>
         <div className="flex items-center gap-4">
           <div className="h-4 w-[300px] overflow-hidden rounded-full bg-bg-card">
             <motion.div
@@ -249,7 +270,7 @@ function HotTakeVotingView({
 
         {/* Player vote indicators */}
         <div className="flex gap-3">
-          {players.map((player) => {
+          {activePlayers.map((player) => {
             const hasVoted = votedIds.includes(player.sessionId);
             return (
               <motion.div
@@ -284,16 +305,23 @@ function HotTakeResultsView({
   players: PlayerData[];
 }) {
   const statement = (payload.statement as string) ?? "";
+  const roundType = payload.roundType === "lone-wolf" ? "lone-wolf" : "majority";
   const votes =
     (payload.votes as Array<{
       sessionId: string;
       value: number; // -2 to +2
     }>) ?? [];
-  const majorityValue = (payload.majorityValue as number) ?? 0;
+  const anchorValue =
+    (payload.anchorValue as number | undefined) ??
+    (payload.majorityValue as number | undefined) ??
+    0;
   const loneWolves = (payload.loneWolfIds as string[]) ?? [];
+  const secondUniqueIds = (payload.secondUniqueIds as string[]) ?? [];
+  const matchedMajorityIds = (payload.matchedMajorityIds as string[]) ?? [];
 
   // Map vote values to spectrum positions (0-100%)
   const voteToPercent = (v: number) => ((v + 2) / 4) * 100;
+  const markerLabel = roundType === "lone-wolf" ? "AVERAGE" : "MAJORITY";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
@@ -320,11 +348,11 @@ function HotTakeResultsView({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
           className="absolute top-10"
-          style={{ left: `${voteToPercent(majorityValue)}%`, transform: "translateX(-50%)" }}
+          style={{ left: `${voteToPercent(anchorValue)}%`, transform: "translateX(-50%)" }}
         >
           <div className="flex flex-col items-center">
             <div className="h-4 w-0.5 bg-accent-3" />
-            <span className="font-display text-[18px] text-accent-3">MAJORITY</span>
+            <span className="font-display text-[18px] text-accent-3">{markerLabel}</span>
           </div>
         </motion.div>
 
@@ -333,7 +361,19 @@ function HotTakeResultsView({
           {votes.map((vote, i) => {
             const player = players.find((p) => p.sessionId === vote.sessionId);
             if (!player) return null;
-            const isLoneWolf = loneWolves.includes(vote.sessionId);
+            const isTopLoneWolf = roundType === "lone-wolf" && loneWolves.includes(vote.sessionId);
+            const isSecondLoneWolf =
+              roundType === "lone-wolf" && secondUniqueIds.includes(vote.sessionId);
+            const matchedMajority =
+              roundType === "majority" && matchedMajorityIds.includes(vote.sessionId);
+
+            const ringClass = isTopLoneWolf
+              ? "ring-2 ring-accent-1 ring-offset-2 ring-offset-bg-dark"
+              : isSecondLoneWolf
+                ? "ring-2 ring-accent-3 ring-offset-2 ring-offset-bg-dark"
+                : matchedMajority
+                  ? "ring-2 ring-accent-2 ring-offset-2 ring-offset-bg-dark"
+                  : "";
 
             return (
               <motion.div
@@ -350,12 +390,12 @@ function HotTakeResultsView({
               >
                 <div className="flex flex-col items-center gap-1">
                   <div
-                    className={`flex h-[40px] w-[40px] items-center justify-center rounded-full text-[18px] font-bold text-bg-dark ${isLoneWolf ? "ring-2 ring-accent-1 ring-offset-2 ring-offset-bg-dark" : ""}`}
+                    className={`flex h-[40px] w-[40px] items-center justify-center rounded-full text-[18px] font-bold text-bg-dark ${ringClass}`}
                     style={{ backgroundColor: player.avatarColor }}
                   >
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  {isLoneWolf && <span className="text-[14px] text-accent-1">LONE WOLF</span>}
+                  {isTopLoneWolf && <span className="text-[14px] text-accent-1">LONE WOLF</span>}
                 </div>
               </motion.div>
             );
@@ -372,7 +412,7 @@ function HotTakeResultsView({
 
       {/* Majority / Lone Wolf summary */}
       <div className="flex flex-wrap justify-center gap-8">
-        {loneWolves.length > 0 && (
+        {roundType === "lone-wolf" && loneWolves.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -392,6 +432,29 @@ function HotTakeResultsView({
               })}
             </div>
             <p className="text-[18px] text-text-muted">Against the crowd</p>
+          </motion.div>
+        )}
+
+        {roundType === "majority" && matchedMajorityIds.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+            className="flex flex-col items-center gap-3 rounded-2xl border border-accent-2/30 bg-bg-card p-6"
+          >
+            <span className="text-[36px]">{"\uD83C\uDFAF"}</span>
+            <span className="font-display text-[28px] text-accent-2">MATCHED THE MAJORITY</span>
+            <div className="flex gap-2">
+              {matchedMajorityIds.map((id) => {
+                const player = players.find((p) => p.sessionId === id);
+                return player ? (
+                  <span key={id} className="text-[22px] text-text-primary">
+                    {player.name}
+                  </span>
+                ) : null;
+              })}
+            </div>
+            <p className="text-[18px] text-text-muted">Right on target</p>
           </motion.div>
         )}
       </div>

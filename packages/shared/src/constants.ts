@@ -35,6 +35,7 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "topic-setup": 45_000,
   "narration-display": 12_000,
   "answer-input": 30_000,
+  "showing-prompt": 3_000,
   voting: 20_000,
   drawing: 60_000,
   guessing: 60_000,
@@ -98,7 +99,7 @@ export const GAME_MANIFESTS: GameManifest[] = [
     id: "reality-drift",
     name: "Reality Drift",
     description:
-      "Trivia with a twist — some questions are completely made up. Can you spot the drift?",
+      "Headline or Hallucination — fill the blank, then decide if the headline is real or made up.",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 10,

@@ -56,7 +56,7 @@ const KIDS_PROMPTS: string[] = [
   "Socks with sandals are a bold fashion choice",
   "The floor is always lava",
   "Pillow forts are architectural masterpieces",
-  "Glitter is the herpes of crafting supplies",
+  "Glitter is impossible to clean up",
   "Hot chocolate is better than regular chocolate",
   "Being the line leader is a huge honor",
   "Goldfish are boring pets",

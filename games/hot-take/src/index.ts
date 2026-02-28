@@ -15,7 +15,7 @@ import {
 } from "@partyline/shared";
 import type { Client, Room } from "colyseus";
 import { pickRandomPrompts } from "./prompts";
-import { calculateRoundScores } from "./scoring";
+import { SCORING, calculateRoundScores, computeMedianVoteValue } from "./scoring";
 import {
   type HotTakeInternalState,
   computeRoundStats,
@@ -214,6 +214,7 @@ export class HotTakePlugin extends BaseGamePlugin {
       this._broadcastHost(room, state, {
         statement: this.internal.currentPrompt,
         votedPlayerIds,
+        roundType: this.internal.currentRoundType,
       });
 
       if (this.allPlayersSubmitted(state)) {
@@ -380,11 +381,12 @@ export class HotTakePlugin extends BaseGamePlugin {
 
     this._broadcastHost(room, state, {
       statement: this.internal.currentPrompt,
+      roundType: this.internal.currentRoundType,
     });
 
-    room.clock.setTimeout(() => {
+    this.startPhaseTimer(room, "showing-prompt", this.internal.complexity, () => {
       this._startVoting(room, state);
-    }, 3000);
+    });
   }
 
   private _startVoting(room: Room, state: Schema): void {
@@ -394,6 +396,7 @@ export class HotTakePlugin extends BaseGamePlugin {
     this._broadcastHost(room, state, {
       statement: this.internal.currentPrompt,
       votedPlayerIds: [],
+      roundType: this.internal.currentRoundType,
     });
 
     this.startPhaseTimer(room, "rating", this.internal.complexity, () => {
@@ -405,8 +408,20 @@ export class HotTakePlugin extends BaseGamePlugin {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
     this.setPhase(state, "results");
 
+    const activePlayerIds = new Set<string>();
+    players.forEach((player: Record<string, unknown>, key: string) => {
+      if (player.connected) activePlayerIds.add(key);
+    });
+
+    const activeVotes = new Map<string, number>();
+    for (const [sessionId, value] of this.internal.votes) {
+      if (activePlayerIds.has(sessionId)) {
+        activeVotes.set(sessionId, value);
+      }
+    }
+
     // Calculate scores
-    const scores = calculateRoundScores(this.internal.votes, this.internal.currentRoundType);
+    const scores = calculateRoundScores(activeVotes, this.internal.currentRoundType);
 
     const playerResults: {
       sessionId: string;
@@ -419,7 +434,7 @@ export class HotTakePlugin extends BaseGamePlugin {
     players.forEach((player: Record<string, unknown>, key: string) => {
       if (!player.connected) return;
 
-      const vote = this.internal.votes.get(key) ?? null;
+      const vote = activeVotes.get(key) ?? null;
       const scoreInfo = scores.get(key);
       const points = scoreInfo?.points ?? 0;
       const reason = scoreInfo?.reason ?? "Did not vote";
@@ -437,39 +452,43 @@ export class HotTakePlugin extends BaseGamePlugin {
       });
     });
 
-    const votes = Array.from(this.internal.votes.entries()).map(([sessionId, value]) => ({
+    const votes = Array.from(activeVotes.entries()).map(([sessionId, value]) => ({
       sessionId,
       value,
     }));
 
-    const bucketCounts = new Map<number, number>();
-    for (const vote of this.internal.votes.values()) {
-      bucketCounts.set(vote, (bucketCounts.get(vote) ?? 0) + 1);
-    }
+    const voteValues = votes.map((v) => v.value);
+    const voteCount = voteValues.length;
+    const sumVotes = voteValues.reduce((sum, v) => sum + v, 0);
 
-    let majorityValue = 0;
-    let majorityCount = -1;
-    for (const [value, count] of bucketCounts) {
-      if (count > majorityCount) {
-        majorityValue = value;
-        majorityCount = count;
-      }
-    }
+    const medianValue = voteCount > 0 ? computeMedianVoteValue(voteValues) : 0;
+    const averageValue = voteCount > 0 ? sumVotes / voteCount : 0;
+    const anchorValue = this.internal.currentRoundType === "majority" ? medianValue : averageValue;
 
     const loneWolfIds: string[] = [];
-    if (this.internal.currentRoundType === "lone-wolf") {
-      for (const [sessionId, value] of this.internal.votes) {
-        if ((bucketCounts.get(value) ?? 0) === 1) {
-          loneWolfIds.push(sessionId);
-        }
+    const secondUniqueIds: string[] = [];
+    const matchedMajorityIds: string[] = [];
+
+    for (const [sessionId, scoreInfo] of scores) {
+      if (this.internal.currentRoundType === "lone-wolf") {
+        if (scoreInfo.points === SCORING.LONE_WOLF_MOST_UNIQUE) loneWolfIds.push(sessionId);
+        if (scoreInfo.points === SCORING.LONE_WOLF_SECOND) secondUniqueIds.push(sessionId);
+      } else {
+        if (scoreInfo.points === SCORING.MAJORITY_EXACT) matchedMajorityIds.push(sessionId);
       }
     }
 
     this._broadcastHost(room, state, {
       statement: this.internal.currentPrompt,
       votes,
-      majorityValue,
+      roundType: this.internal.currentRoundType,
+      anchorValue,
+      medianValue,
+      averageValue,
+      majorityValue: anchorValue,
       loneWolfIds,
+      secondUniqueIds,
+      matchedMajorityIds,
       playerResults,
     });
 
