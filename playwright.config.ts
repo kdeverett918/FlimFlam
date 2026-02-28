@@ -16,12 +16,13 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm dev",
+    command: "pnpm build && node scripts/e2e-webserver.mjs",
     url: "http://127.0.0.1:3000",
-    timeout: 180_000,
-    reuseExistingServer: !process.env.CI,
+    timeout: 360_000,
+    reuseExistingServer: false,
     env: {
       ...process.env,
+      NODE_ENV: "production",
       NEXT_PUBLIC_COLYSEUS_URL: process.env.NEXT_PUBLIC_COLYSEUS_URL ?? "ws://localhost:2567",
       NEXT_PUBLIC_HOST_URL: process.env.NEXT_PUBLIC_HOST_URL ?? "http://127.0.0.1:3000",
       NEXT_PUBLIC_CONTROLLER_URL: process.env.NEXT_PUBLIC_CONTROLLER_URL ?? "http://127.0.0.1:3001",

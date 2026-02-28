@@ -51,6 +51,10 @@ export function WaitingScreen({ phase }: WaitingScreenProps) {
         return "Cooking up a question";
       case "generating-questions":
         return "Reality is shifting";
+      case "picking-drawer":
+        return "Picking the artist";
+      case "drawing":
+        return "Watch the artist draw";
       default:
         return MESSAGES[messageIndex];
     }
