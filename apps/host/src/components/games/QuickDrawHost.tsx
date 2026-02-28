@@ -26,24 +26,23 @@ export function QuickDrawHost({
   timerEndTime,
   room,
 }: QuickDrawHostProps) {
+  if (phase === "drawing" || phase === "guessing") {
+    return (
+      <ActiveRoundView
+        phase={phase}
+        round={round}
+        totalRounds={totalRounds}
+        players={players}
+        payload={payload}
+        timerEndTime={timerEndTime}
+        room={room}
+      />
+    );
+  }
+
   switch (phase) {
     case "picking-drawer":
       return <PickingDrawerView payload={payload} players={players} />;
-    case "drawing":
-      return (
-        <DrawingView
-          payload={payload}
-          players={players}
-          timerEndTime={timerEndTime}
-          round={round}
-          totalRounds={totalRounds}
-          room={room}
-        />
-      );
-    case "guessing":
-      return (
-        <GuessingView payload={payload} players={players} timerEndTime={timerEndTime} room={room} />
-      );
     case "word-reveal":
       return <WordRevealView payload={payload} players={players} />;
     case "final-scores":
@@ -100,6 +99,89 @@ function PickingDrawerView({
   );
 }
 
+function ActiveRoundView({
+  phase,
+  round,
+  totalRounds,
+  players,
+  payload,
+  timerEndTime,
+  room,
+}: {
+  phase: "drawing" | "guessing";
+  round: number;
+  totalRounds: number;
+  players: PlayerData[];
+  payload: Record<string, unknown>;
+  timerEndTime: number | null;
+  room: Room | null;
+}) {
+  const drawerId = payload.drawerId as string | undefined;
+  const drawer = players.find((p) => p.sessionId === drawerId);
+  const guesses =
+    (payload.recentGuesses as Array<{ playerName: string; guess: string; correct: boolean }>) ?? [];
+
+  const isGuessing = phase === "guessing";
+
+  return (
+    <div className="flex min-h-screen flex-col p-8">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span className="font-display text-[28px] text-text-muted">
+            ROUND {round} / {totalRounds}
+          </span>
+          {drawer && (
+            <span className="text-[28px] text-accent-2">
+              {isGuessing ? `Artist: ${drawer.name}` : `${drawer.name} is drawing`}
+            </span>
+          )}
+          {isGuessing && <h2 className="font-display text-[36px] text-accent-1">GUESS!</h2>}
+        </div>
+        {timerEndTime && <Timer endTime={timerEndTime} />}
+      </div>
+
+      <div className={`flex flex-1 gap-6 ${isGuessing ? "" : "justify-center"}`}>
+        <div className={isGuessing ? "flex-1" : "w-full max-w-[960px]"}>
+          <div className="mx-auto aspect-[4/3] max-h-[70vh] max-w-[960px]">
+            <CanvasMirror room={room} />
+          </div>
+        </div>
+
+        {isGuessing && (
+          <div className="w-[320px] overflow-hidden rounded-2xl border border-bg-card bg-bg-card/50 p-4">
+            <h3 className="mb-4 font-display text-[24px] text-accent-2">GUESSES</h3>
+            <div className="flex max-h-[65vh] flex-col gap-2 overflow-y-auto pr-1">
+              <AnimatePresence>
+                {guesses.map((guess, i) => (
+                  <motion.div
+                    key={`${guess.playerName}-${i}`}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`rounded-xl p-3 ${
+                      guess.correct ? "border border-accent-2/50 bg-accent-2/10" : "bg-bg-dark/50"
+                    }`}
+                  >
+                    <span className="text-[18px] font-medium text-text-muted">
+                      {guess.playerName}:
+                    </span>{" "}
+                    <span
+                      className={`text-[20px] ${
+                        guess.correct ? "font-bold text-accent-2" : "text-text-primary"
+                      }`}
+                    >
+                      {guess.correct ? "GOT IT!" : guess.guess}
+                    </span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface Stroke {
   points: { x: number; y: number }[];
   color: string;
@@ -108,34 +190,58 @@ interface Stroke {
 
 function CanvasMirror({ room }: { room: Room | null }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const strokesRef = useRef<Stroke[]>([]);
+  const canvasSizeRef = useRef<{ width: number; height: number; dpr: number }>({
+    width: 0,
+    height: 0,
+    dpr: 1,
+  });
 
-  const drawStroke = useCallback((stroke: Stroke) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.size;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    if (stroke.points.length < 2) return;
-
-    ctx.beginPath();
-    const firstPoint = stroke.points[0];
-    if (firstPoint) {
-      ctx.moveTo(firstPoint.x * canvas.width, firstPoint.y * canvas.height);
-    }
-    for (let i = 1; i < stroke.points.length; i++) {
-      const pt = stroke.points[i];
-      if (pt) {
-        ctx.lineTo(pt.x * canvas.width, pt.y * canvas.height);
-      }
-    }
-    ctx.stroke();
+  const clamp01 = useCallback((n: number) => {
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(1, n));
   }, []);
+
+  const drawStroke = useCallback(
+    (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+      const { width, height } = canvasSizeRef.current;
+      if (width <= 0 || height <= 0) return;
+
+      const points = stroke.points;
+      const firstPoint = points[0];
+      if (!firstPoint) return;
+
+      const x0 = clamp01(firstPoint.x) * width;
+      const y0 = clamp01(firstPoint.y) * height;
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+
+      if (points.length < 2) {
+        ctx.beginPath();
+        ctx.arc(x0, y0, stroke.size / 2, 0, Math.PI * 2);
+        ctx.fillStyle = stroke.color;
+        ctx.fill();
+        return;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+
+      for (let i = 1; i < points.length; i++) {
+        const pt = points[i];
+        if (pt) {
+          ctx.lineTo(clamp01(pt.x) * width, clamp01(pt.y) * height);
+        }
+      }
+
+      ctx.stroke();
+    },
+    [clamp01],
+  );
 
   const redrawAll = useCallback(() => {
     const canvas = canvasRef.current;
@@ -143,13 +249,52 @@ function CanvasMirror({ room }: { room: Room | null }) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const { width, height, dpr } = canvasSizeRef.current;
+    if (width <= 0 || height <= 0) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     ctx.fillStyle = "#1a1625";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
     for (const stroke of strokesRef.current) {
-      drawStroke(stroke);
+      drawStroke(ctx, stroke);
     }
   }, [drawStroke]);
+
+  // Resize to match container.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resize = () => {
+      const rect = container.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(rect.height));
+      const dpr = typeof window !== "undefined" ? (window.devicePixelRatio ?? 1) : 1;
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      canvasSizeRef.current = { width, height, dpr };
+      redrawAll();
+    };
+
+    resize();
+
+    const resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
+  }, [redrawAll]);
 
   useEffect(() => {
     if (!room) return;
@@ -160,13 +305,20 @@ function CanvasMirror({ room }: { room: Room | null }) {
         color: data.color,
         size: data.size,
       };
+
       strokesRef.current.push(stroke);
-      drawStroke(stroke);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      const { dpr } = canvasSizeRef.current;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawStroke(ctx, stroke);
     };
 
     const unsubscribeStroke = room.onMessage("draw-stroke", handler);
 
-    // Clear canvas on phase change
     const clearHandler = () => {
       strokesRef.current = [];
       redrawAll();
@@ -179,135 +331,13 @@ function CanvasMirror({ room }: { room: Room | null }) {
     };
   }, [room, drawStroke, redrawAll]);
 
-  // Initialize canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.width = 800;
-    canvas.height = 600;
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.fillStyle = "#1a1625";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    }
-  }, []);
-
   return (
-    <canvas
-      ref={canvasRef}
-      className="h-full w-full rounded-2xl border-2 border-bg-card"
-      style={{ imageRendering: "auto" }}
-    />
-  );
-}
-
-function DrawingView({
-  payload,
-  players,
-  timerEndTime,
-  round,
-  totalRounds,
-  room,
-}: {
-  payload: Record<string, unknown>;
-  players: PlayerData[];
-  timerEndTime: number | null;
-  round: number;
-  totalRounds: number;
-  room: Room | null;
-}) {
-  const drawerId = payload.drawerId as string | undefined;
-  const drawer = players.find((p) => p.sessionId === drawerId);
-
-  return (
-    <div className="flex min-h-screen flex-col p-8">
-      {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <span className="font-display text-[28px] text-text-muted">
-            ROUND {round} / {totalRounds}
-          </span>
-          {drawer && <span className="text-[28px] text-accent-2">{drawer.name} is drawing</span>}
-        </div>
-        {timerEndTime && <Timer endTime={timerEndTime} />}
-      </div>
-
-      {/* Canvas */}
-      <div className="flex-1">
-        <div className="mx-auto aspect-[4/3] max-h-[70vh] max-w-[960px]">
-          <CanvasMirror room={room} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function GuessingView({
-  payload,
-  players,
-  timerEndTime,
-  room,
-}: {
-  payload: Record<string, unknown>;
-  players: PlayerData[];
-  timerEndTime: number | null;
-  room: Room | null;
-}) {
-  const drawerId = payload.drawerId as string | undefined;
-  const drawer = players.find((p) => p.sessionId === drawerId);
-  const guesses =
-    (payload.recentGuesses as Array<{
-      playerName: string;
-      guess: string;
-      correct: boolean;
-    }>) ?? [];
-
-  return (
-    <div className="flex min-h-screen flex-col p-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="font-display text-[36px] text-accent-1">GUESS THE DRAWING!</h2>
-          {drawer && <span className="text-[24px] text-text-muted">Artist: {drawer.name}</span>}
-        </div>
-        {timerEndTime && <Timer endTime={timerEndTime} />}
-      </div>
-
-      <div className="flex flex-1 gap-6">
-        {/* Canvas */}
-        <div className="flex-1">
-          <div className="aspect-[4/3] max-h-[65vh]">
-            <CanvasMirror room={room} />
-          </div>
-        </div>
-
-        {/* Guess feed */}
-        <div className="w-[320px] overflow-hidden rounded-2xl border border-bg-card bg-bg-card/50 p-4">
-          <h3 className="mb-4 font-display text-[24px] text-accent-2">GUESSES</h3>
-          <div className="flex flex-col gap-2 overflow-y-auto">
-            <AnimatePresence>
-              {guesses.map((guess, i) => (
-                <motion.div
-                  key={`${guess.playerName}-${i}`}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`rounded-xl p-3 ${
-                    guess.correct ? "border border-accent-2/50 bg-accent-2/10" : "bg-bg-dark/50"
-                  }`}
-                >
-                  <span className="text-[18px] font-medium text-text-muted">
-                    {guess.playerName}:
-                  </span>{" "}
-                  <span
-                    className={`text-[20px] ${guess.correct ? "font-bold text-accent-2" : "text-text-primary"}`}
-                  >
-                    {guess.correct ? "GOT IT!" : guess.guess}
-                  </span>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </div>
-      </div>
+    <div ref={containerRef} className="h-full w-full">
+      <canvas
+        ref={canvasRef}
+        className="h-full w-full rounded-2xl border-2 border-bg-card"
+        style={{ imageRendering: "auto" }}
+      />
     </div>
   );
 }

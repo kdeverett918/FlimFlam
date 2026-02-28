@@ -44,10 +44,11 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
 
     await Promise.all([submit1.click(), submit2.click(), submit3.click()]);
 
+    // Timer scaling can make the "Submitted!" state very brief, so just assert the submit buttons go away.
     await Promise.all([
-      expect(c1.controllerPage.getByText(/submitted!/i)).toBeVisible(),
-      expect(c2.controllerPage.getByText(/submitted!/i)).toBeVisible(),
-      expect(c3.controllerPage.getByText(/submitted!/i)).toBeVisible(),
+      expect(submit1).toBeHidden(),
+      expect(submit2).toBeHidden(),
+      expect(submit3).toBeHidden(),
     ]);
 
     if (i === 0) {

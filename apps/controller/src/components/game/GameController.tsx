@@ -2,6 +2,7 @@
 
 import { AbilityButton } from "@/components/controls/AbilityButton";
 import { DrawCanvas } from "@/components/controls/DrawCanvas";
+import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
 import { Slider } from "@/components/controls/Slider";
 import { TextInput } from "@/components/controls/TextInput";
 import { TopicSetup } from "@/components/controls/TopicSetup";
@@ -219,6 +220,7 @@ export function GameController({
   function renderQuickDraw(currentPhase: string) {
     const isDrawer = Boolean(privateData?.isDrawer);
     const word = typeof privateData?.word === "string" ? (privateData.word as string) : null;
+    const guessedCorrectly = Boolean(privateData?.qdCorrect);
 
     // Drawer keeps drawing even after the host transitions to "guessing" (phases overlap).
     if ((currentPhase === "drawing" || currentPhase === "guessing") && isDrawer) {
@@ -244,9 +246,27 @@ export function GameController({
       case "drawing":
         return <WaitingScreen phase="drawing" />;
       case "guessing":
-        return (
+        return guessedCorrectly ? (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
+              <svg
+                className="h-8 w-8 text-accent-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+                role="img"
+              >
+                <title>Correct</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-xl font-medium text-accent-2">You got it!</p>
+            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
+          </div>
+        ) : (
           <div className="flex flex-col gap-4 pb-16 pt-4">
-            <TextInput
+            <QuickGuessInput
               prompt="What is being drawn?"
               placeholder="Type your guess..."
               onSubmit={handleTextSubmit}
@@ -254,6 +274,31 @@ export function GameController({
           </div>
         );
       case "word-reveal":
+        return guessedCorrectly ? (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
+              <svg
+                className="h-8 w-8 text-accent-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+                role="img"
+              >
+                <title>Correct</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-xl font-medium text-accent-2">You got it!</p>
+            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Check the main screen for the reveal!
+            </p>
+          </div>
+        );
       case "final-scores":
         return (
           <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
