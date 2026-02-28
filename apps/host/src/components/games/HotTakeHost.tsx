@@ -3,8 +3,10 @@
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
 import type { PlayerData, ScoreEntry } from "@partyline/shared";
+import { AnimatedBackground, GlassPanel } from "@partyline/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
+import { Flame, Target, Users } from "lucide-react";
 
 interface HotTakeHostProps {
   phase: string;
@@ -47,6 +49,7 @@ export function HotTakeHost({
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
+          <AnimatedBackground variant="subtle" />
           <p className="font-display text-[36px] text-text-muted">Hot Take - {phase}</p>
         </div>
       );
@@ -65,9 +68,11 @@ function TopicSetupHostView({
   const submittedIds = (payload.submittedPlayerIds as string[]) ?? [];
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <div className="mb-4 flex w-full max-w-5xl items-center justify-between">
-        <h1 className="font-display text-[64px] text-accent-1">WHAT&apos;S THE TOPIC?</h1>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <AnimatedBackground variant="subtle" />
+
+      <div className="relative z-10 mb-4 flex w-full max-w-5xl items-center justify-between">
+        <h1 className="font-display text-[64px] font-bold text-accent-6">WHAT&apos;S THE TOPIC?</h1>
         {timerEndTime && <Timer endTime={timerEndTime} />}
       </div>
 
@@ -75,12 +80,12 @@ function TopicSetupHostView({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="max-w-4xl text-center text-[32px] text-text-muted"
+        className="relative z-10 max-w-4xl text-center font-body text-[32px] text-text-muted"
       >
         Pick a category and submit your angle from your phone
       </motion.p>
 
-      <div className="flex flex-wrap justify-center gap-4">
+      <div className="relative z-10 flex flex-wrap justify-center gap-4">
         {players.map((player) => {
           const hasSubmitted = submittedIds.includes(player.sessionId);
           return (
@@ -90,7 +95,7 @@ function TopicSetupHostView({
               className="flex flex-col items-center gap-2"
             >
               <div
-                className="flex h-[72px] w-[72px] items-center justify-center rounded-full text-[30px] font-bold text-bg-dark"
+                className="flex h-[72px] w-[72px] items-center justify-center rounded-full font-body text-[30px] font-bold text-bg-deep"
                 style={{
                   backgroundColor: player.avatarColor,
                   boxShadow: hasSubmitted ? `0 0 20px ${player.avatarColor}66` : "none",
@@ -98,7 +103,7 @@ function TopicSetupHostView({
               >
                 {hasSubmitted ? "\u2713" : player.name.charAt(0).toUpperCase()}
               </div>
-              <span className="text-[18px] text-text-muted">{player.name}</span>
+              <span className="font-body text-[18px] text-text-muted">{player.name}</span>
             </motion.div>
           );
         })}
@@ -108,7 +113,7 @@ function TopicSetupHostView({
         initial={{ opacity: 0.4 }}
         animate={{ opacity: 0.8 }}
         transition={{ duration: 1.3, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse" }}
-        className="text-[24px] text-text-muted"
+        className="relative z-10 font-body text-[24px] text-text-muted"
       >
         Grab your phone and submit your topic...
       </motion.p>
@@ -118,16 +123,24 @@ function TopicSetupHostView({
 
 function AIGeneratingView() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+      <AnimatedBackground />
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-        className="text-[84px]"
+        className="relative z-10"
       >
-        {"🔥"}
+        <Flame className="h-20 w-20 text-accent-6" />
       </motion.div>
-      <h2 className="font-display text-[54px] text-accent-3">COOKING UP YOUR HOT TAKES...</h2>
-      <p className="text-[28px] text-text-muted">The AI is crafting personalized provocations</p>
+      <h2
+        className="relative z-10 font-display text-[54px] font-bold text-text-primary"
+        style={{ textShadow: "0 0 30px oklch(0.65 0.25 25 / 0.4)" }}
+      >
+        COOKING UP YOUR HOT TAKES...
+      </h2>
+      <p className="relative z-10 font-body text-[28px] text-text-muted">
+        The AI is crafting personalized provocations
+      </p>
     </div>
   );
 }
@@ -151,8 +164,10 @@ function ShowingPromptView({
     roundType === "lone-wolf" ? "Be the most unique opinion" : "Match the group's vibe";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <span className="font-display text-[28px] text-text-muted">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <AnimatedBackground variant="subtle" />
+
+      <span className="relative z-10 font-display text-[28px] font-semibold text-text-muted">
         ROUND {round} / {totalRounds}
       </span>
 
@@ -160,27 +175,36 @@ function ShowingPromptView({
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        className="text-[80px]"
+        className="relative z-10"
       >
-        {"\uD83D\uDD25"}
+        <Flame className="h-20 w-20 text-accent-6" />
       </motion.div>
 
-      <motion.h2
+      <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="max-w-5xl text-center font-display text-[52px] leading-tight text-text-primary"
+        className="relative z-10"
       >
-        {statement}
-      </motion.h2>
+        <GlassPanel
+          glow
+          glowColor="oklch(0.65 0.25 25 / 0.2)"
+          rounded="2xl"
+          className="max-w-5xl p-10 text-center"
+        >
+          <h2 className="font-display text-[52px] font-bold leading-tight text-text-primary">
+            {statement}
+          </h2>
+        </GlassPanel>
+      </motion.div>
 
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.8 }}
-        className="text-center text-[28px] text-accent-2"
+        className="relative z-10 text-center font-body text-[28px] text-accent-6"
       >
-        {goalText} {activeCount > 0 ? `• ${activeCount} players` : ""}
+        {goalText} {activeCount > 0 ? `-- ${activeCount} players` : ""}
       </motion.p>
     </div>
   );
@@ -202,7 +226,6 @@ function HotTakeVotingView({
   const voted = votedIds.length;
   const total = activePlayers.length;
 
-  // Opinion spectrum labels
   const labels = [
     { text: "STRONGLY DISAGREE", position: 0 },
     { text: "DISAGREE", position: 25 },
@@ -212,25 +235,28 @@ function HotTakeVotingView({
   ];
 
   return (
-    <div className="flex min-h-screen flex-col p-12">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-[36px] text-accent-1">HOT TAKE</h2>
+    <div className="relative flex min-h-screen flex-col p-12">
+      <AnimatedBackground variant="subtle" />
+
+      <div className="relative z-10 mb-6 flex items-center justify-between">
+        <h2 className="font-display text-[36px] font-bold text-accent-6">HOT TAKE</h2>
         {timerEndTime && <Timer endTime={timerEndTime} />}
       </div>
 
-      {/* Statement */}
-      <div className="mb-12">
-        <p className="font-display text-[44px] leading-tight text-text-primary">{statement}</p>
-      </div>
+      <GlassPanel rounded="2xl" className="relative z-10 mb-12 p-8">
+        <p className="font-display text-[44px] font-bold italic leading-tight text-text-primary">
+          {statement}
+        </p>
+      </GlassPanel>
 
       {/* Opinion spectrum */}
-      <div className="mb-10">
-        <div className="relative h-6 w-full rounded-full bg-bg-card">
+      <div className="relative z-10 mb-10">
+        <div className="relative h-8 w-full overflow-hidden rounded-full">
           <div
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.65 0.29 12), oklch(0.85 0.18 85), oklch(0.83 0.18 195))",
+                "linear-gradient(90deg, oklch(0.65 0.25 25), oklch(0.75 0.18 85), oklch(0.7 0.2 145), oklch(0.75 0.15 195))",
             }}
           />
         </div>
@@ -238,7 +264,7 @@ function HotTakeVotingView({
           {labels.map((label) => (
             <span
               key={label.text}
-              className="text-[16px] text-text-muted"
+              className="font-body text-[16px] text-text-muted"
               style={{ width: "20%", textAlign: "center" }}
             >
               {label.text}
@@ -248,27 +274,26 @@ function HotTakeVotingView({
       </div>
 
       {/* Voting status */}
-      <div className="mt-auto flex flex-col items-center gap-6">
+      <div className="relative z-10 mt-auto flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <p className="font-display text-[32px] text-accent-2">RATE YOUR OPINION</p>
-          <p className="text-[18px] text-text-muted">
+          <p className="font-display text-[32px] font-bold text-accent-6">RATE YOUR OPINION</p>
+          <p className="font-body text-[18px] text-text-muted">
             {roundType === "lone-wolf" ? "Try to stand out" : "Try to match the crowd"}
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="h-4 w-[300px] overflow-hidden rounded-full bg-bg-card">
+          <GlassPanel rounded="2xl" className="h-4 w-[300px] overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-accent-2"
+              className="h-full rounded-full bg-accent-6"
               animate={{ width: `${total > 0 ? (voted / total) * 100 : 0}%` }}
               transition={{ type: "spring", stiffness: 100 }}
             />
-          </div>
-          <span className="font-display text-[28px] text-text-primary">
+          </GlassPanel>
+          <span className="font-mono text-[28px] font-bold text-text-primary">
             {voted} / {total} voted
           </span>
         </div>
 
-        {/* Player vote indicators */}
         <div className="flex gap-3">
           {activePlayers.map((player) => {
             const hasVoted = votedIds.includes(player.sessionId);
@@ -279,7 +304,7 @@ function HotTakeVotingView({
                 className="flex flex-col items-center gap-1"
               >
                 <div
-                  className="flex h-[48px] w-[48px] items-center justify-center rounded-full text-[22px] font-bold text-bg-dark"
+                  className="flex h-[48px] w-[48px] items-center justify-center rounded-full font-body text-[22px] font-bold text-bg-deep"
                   style={{
                     backgroundColor: player.avatarColor,
                     boxShadow: hasVoted ? `0 0 12px ${player.avatarColor}60` : "none",
@@ -287,7 +312,7 @@ function HotTakeVotingView({
                 >
                   {hasVoted ? "\u2713" : player.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-[14px] text-text-muted">{player.name}</span>
+                <span className="font-body text-[14px] text-text-muted">{player.name}</span>
               </motion.div>
             );
           })}
@@ -309,7 +334,7 @@ function HotTakeResultsView({
   const votes =
     (payload.votes as Array<{
       sessionId: string;
-      value: number; // -2 to +2
+      value: number;
     }>) ?? [];
   const anchorValue =
     (payload.anchorValue as number | undefined) ??
@@ -319,25 +344,29 @@ function HotTakeResultsView({
   const secondUniqueIds = (payload.secondUniqueIds as string[]) ?? [];
   const matchedMajorityIds = (payload.matchedMajorityIds as string[]) ?? [];
 
-  // Map vote values to spectrum positions (0-100%)
   const voteToPercent = (v: number) => ((v + 2) / 4) * 100;
   const markerLabel = roundType === "lone-wolf" ? "AVERAGE" : "MAJORITY";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
-      <h2 className="font-display text-[48px] text-accent-1">THE RESULTS</h2>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+      <AnimatedBackground variant="subtle" />
 
-      <p className="max-w-4xl text-center text-[32px] text-text-muted">{statement}</p>
+      <h2 className="relative z-10 font-display text-[48px] font-bold text-accent-6">
+        THE RESULTS
+      </h2>
+
+      <p className="relative z-10 max-w-4xl text-center font-body text-[32px] text-text-muted">
+        {statement}
+      </p>
 
       {/* Opinion spectrum with player positions */}
-      <div className="relative w-full max-w-4xl">
-        {/* Spectrum bar */}
-        <div className="relative h-8 w-full overflow-hidden rounded-full bg-bg-card">
+      <div className="relative z-10 w-full max-w-4xl pt-16">
+        <div className="relative h-8 w-full overflow-hidden rounded-full">
           <div
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.65 0.29 12), oklch(0.85 0.18 85), oklch(0.83 0.18 195))",
+                "linear-gradient(90deg, oklch(0.65 0.25 25), oklch(0.75 0.18 85), oklch(0.7 0.2 145), oklch(0.75 0.15 195))",
             }}
           />
         </div>
@@ -351,8 +380,8 @@ function HotTakeResultsView({
           style={{ left: `${voteToPercent(anchorValue)}%`, transform: "translateX(-50%)" }}
         >
           <div className="flex flex-col items-center">
-            <div className="h-4 w-0.5 bg-accent-3" />
-            <span className="font-display text-[18px] text-accent-3">{markerLabel}</span>
+            <div className="h-4 w-0.5 bg-accent-6" />
+            <span className="font-display text-[18px] font-bold text-accent-6">{markerLabel}</span>
           </div>
         </motion.div>
 
@@ -368,11 +397,11 @@ function HotTakeResultsView({
               roundType === "majority" && matchedMajorityIds.includes(vote.sessionId);
 
             const ringClass = isTopLoneWolf
-              ? "ring-2 ring-accent-1 ring-offset-2 ring-offset-bg-dark"
+              ? "ring-2 ring-accent-6 ring-offset-2 ring-offset-bg-deep"
               : isSecondLoneWolf
-                ? "ring-2 ring-accent-3 ring-offset-2 ring-offset-bg-dark"
+                ? "ring-2 ring-accent-3 ring-offset-2 ring-offset-bg-deep"
                 : matchedMajority
-                  ? "ring-2 ring-accent-2 ring-offset-2 ring-offset-bg-dark"
+                  ? "ring-2 ring-accent-5 ring-offset-2 ring-offset-bg-deep"
                   : "";
 
             return (
@@ -384,18 +413,20 @@ function HotTakeResultsView({
                 className="absolute"
                 style={{
                   left: `${voteToPercent(vote.value)}%`,
-                  top: "-50px",
+                  bottom: "calc(100% + 8px)",
                   transform: "translateX(-50%)",
                 }}
               >
                 <div className="flex flex-col items-center gap-1">
                   <div
-                    className={`flex h-[40px] w-[40px] items-center justify-center rounded-full text-[18px] font-bold text-bg-dark ${ringClass}`}
+                    className={`flex h-[40px] w-[40px] items-center justify-center rounded-full font-body text-[18px] font-bold text-bg-deep ${ringClass}`}
                     style={{ backgroundColor: player.avatarColor }}
                   >
                     {player.name.charAt(0).toUpperCase()}
                   </div>
-                  {isTopLoneWolf && <span className="text-[14px] text-accent-1">LONE WOLF</span>}
+                  {isTopLoneWolf && (
+                    <span className="font-body text-[14px] text-accent-6">LONE WOLF</span>
+                  )}
                 </div>
               </motion.div>
             );
@@ -404,34 +435,40 @@ function HotTakeResultsView({
       </div>
 
       {/* Spectrum labels */}
-      <div className="flex w-full max-w-4xl justify-between px-2">
-        <span className="text-[20px] text-accent-1">DISAGREE</span>
-        <span className="text-[20px] text-text-muted">NEUTRAL</span>
-        <span className="text-[20px] text-accent-2">AGREE</span>
+      <div className="relative z-10 flex w-full max-w-4xl justify-between px-2">
+        <span className="font-body text-[20px] text-accent-6">DISAGREE</span>
+        <span className="font-body text-[20px] text-text-muted">NEUTRAL</span>
+        <span className="font-body text-[20px] text-accent-5">AGREE</span>
       </div>
 
       {/* Majority / Lone Wolf summary */}
-      <div className="flex flex-wrap justify-center gap-8">
+      <div className="relative z-10 flex flex-wrap justify-center gap-8">
         {roundType === "lone-wolf" && loneWolves.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1 }}
-            className="flex flex-col items-center gap-3 rounded-2xl border border-accent-1/30 bg-bg-card p-6"
           >
-            <span className="text-[36px]">{"\uD83D\uDE3A"}</span>
-            <span className="font-display text-[28px] text-accent-1">LONE WOLVES</span>
-            <div className="flex gap-2">
-              {loneWolves.map((id) => {
-                const player = players.find((p) => p.sessionId === id);
-                return player ? (
-                  <span key={id} className="text-[22px] text-text-primary">
-                    {player.name}
-                  </span>
-                ) : null;
-              })}
-            </div>
-            <p className="text-[18px] text-text-muted">Against the crowd</p>
+            <GlassPanel
+              glow
+              glowColor="oklch(0.65 0.25 25 / 0.3)"
+              rounded="2xl"
+              className="flex flex-col items-center gap-3 p-6"
+            >
+              <Users className="h-8 w-8 text-accent-6" />
+              <span className="font-display text-[28px] font-bold text-accent-6">LONE WOLVES</span>
+              <div className="flex gap-2">
+                {loneWolves.map((id) => {
+                  const player = players.find((p) => p.sessionId === id);
+                  return player ? (
+                    <span key={id} className="font-body text-[22px] text-text-primary">
+                      {player.name}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+              <p className="font-body text-[18px] text-text-muted">Against the crowd</p>
+            </GlassPanel>
           </motion.div>
         )}
 
@@ -440,21 +477,29 @@ function HotTakeResultsView({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1 }}
-            className="flex flex-col items-center gap-3 rounded-2xl border border-accent-2/30 bg-bg-card p-6"
           >
-            <span className="text-[36px]">{"\uD83C\uDFAF"}</span>
-            <span className="font-display text-[28px] text-accent-2">MATCHED THE MAJORITY</span>
-            <div className="flex gap-2">
-              {matchedMajorityIds.map((id) => {
-                const player = players.find((p) => p.sessionId === id);
-                return player ? (
-                  <span key={id} className="text-[22px] text-text-primary">
-                    {player.name}
-                  </span>
-                ) : null;
-              })}
-            </div>
-            <p className="text-[18px] text-text-muted">Right on target</p>
+            <GlassPanel
+              glow
+              glowColor="oklch(0.7 0.2 145 / 0.3)"
+              rounded="2xl"
+              className="flex flex-col items-center gap-3 p-6"
+            >
+              <Target className="h-8 w-8 text-accent-5" />
+              <span className="font-display text-[28px] font-bold text-accent-5">
+                MATCHED THE MAJORITY
+              </span>
+              <div className="flex gap-2">
+                {matchedMajorityIds.map((id) => {
+                  const player = players.find((p) => p.sessionId === id);
+                  return player ? (
+                    <span key={id} className="font-body text-[22px] text-text-primary">
+                      {player.name}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+              <p className="font-body text-[18px] text-text-muted">Right on target</p>
+            </GlassPanel>
           </motion.div>
         )}
       </div>
@@ -475,9 +520,12 @@ function HotTakeFinalScoresView({ players }: { players: PlayerData[] }) {
     .map((s, i) => ({ ...s, rank: i + 1 }));
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <h1 className="font-display text-[64px] text-accent-3">FINAL SCORES</h1>
-      <div className="w-full max-w-4xl">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <AnimatedBackground variant="subtle" />
+      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-6">
+        FINAL SCORES
+      </h1>
+      <div className="relative z-10 w-full max-w-4xl">
         <Scoreboard scores={scores} />
       </div>
     </div>

@@ -11,8 +11,9 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-xl bg-bg-card text-text-primary border border-border",
-          glow && "shadow-[0_0_20px_rgba(255,51,102,0.15)] border-accent-1/30",
+          "rounded-xl bg-white/[0.04] backdrop-blur-md text-text-primary border border-white/[0.08] transition-all duration-200",
+          glow &&
+            "shadow-[0_0_20px_var(--game-glow,oklch(0.7_0.18_265_/_0.3))] border-[var(--game-accent,var(--color-accent-1))]/30",
           className,
         )}
         {...props}

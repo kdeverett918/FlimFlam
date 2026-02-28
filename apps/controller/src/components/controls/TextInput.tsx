@@ -1,5 +1,7 @@
 "use client";
 
+import { GlassPanel, haptics } from "@partyline/ui";
+import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TextInputProps {
@@ -49,9 +51,12 @@ export function TextInput({
   );
 
   const handleFocus = useCallback(() => {
-    // Scroll into view for keyboard awareness
+    haptics.tap();
+    const el = textareaRef.current;
     setTimeout(() => {
-      textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (el && document.activeElement === el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }, 300);
   }, []);
 
@@ -59,9 +64,7 @@ export function TextInput({
     const trimmed = text.trim();
     if (!trimmed || submitted) return;
 
-    if (navigator.vibrate) {
-      navigator.vibrate(50);
-    }
+    haptics.confirm();
     onSubmit(trimmed);
     setSubmitted(true);
   }, [text, submitted, onSubmit]);
@@ -69,28 +72,22 @@ export function TextInput({
   if (submitted) {
     return (
       <div className="flex flex-col items-center gap-4 px-4 py-8 animate-fade-in-up">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
-          <svg
-            className="h-8 w-8 text-accent-2"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={3}
-            role="img"
-          >
-            <title>Checkmark</title>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <p className="text-xl font-medium text-accent-2">Submitted!</p>
-        <p className="text-sm text-text-muted">Waiting for other players...</p>
+        <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-5/15">
+            <Check className="h-7 w-7 text-accent-5" strokeWidth={3} />
+          </div>
+          <p className="font-display text-xl font-bold text-accent-5">Submitted!</p>
+          <p className="font-body text-sm text-text-muted">Waiting for other players...</p>
+        </GlassPanel>
       </div>
     );
   }
 
   return (
     <div className="flex w-full flex-col gap-4 px-4">
-      {prompt && <p className="text-center text-lg font-medium text-text-primary">{prompt}</p>}
+      {prompt && (
+        <p className="text-center font-body text-lg font-medium text-text-primary">{prompt}</p>
+      )}
 
       <div className="relative">
         <textarea
@@ -100,11 +97,11 @@ export function TextInput({
           onFocus={handleFocus}
           placeholder={placeholder}
           rows={4}
-          className="w-full resize-none rounded-xl border-2 border-text-muted/30 bg-bg-card p-4 text-lg text-text-primary placeholder:text-text-muted/50 transition-colors focus:border-accent-1 focus:outline-none"
+          className="glass-input w-full resize-none rounded-xl p-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)]"
         />
         <span
-          className={`absolute right-3 bottom-3 text-sm font-medium transition-colors ${
-            isAtLimit ? "text-accent-1" : isNearLimit ? "text-accent-3" : "text-text-muted"
+          className={`absolute right-3 bottom-3 font-mono text-xs font-medium transition-colors ${
+            isAtLimit ? "text-accent-6" : isNearLimit ? "text-accent-3" : "text-text-muted"
           }`}
         >
           {charCount}/{maxChars}
@@ -116,6 +113,9 @@ export function TextInput({
         onClick={handleSubmit}
         disabled={!text.trim()}
         className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        style={{
+          boxShadow: text.trim() ? "0 0 16px oklch(0.7 0.18 265 / 0.25)" : "none",
+        }}
       >
         Submit
       </button>

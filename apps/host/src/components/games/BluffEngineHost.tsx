@@ -3,8 +3,10 @@
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
 import type { PlayerData, ScoreEntry } from "@partyline/shared";
+import { AnimatedBackground, GlassPanel } from "@partyline/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface BluffEngineHostProps {
@@ -47,6 +49,7 @@ export function BluffEngineHost({
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
+          <AnimatedBackground variant="subtle" />
           <p className="font-display text-[36px] text-text-muted">Bluff Engine - {phase}</p>
         </div>
       );
@@ -55,16 +58,24 @@ export function BluffEngineHost({
 
 function GeneratingPromptView() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8">
+      <AnimatedBackground />
       <motion.div
         animate={{ rotate: [0, 10, -10, 0] }}
         transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
-        className="text-[96px]"
+        className="relative z-10"
       >
-        {"\uD83C\uDFAD"}
+        <Search className="h-24 w-24 text-accent-3" />
       </motion.div>
-      <h2 className="font-display text-[56px] text-text-primary">COOKING UP A QUESTION...</h2>
-      <p className="text-[28px] text-text-muted">The AI is finding an obscure trivia question</p>
+      <h2
+        className="relative z-10 font-display text-[56px] font-bold text-text-primary"
+        style={{ textShadow: "0 0 30px oklch(0.75 0.18 85 / 0.4)" }}
+      >
+        COOKING UP A QUESTION...
+      </h2>
+      <p className="relative z-10 font-body text-[28px] text-text-muted">
+        The AI is finding an obscure trivia question
+      </p>
     </div>
   );
 }
@@ -89,42 +100,48 @@ function AnswerInputView({
   const total = players.length;
 
   return (
-    <div className="flex min-h-screen flex-col p-12">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div className="font-display text-[28px] text-text-muted">
+    <div className="relative flex min-h-screen flex-col p-12">
+      <AnimatedBackground variant="subtle" />
+      <div className="relative z-10 mb-8 flex items-center justify-between">
+        <div className="font-display text-[28px] font-semibold text-text-muted">
           ROUND {round} / {totalRounds}
         </div>
         {timerEndTime && <Timer endTime={timerEndTime} />}
       </div>
 
-      {/* Category badge */}
       {category && (
-        <div className="mb-4">
-          <span className="rounded-full bg-accent-4/20 px-6 py-2 font-display text-[22px] text-accent-4">
+        <div className="relative z-10 mb-4">
+          <span className="rounded-full bg-accent-3/20 px-6 py-2 font-display text-[22px] text-accent-3">
             {category.toUpperCase()}
           </span>
         </div>
       )}
 
-      {/* Question */}
-      <div className="mb-12">
-        <h2 className="font-display text-[52px] leading-tight text-text-primary">{question}</h2>
-      </div>
+      <GlassPanel
+        glow
+        glowColor="oklch(0.75 0.18 85 / 0.15)"
+        rounded="2xl"
+        className="relative z-10 mb-12 p-8"
+      >
+        <h2 className="font-display text-[52px] font-bold leading-tight text-text-primary">
+          {question}
+        </h2>
+      </GlassPanel>
 
-      {/* Writing phase counter */}
-      <div className="mt-auto flex flex-col items-center gap-6">
-        <h3 className="font-display text-[36px] text-accent-2">WRITE YOUR BLUFF!</h3>
-        <p className="text-[28px] text-text-muted">Make it sound real enough to fool everyone</p>
+      <div className="relative z-10 mt-auto flex flex-col items-center gap-6">
+        <h3 className="font-display text-[36px] font-bold text-accent-3">WRITE YOUR BLUFF!</h3>
+        <p className="font-body text-[28px] text-text-muted">
+          Make it sound real enough to fool everyone
+        </p>
         <div className="flex items-center gap-4">
-          <div className="h-4 w-[300px] overflow-hidden rounded-full bg-bg-card">
+          <GlassPanel rounded="2xl" className="h-4 w-[300px] overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-accent-2"
+              className="h-full rounded-full bg-accent-3"
               animate={{ width: `${total > 0 ? (submitted / total) * 100 : 0}%` }}
               transition={{ type: "spring", stiffness: 100 }}
             />
-          </div>
-          <span className="font-display text-[28px] text-text-primary">
+          </GlassPanel>
+          <span className="font-mono text-[28px] font-bold text-text-primary">
             {submitted} / {total} submitted
           </span>
         </div>
@@ -148,30 +165,31 @@ function VotingView({
   const voted = votedIds.length;
   const total = players.length;
 
+  const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
   return (
-    <div className="flex min-h-screen flex-col p-12">
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-display text-[36px] text-accent-1">WHICH IS REAL?</h2>
+    <div className="relative flex min-h-screen flex-col p-12">
+      <AnimatedBackground variant="subtle" />
+      <div className="relative z-10 mb-6 flex items-center justify-between">
+        <h2 className="font-display text-[36px] font-bold text-accent-3">WHICH IS REAL?</h2>
         {timerEndTime && <Timer endTime={timerEndTime} />}
       </div>
 
-      <p className="mb-8 text-[32px] text-text-muted">{question}</p>
+      <p className="relative z-10 mb-8 font-body text-[32px] text-text-muted">{question}</p>
 
-      {/* Answer grid */}
-      <div className="mb-8 grid grid-cols-2 gap-4">
+      <div className="relative z-10 mb-8 grid grid-cols-2 gap-4">
         {answers.map((answer) => (
-          <div key={answer.index} className="rounded-2xl border-2 border-bg-card bg-bg-card/80 p-6">
-            <div className="mb-2 font-display text-[22px] text-accent-4">
-              {String.fromCharCode(65 + answer.index)}
+          <GlassPanel key={answer.index} rounded="2xl" className="p-6">
+            <div className="mb-2 font-display text-[22px] font-bold text-accent-3">
+              {LETTERS[answer.index] ?? String.fromCharCode(65 + answer.index)}
             </div>
-            <p className="text-[28px] text-text-primary">{answer.text}</p>
-          </div>
+            <p className="font-body text-[28px] text-text-primary">{answer.text}</p>
+          </GlassPanel>
         ))}
       </div>
 
-      {/* Voting status */}
-      <div className="mt-auto flex flex-col items-center gap-4">
-        <p className="font-display text-[32px] text-accent-2">
+      <div className="relative z-10 mt-auto flex flex-col items-center gap-4">
+        <p className="font-mono text-[32px] font-bold text-accent-3">
           {voted} / {total} voted
         </p>
         <div className="flex gap-3">
@@ -210,6 +228,8 @@ function ResultsView({
     }>) ?? [];
   const [revealIndex, setRevealIndex] = useState(-1);
 
+  const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
   useEffect(() => {
     if (revealIndex < answers.length - 1) {
       const timer = setTimeout(() => {
@@ -219,17 +239,19 @@ function ResultsView({
     }
   }, [revealIndex, answers.length]);
 
-  // Start revealing on mount
   useEffect(() => {
     const timer = setTimeout(() => setRevealIndex(0), 500);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
-      <h2 className="font-display text-[48px] text-accent-1">THE ANSWERS</h2>
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+      <AnimatedBackground variant="subtle" />
+      <h2 className="relative z-10 font-display text-[48px] font-bold text-accent-3">
+        THE ANSWERS
+      </h2>
 
-      <div className="flex w-full max-w-4xl flex-col gap-4">
+      <div className="relative z-10 flex w-full max-w-4xl flex-col gap-4">
         <AnimatePresence>
           {answers.map((answer, i) => {
             const revealed = i <= revealIndex;
@@ -242,41 +264,40 @@ function ResultsView({
                   scale: revealed ? 1 : 0.95,
                 }}
                 transition={{ type: "spring", stiffness: 150, damping: 20 }}
-                className={`rounded-2xl border-2 p-6 ${
-                  revealed && answer.isReal
-                    ? "border-accent-2 bg-accent-2/10"
-                    : revealed
-                      ? "border-bg-card bg-bg-card/80"
-                      : "border-bg-card/50 bg-bg-card/30"
-                }`}
               >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="mb-2 flex items-center gap-3">
-                      <span className="font-display text-[24px] text-accent-4">
-                        {String.fromCharCode(65 + answer.index)}
-                      </span>
-                      {revealed && answer.isReal && (
-                        <span className="rounded-full bg-accent-2/20 px-4 py-1 font-display text-[18px] text-accent-2">
-                          REAL ANSWER
+                <GlassPanel
+                  glow={revealed && answer.isReal}
+                  glowColor="oklch(0.75 0.18 85 / 0.3)"
+                  rounded="2xl"
+                  className={`p-6 ${revealed && answer.isReal ? "border-accent-3" : ""}`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="mb-2 flex items-center gap-3">
+                        <span className="font-display text-[24px] font-bold text-accent-3">
+                          {LETTERS[answer.index] ?? String.fromCharCode(65 + answer.index)}
                         </span>
-                      )}
-                      {revealed && !answer.isReal && answer.authorName && (
-                        <span className="text-[20px] text-text-muted">
-                          Written by {answer.authorName}
-                        </span>
-                      )}
+                        {revealed && answer.isReal && (
+                          <span className="rounded-full bg-accent-3/20 px-4 py-1 font-display text-[18px] text-accent-3">
+                            REAL ANSWER
+                          </span>
+                        )}
+                        {revealed && !answer.isReal && answer.authorName && (
+                          <span className="font-body text-[20px] text-text-muted">
+                            Written by {answer.authorName}
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-body text-[28px] text-text-primary">{answer.text}</p>
                     </div>
-                    <p className="text-[28px] text-text-primary">{answer.text}</p>
                   </div>
-                </div>
 
-                {/* Who voted for this */}
-                {revealed && answer.voterNames && answer.voterNames.length > 0 && (
-                  <div className="mt-3 text-[20px] text-text-muted">
-                    {answer.isReal ? "Correct" : "Fooled"}: {answer.voterNames.join(", ")}
-                  </div>
-                )}
+                  {revealed && answer.voterNames && answer.voterNames.length > 0 && (
+                    <div className="mt-3 font-body text-[20px] text-text-muted">
+                      {answer.isReal ? "Correct" : "Fooled"}: {answer.voterNames.join(", ")}
+                    </div>
+                  )}
+                </GlassPanel>
               </motion.div>
             );
           })}
@@ -299,9 +320,12 @@ function BluffFinalScoresView({ players }: { players: PlayerData[] }) {
     .map((s, i) => ({ ...s, rank: i + 1 }));
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <h1 className="font-display text-[64px] text-accent-3">FINAL SCORES</h1>
-      <div className="w-full max-w-4xl">
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+      <AnimatedBackground variant="subtle" />
+      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-3">
+        FINAL SCORES
+      </h1>
+      <div className="relative z-10 w-full max-w-4xl">
         <Scoreboard scores={scores} />
       </div>
     </div>

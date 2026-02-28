@@ -5,6 +5,8 @@ import { ScoreBadge } from "@/components/game/ScoreBadge";
 import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
+import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -43,11 +45,12 @@ export default function PlayPage() {
   if (!connected) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-muted/30 border-t-accent-1" />
-          <p className="text-text-muted">Connecting...</p>
-          {error && <p className="text-center text-sm text-accent-1">{error}</p>}
-        </div>
+        <AnimatedBackground variant="subtle" />
+        <GlassPanel className="flex flex-col items-center gap-4 px-8 py-10">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent-1" />
+          <p className="font-body text-text-muted">Connecting...</p>
+          {error && <p className="text-center font-body text-sm text-accent-6">{error}</p>}
+        </GlassPanel>
       </main>
     );
   }
@@ -55,6 +58,7 @@ export default function PlayPage() {
   if (!state) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
+        <AnimatedBackground variant="subtle" />
         <WaitingScreen />
       </main>
     );
@@ -62,41 +66,35 @@ export default function PlayPage() {
 
   const { phase, gameId, round, totalRounds, timerEndsAt } = state;
 
-  // Lobby state — waiting for host to start a game
+  // Lobby state -- waiting for host to start a game
   if (phase === "lobby" || !gameId) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-2/20">
-            <svg
-              className="h-10 w-10 text-accent-2"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              role="img"
-            >
-              <title>Joined</title>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
+        <AnimatedBackground variant="subtle" />
+        <GlassPanel glow className="flex max-w-sm flex-col items-center gap-5 px-8 py-10">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-5/15">
+            <Check className="h-8 w-8 text-accent-5" strokeWidth={3} />
           </div>
-          <h2 className="font-display text-2xl text-text-primary">You're in!</h2>
-          <p className="text-center text-text-muted">Waiting for the host to start a game...</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <h2 className="font-display text-2xl font-bold text-text-primary">You're in!</h2>
+          <p className="text-center font-body text-text-muted">
+            Waiting for the host to start a game...
+          </p>
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
             {players.map((player) => (
-              <div
+              <GlassPanel
                 key={player.sessionId}
-                className="flex items-center gap-2 rounded-full border border-text-muted/20 bg-bg-card px-3 py-1.5"
+                rounded="2xl"
+                className="flex items-center gap-2 px-3 py-1.5"
               >
                 <div
                   className="h-4 w-4 rounded-full"
                   style={{ backgroundColor: player.avatarColor }}
                 />
-                <span className="text-sm text-text-primary">{player.name}</span>
-              </div>
+                <span className="font-body text-sm text-text-primary">{player.name}</span>
+              </GlassPanel>
             ))}
           </div>
-        </div>
+        </GlassPanel>
       </main>
     );
   }
@@ -105,17 +103,22 @@ export default function PlayPage() {
   if (phase === "between-games") {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center gap-4">
-          <h2 className="font-display text-2xl text-text-primary">Next game starting...</h2>
-          <p className="text-center text-text-muted">The host is picking the next game.</p>
-        </div>
+        <AnimatedBackground variant="subtle" />
+        <GlassPanel glow className="flex max-w-sm flex-col items-center gap-4 px-8 py-10">
+          <h2 className="font-display text-2xl font-bold text-text-primary">
+            Next game starting...
+          </h2>
+          <p className="text-center font-body text-text-muted">
+            The host is picking the next game.
+          </p>
+        </GlassPanel>
       </main>
     );
   }
 
   // In-game rendering
   const myScore = myPlayer?.score ?? 0;
-  const myColor = myPlayer?.avatarColor ?? "#FF3366";
+  const myColor = myPlayer?.avatarColor ?? "#6366f1";
   const myRank = (() => {
     const sorted = [...players].sort((a, b) => b.score - a.score);
     const idx = sorted.findIndex((p) => p.sessionId === myPlayer?.sessionId);
@@ -130,9 +133,9 @@ export default function PlayPage() {
       {/* Error toast */}
       {toast && (
         <div className="fixed inset-x-0 top-3 z-50 flex justify-center px-4">
-          <div className="max-w-md rounded-xl border border-accent-1/30 bg-bg-dark/90 px-4 py-3 text-center text-sm text-accent-1 backdrop-blur-sm">
+          <GlassPanel className="max-w-md border-accent-6/30 px-4 py-3 text-center font-body text-sm text-accent-6">
             {toast.message}
-          </div>
+          </GlassPanel>
         </div>
       )}
 

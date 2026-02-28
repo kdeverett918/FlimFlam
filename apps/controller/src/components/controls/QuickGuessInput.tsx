@@ -1,5 +1,6 @@
 "use client";
 
+import { haptics } from "@partyline/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_CHARS = 80;
@@ -57,10 +58,7 @@ export function QuickGuessInput({
     }
     lastSubmitAtRef.current = now;
 
-    if (navigator.vibrate) {
-      navigator.vibrate(20);
-    }
-
+    haptics.confirm();
     onSubmit(trimmed);
     setText("");
     setJustSent(true);
@@ -79,7 +77,9 @@ export function QuickGuessInput({
 
   return (
     <div className="flex w-full flex-col gap-4 px-4">
-      {prompt && <p className="text-center text-lg font-medium text-text-primary">{prompt}</p>}
+      {prompt && (
+        <p className="text-center font-body text-lg font-medium text-text-primary">{prompt}</p>
+      )}
 
       <div className="relative">
         <input
@@ -87,17 +87,26 @@ export function QuickGuessInput({
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onFocus={(e) => {
+            haptics.tap();
+            const el = e.target;
+            setTimeout(() => {
+              if (document.activeElement === el) {
+                el.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }, 300);
+          }}
           placeholder={placeholder}
           disabled={disabled}
           autoCapitalize="none"
           autoCorrect="off"
           autoComplete="off"
           inputMode="text"
-          className="h-14 w-full rounded-xl border-2 border-text-muted/30 bg-bg-card px-4 text-lg text-text-primary placeholder:text-text-muted/50 transition-colors focus:border-accent-1 focus:outline-none disabled:opacity-50"
+          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
         />
         <span
-          className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium transition-colors ${
-            isAtLimit ? "text-accent-1" : isNearLimit ? "text-accent-3" : "text-text-muted"
+          className={`absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs font-medium transition-colors ${
+            isAtLimit ? "text-accent-6" : isNearLimit ? "text-accent-3" : "text-text-muted"
           }`}
         >
           {charCount}/{MAX_CHARS}
@@ -109,11 +118,16 @@ export function QuickGuessInput({
         onClick={submit}
         disabled={disabled || !text.trim()}
         className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        style={{
+          boxShadow: text.trim() && !disabled ? "0 0 16px oklch(0.7 0.18 265 / 0.25)" : "none",
+        }}
       >
         Guess
       </button>
 
-      {justSent && <p className="text-center text-xs text-text-muted animate-fade-in-up">Sent</p>}
+      {justSent && (
+        <p className="text-center font-body text-xs text-text-muted animate-fade-in-up">Sent</p>
+      )}
     </div>
   );
 }

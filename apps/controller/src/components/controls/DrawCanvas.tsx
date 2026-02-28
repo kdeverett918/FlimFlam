@@ -1,25 +1,27 @@
 "use client";
 
+import { haptics } from "@partyline/ui";
+import { Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PRESET_COLORS = ["#FFFFFF", "#FF3366", "#00D4AA", "#FFB800", "#7B61FF", "#000000"];
 const BRUSH_SIZES = [
-  { label: "S", size: 3 },
-  { label: "M", size: 8 },
-  { label: "L", size: 16 },
+  { label: "S", size: 3, dot: 4 },
+  { label: "M", size: 8, dot: 8 },
+  { label: "L", size: 16, dot: 14 },
 ];
 
 const MAX_POINTS_PER_STROKE = 512;
 
 interface Point {
-  x: number; // normalized 0..1
-  y: number; // normalized 0..1
+  x: number;
+  y: number;
 }
 
 interface Stroke {
   points: Point[];
   color: string;
-  size: number; // CSS pixels
+  size: number;
 }
 
 interface DrawCanvasProps {
@@ -105,10 +107,8 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     const { width, height, dpr } = canvasSizeRef.current;
     if (width <= 0 || height <= 0) return;
 
-    // Reset transform after resizes.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Clear to white (CSS pixels).
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, width, height);
 
@@ -126,7 +126,11 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     }
   }, [currentColor, currentSize, drawStroke, strokes]);
 
-  // Resize canvas to match container.
+  const redrawRef = useRef(redrawCanvas);
+  useEffect(() => {
+    redrawRef.current = redrawCanvas;
+  });
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -135,7 +139,7 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     const resizeCanvas = () => {
       const rect = container.getBoundingClientRect();
       const width = Math.max(1, Math.round(rect.width));
-      const height = Math.max(1, Math.round(width * 0.75)); // 4:3 aspect ratio
+      const height = Math.max(1, Math.round(width * 0.75));
       const dpr = typeof window !== "undefined" ? (window.devicePixelRatio ?? 1) : 1;
 
       canvas.width = Math.round(width * dpr);
@@ -149,7 +153,7 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
       }
 
       canvasSizeRef.current = { width, height, dpr };
-      redrawCanvas();
+      redrawRef.current();
     };
 
     resizeCanvas();
@@ -158,7 +162,7 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [redrawCanvas]);
+  }, []);
 
   useEffect(() => {
     redrawCanvas();
@@ -217,7 +221,6 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     [currentColor, currentSize, onStrokeSend],
   );
 
-  // Mouse fallback for non-touch devices.
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       isDrawingRef.current = true;
@@ -259,19 +262,24 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
   }, [currentColor, currentSize, onStrokeSend]);
 
   const handleUndo = useCallback(() => {
+    haptics.tap();
     setStrokes((prev) => prev.slice(0, -1));
   }, []);
 
   const handleClear = useCallback(() => {
+    haptics.tap();
     setStrokes([]);
   }, []);
 
   return (
     <div className="flex w-full flex-col gap-3 px-4">
-      {/* Canvas */}
+      {/* Canvas frame with glass border */}
       <div
         ref={containerRef}
-        className="w-full overflow-hidden rounded-xl border-2 border-text-muted/20"
+        className="w-full overflow-hidden rounded-xl border border-accent-4/30"
+        style={{
+          boxShadow: "0 0 16px oklch(0.75 0.15 195 / 0.15)",
+        }}
       >
         <canvas
           ref={canvasRef}
@@ -287,7 +295,7 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
         />
       </div>
 
-      {/* Color picker */}
+      {/* Color picker -- glass circles */}
       <div className="flex items-center justify-center gap-3">
         {PRESET_COLORS.map((color) => {
           const isSelected = currentColor === color;
@@ -295,11 +303,17 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
             <button
               key={color}
               type="button"
-              onClick={() => setCurrentColor(color)}
-              className={`h-10 w-10 rounded-full border-3 transition-transform active:scale-90 ${
-                isSelected ? "scale-110 border-accent-2" : "border-text-muted/30"
+              onClick={() => {
+                haptics.tap();
+                setCurrentColor(color);
+              }}
+              className={`h-12 w-12 rounded-full border-2 transition-all active:scale-90 ${
+                isSelected ? "scale-110 border-accent-4" : "border-white/10"
               }`}
-              style={{ backgroundColor: color }}
+              style={{
+                backgroundColor: color,
+                boxShadow: isSelected ? `0 0 12px ${color}60` : "none",
+              }}
               aria-label={`Color ${color}`}
               aria-pressed={isSelected}
             />
@@ -316,14 +330,24 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
               <button
                 key={brush.label}
                 type="button"
-                onClick={() => setCurrentSize(brush.size)}
-                className={`flex h-12 w-12 items-center justify-center rounded-lg border-2 font-medium transition-all active:scale-90 ${
+                onClick={() => {
+                  haptics.tap();
+                  setCurrentSize(brush.size);
+                }}
+                className={`flex h-12 w-12 items-center justify-center rounded-xl border transition-all active:scale-90 ${
                   isSelected
-                    ? "border-accent-1 bg-accent-1/15 text-accent-1"
-                    : "border-text-muted/20 bg-bg-card text-text-muted"
+                    ? "border-accent-4/50 bg-white/[0.08]"
+                    : "border-white/[0.08] bg-white/[0.04]"
                 }`}
+                style={{
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                }}
               >
-                {brush.label}
+                <div
+                  className={`rounded-full ${isSelected ? "bg-accent-4" : "bg-text-muted"}`}
+                  style={{ width: brush.dot, height: brush.dot }}
+                />
               </button>
             );
           })}
@@ -334,32 +358,27 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
             type="button"
             onClick={handleUndo}
             disabled={strokes.length === 0}
-            className="flex h-12 items-center gap-1 rounded-lg border-2 border-text-muted/20 bg-bg-card px-4 text-sm text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            style={{
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+            aria-label="Undo"
           >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              role="img"
-            >
-              <title>Undo</title>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3 10h10a5 5 0 015 5v2M3 10l5-5M3 10l5 5"
-              />
-            </svg>
-            Undo
+            <Undo2 className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={handleClear}
             disabled={strokes.length === 0}
-            className="flex h-12 items-center gap-1 rounded-lg border-2 border-text-muted/20 bg-bg-card px-4 text-sm text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            style={{
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
+            aria-label="Clear"
           >
-            Clear
+            <Trash2 className="h-5 w-5" />
           </button>
         </div>
       </div>

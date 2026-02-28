@@ -13,8 +13,20 @@ export interface ScoreDisplayProps extends React.HTMLAttributes<HTMLDivElement> 
 function useAnimatedNumber(value: number, duration = 600): number {
   const [displayed, setDisplayed] = React.useState(value);
   const previousRef = React.useRef(value);
+  const displayedRef = React.useRef(value);
 
   React.useEffect(() => {
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReduced) {
+      setDisplayed(value);
+      displayedRef.current = value;
+      previousRef.current = value;
+      return;
+    }
+
     const start = previousRef.current;
     const end = value;
     if (start === end) return;
@@ -28,7 +40,9 @@ function useAnimatedNumber(value: number, duration = 600): number {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
-      setDisplayed(Math.round(start + diff * eased));
+      const next = Math.round(start + diff * eased);
+      setDisplayed(next);
+      displayedRef.current = next;
 
       if (progress < 1) {
         rafId = requestAnimationFrame(tick);
@@ -38,7 +52,10 @@ function useAnimatedNumber(value: number, duration = 600): number {
     }
 
     rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      previousRef.current = displayedRef.current;
+    };
   }, [value, duration]);
 
   return displayed;
@@ -75,7 +92,10 @@ function ScoreDisplay({
 
   return (
     <div
-      className={cn("relative inline-flex flex-col items-center font-display", className)}
+      className={cn(
+        "relative inline-flex flex-col items-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] px-6 py-4",
+        className,
+      )}
       {...props}
     >
       {label && (
@@ -83,13 +103,15 @@ function ScoreDisplay({
           {label}
         </span>
       )}
-      <span className={cn(sizeClasses[size], "tabular-nums text-text-primary leading-none")}>
+      <span
+        className={cn(sizeClasses[size], "font-mono tabular-nums text-text-primary leading-none")}
+      >
         {animatedScore.toLocaleString()}
       </span>
       {showDelta && delta !== 0 && (
         <span
           className={cn(
-            "absolute -right-2 -top-2 text-lg font-bold animate-bounce",
+            "absolute -right-2 -top-2 text-lg font-mono font-bold",
             delta > 0 ? "text-success" : "text-destructive",
           )}
           style={{
@@ -108,6 +130,16 @@ function ScoreDisplay({
         @keyframes scoreFloatUp {
           0% { transform: translateY(0); opacity: 1; }
           100% { transform: translateY(-24px); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes scorePopIn {
+            0% { opacity: 1; transform: none; }
+            100% { opacity: 1; transform: none; }
+          }
+          @keyframes scoreFloatUp {
+            0% { opacity: 1; transform: none; }
+            100% { opacity: 0; transform: none; }
+          }
         }
       `}</style>
     </div>

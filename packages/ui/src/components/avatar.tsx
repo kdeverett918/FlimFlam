@@ -3,18 +3,21 @@ import { type VariantProps, cva } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "../lib/utils";
 
-const avatarVariants = cva("relative flex shrink-0 overflow-hidden rounded-full", {
-  variants: {
-    size: {
-      sm: "h-8 w-8 text-xs",
-      md: "h-12 w-12 text-base",
-      lg: "h-16 w-16 text-xl",
+const avatarVariants = cva(
+  "relative flex shrink-0 overflow-hidden rounded-full ring-2 ring-white/[0.08]",
+  {
+    variants: {
+      size: {
+        sm: "h-8 w-8 text-xs",
+        md: "h-12 w-12 text-base",
+        lg: "h-16 w-16 text-xl",
+      },
+    },
+    defaultVariants: {
+      size: "md",
     },
   },
-  defaultVariants: {
-    size: "md",
-  },
-});
+);
 
 export interface AvatarProps
   extends React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>,
@@ -53,7 +56,7 @@ const AvatarFallback = React.forwardRef<
   <AvatarPrimitive.Fallback
     ref={ref}
     className={cn(
-      "flex h-full w-full items-center justify-center rounded-full font-display font-bold text-white",
+      "flex h-full w-full items-center justify-center rounded-full bg-bg-surface font-display font-bold text-text-primary",
       className,
     )}
     {...props}
