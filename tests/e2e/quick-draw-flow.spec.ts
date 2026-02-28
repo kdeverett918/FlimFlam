@@ -127,10 +127,7 @@ test("quick draw completes end-to-end", async ({ page, browser }) => {
     const g2Input = g2.getByPlaceholder("Type your guess...");
     const g2GuessButton = g2.getByRole("button", { name: /^guess$/i });
 
-    await Promise.all([
-      g1Input.waitFor({ timeout: 20_000 }),
-      g2Input.waitFor({ timeout: 20_000 }),
-    ]);
+    await Promise.all([g1Input.waitFor({ timeout: 20_000 }), g2Input.waitFor({ timeout: 20_000 })]);
 
     await Promise.all([g1Input.fill(word), g2Input.fill(word)]);
     await Promise.all([g1GuessButton.click(), g2GuessButton.click()]);

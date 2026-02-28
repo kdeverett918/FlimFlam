@@ -40,7 +40,8 @@ export default defineConfig({
       PARTYLINE_E2E_CONTROLLER_PORT: e2eControllerPort,
       PARTYLINE_E2E_HOST_URL: e2eHostUrl,
       PARTYLINE_E2E_CONTROLLER_URL: e2eControllerUrl,
-      PARTYLINE_TIMER_SCALE: process.env.PARTYLINE_TIMER_SCALE ?? "0.05",
+      // CI can be slow enough that ultra-aggressive timers race UI rendering.
+      PARTYLINE_TIMER_SCALE: process.env.PARTYLINE_TIMER_SCALE ?? "0.12",
       PARTYLINE_DISABLE_AI: process.env.PARTYLINE_DISABLE_AI ?? "1",
       NEXT_TELEMETRY_DISABLED: "1",
     },
