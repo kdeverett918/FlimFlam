@@ -69,8 +69,8 @@ function GeneratingQuestionsView() {
       >
         {"\uD83C\uDF00"}
       </motion.div>
-      <h2 className="font-display text-[56px] text-text-primary">GENERATING QUESTIONS...</h2>
-      <p className="text-[28px] text-text-muted">Mixing reality with drift...</p>
+      <h2 className="font-display text-[56px] text-text-primary">GENERATING HEADLINES...</h2>
+      <p className="text-[28px] text-text-muted">Mixing news with hallucinations...</p>
     </div>
   );
 }
@@ -178,7 +178,7 @@ function DriftCheckView({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-10">
-        <h2 className="font-display text-[48px] text-text-muted">REALITY CHECK</h2>
+        <h2 className="font-display text-[48px] text-text-muted">HEADLINE CHECK</h2>
 
         <p className="max-w-4xl text-center text-[32px] text-text-primary">{question}</p>
 
@@ -188,7 +188,7 @@ function DriftCheckView({
           transition={{ type: "spring", stiffness: 180 }}
           className="rounded-3xl border-4 border-accent-4/30 bg-bg-card/60 px-16 py-8"
         >
-          <span className="font-display text-[64px] text-accent-4">REAL OR DRIFT?</span>
+          <span className="font-display text-[64px] text-accent-4">REAL OR HALLUCINATION?</span>
         </motion.div>
 
         <div className="flex flex-col items-center gap-4">
@@ -241,7 +241,7 @@ function DriftResultsView({
       {/* Correct answer */}
       <div className="flex flex-col items-center gap-2">
         <span className="text-[24px] text-text-muted">
-          {isDrift ? "This was a DRIFT question" : "Correct answer:"}
+          {isDrift ? "This headline was a HALLUCINATION" : "Missing detail:"}
         </span>
         {!isDrift && (
           <span className="font-display text-[40px] text-accent-2">{correctAnswer}</span>

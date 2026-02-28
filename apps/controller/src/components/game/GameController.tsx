@@ -274,7 +274,7 @@ export function GameController({
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <VoteGrid
                 key={`reality-drift-answering-${round}`}
-                prompt={`Round ${round}/${totalRounds} — Pick the correct answer`}
+                prompt={`Round ${round}/${totalRounds} — Fill the blank`}
                 options={options.map((opt) => ({
                   index: opt.index,
                   label: opt.label,
@@ -299,10 +299,10 @@ export function GameController({
           <div className="flex flex-col gap-4 pb-16 pt-4">
             <VoteGrid
               key={`reality-drift-drift-check-${round}`}
-              prompt="Is this question real or made up?"
+              prompt="Is this headline real or made up?"
               options={[
-                { index: 0, label: "Real — this is a genuine question" },
-                { index: 1, label: "Drift — this is completely fake" },
+                { index: 0, label: "Real — this actually happened" },
+                { index: 1, label: "Hallucination — completely made up" },
               ]}
               onConfirm={handleVoteConfirm}
             />

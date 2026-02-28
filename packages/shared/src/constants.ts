@@ -97,7 +97,7 @@ export const GAME_MANIFESTS: GameManifest[] = [
     id: "reality-drift",
     name: "Reality Drift",
     description:
-      "Trivia with a twist — some questions are completely made up. Can you spot the drift?",
+      "Headline or Hallucination — fill the blank, then decide if the headline is real or made up.",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 10,

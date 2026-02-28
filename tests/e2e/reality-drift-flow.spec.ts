@@ -42,7 +42,7 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   };
 
   const driftCheck = async (controllerPage: Page, choice: "real" | "drift") => {
-    const buttonName = choice === "drift" ? /drift \u2014/i : /real \u2014/i;
+    const buttonName = choice === "drift" ? /hallucination \u2014/i : /real \u2014/i;
     await controllerPage.getByRole("button", { name: buttonName }).click();
     await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
     await expect(controllerPage.getByText(/vote confirmed!/i)).toBeVisible();
@@ -51,9 +51,9 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   // Play 3 rounds (kids mode).
   for (let round = 1; round <= 3; round++) {
     await Promise.all([
-      c1.controllerPage.getByText(/pick the correct answer/i).waitFor(),
-      c2.controllerPage.getByText(/pick the correct answer/i).waitFor(),
-      c3.controllerPage.getByText(/pick the correct answer/i).waitFor(),
+      c1.controllerPage.getByText(/fill the blank/i).waitFor(),
+      c2.controllerPage.getByText(/fill the blank/i).waitFor(),
+      c3.controllerPage.getByText(/fill the blank/i).waitFor(),
     ]);
 
     await Promise.all([
@@ -63,9 +63,9 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
     ]);
 
     await Promise.all([
-      c1.controllerPage.getByText(/is this question real or made up\?/i).waitFor(),
-      c2.controllerPage.getByText(/is this question real or made up\?/i).waitFor(),
-      c3.controllerPage.getByText(/is this question real or made up\?/i).waitFor(),
+      c1.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
+      c2.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
+      c3.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
     ]);
 
     // Round 1 should always be real, so calling drift should apply a penalty.
