@@ -1,5 +1,10 @@
 import { calculateLoneWolfScores, calculateMajorityScores } from "../scoring";
-import { getRoundType, validateSliderVote } from "../state";
+import {
+  computeRoundStats,
+  getRoundType,
+  validateSliderVote,
+  validateTopicSubmission,
+} from "../state";
 
 describe("hot-take/state", () => {
   it("getRoundType alternates majority/lone-wolf", () => {
@@ -14,6 +19,35 @@ describe("hot-take/state", () => {
     expect(validateSliderVote(2.5).valid).toBe(false);
     expect(validateSliderVote(3).valid).toBe(false);
     expect(validateSliderVote("1").valid).toBe(false);
+  });
+
+  it("validateTopicSubmission accepts bounded content and optional category", () => {
+    const valid = validateTopicSubmission({ content: "remote work norms", category: "workplace" });
+    expect(valid.valid).toBe(true);
+    expect(valid.value?.content).toBe("remote work norms");
+    expect(valid.value?.category).toBe("workplace");
+
+    expect(validateTopicSubmission({ content: "   " }).valid).toBe(false);
+    expect(validateTopicSubmission({ content: 123 }).valid).toBe(false);
+  });
+
+  it("computeRoundStats flags unanimous vs polarized", () => {
+    const unanimousVotes = new Map([
+      ["a", 1],
+      ["b", 1],
+      ["c", 0],
+    ]);
+    const unanimous = computeRoundStats("test", 1, unanimousVotes);
+    expect(unanimous.wasUnanimous).toBe(true);
+
+    const polarizedVotes = new Map([
+      ["a", -2],
+      ["b", 2],
+      ["c", -1],
+      ["d", 2],
+    ]);
+    const polarized = computeRoundStats("test", 2, polarizedVotes);
+    expect(polarized.wasPolarized).toBe(true);
   });
 });
 

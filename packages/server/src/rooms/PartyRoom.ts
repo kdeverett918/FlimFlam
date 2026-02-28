@@ -38,6 +38,7 @@ export class PartyRoom extends Room<RoomState> {
       gameName: "lobby",
       complexity: "standard",
       playerCount: 0,
+      hotTakePlayerInputEnabled: false,
     });
 
     this._resetIdleTimeout();
@@ -50,6 +51,20 @@ export class PartyRoom extends Room<RoomState> {
         return false;
       }
       return true;
+    };
+
+    const syncHotTakePlayerInputMode = (): void => {
+      if (this.state.selectedGameId !== "hot-take") {
+        this.state.hotTakePlayerInputEnabled = false;
+        return;
+      }
+      if (this.state.complexity === "advanced") {
+        this.state.hotTakePlayerInputEnabled = true;
+        return;
+      }
+      if (this.state.complexity === "kids") {
+        this.state.hotTakePlayerInputEnabled = false;
+      }
     };
 
     const handleSelectGame = (client: Client, data: { gameId?: string }) => {
@@ -72,11 +87,13 @@ export class PartyRoom extends Room<RoomState> {
       }
 
       this.state.selectedGameId = gameId;
+      syncHotTakePlayerInputMode();
       this.setMetadata({
         code: this._roomCode,
         gameName: gameId,
         complexity: this.state.complexity as Complexity,
         playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
       });
     };
 
@@ -90,11 +107,40 @@ export class PartyRoom extends Room<RoomState> {
       }
 
       this.state.complexity = complexity;
+      syncHotTakePlayerInputMode();
       this.setMetadata({
         code: this._roomCode,
         gameName: this.state.selectedGameId || "lobby",
         complexity: complexity as Complexity,
         playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
+      });
+    };
+
+    const handleSetPlayerInput = (client: Client, data: { enabled?: unknown }) => {
+      if (!requireHost(client)) return;
+      if (this.state.selectedGameId !== "hot-take") {
+        this.send(client, "error", { message: "Player Input is only available for Hot Take" });
+        return;
+      }
+
+      if (this.state.complexity === "advanced") {
+        this.state.hotTakePlayerInputEnabled = true;
+      } else if (this.state.complexity === "kids") {
+        this.state.hotTakePlayerInputEnabled = false;
+      } else if (typeof data.enabled === "boolean") {
+        this.state.hotTakePlayerInputEnabled = data.enabled;
+      } else {
+        this.send(client, "error", { message: "Invalid player input toggle value" });
+        return;
+      }
+
+      this.setMetadata({
+        code: this._roomCode,
+        gameName: this.state.selectedGameId || "lobby",
+        complexity: this.state.complexity as Complexity,
+        playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
       });
     };
 
@@ -109,6 +155,7 @@ export class PartyRoom extends Room<RoomState> {
         // Allow passing gameId at start-time (host UI convenience).
         this.state.selectedGameId = data.gameId.trim();
       }
+      syncHotTakePlayerInputMode();
 
       if (!this.state.selectedGameId) {
         this.send(client, "error", { message: "No game selected" });
@@ -149,6 +196,7 @@ export class PartyRoom extends Room<RoomState> {
     // Host messages (preferred)
     this.onMessage("host:select-game", handleSelectGame);
     this.onMessage("host:set-complexity", handleSetComplexity);
+    this.onMessage("host:set-player-input", handleSetPlayerInput);
     this.onMessage("host:start-game", handleStartGame);
     this.onMessage("host:skip", (client) => handleHostSkip(client));
     this.onMessage("host:end-game", (client) => handleHostEnd(client));
@@ -159,6 +207,7 @@ export class PartyRoom extends Room<RoomState> {
     // Backward-compatible aliases (older clients/spec drafts)
     this.onMessage("select-game", handleSelectGame);
     this.onMessage("set-complexity", handleSetComplexity);
+    this.onMessage("set-player-input", handleSetPlayerInput);
     this.onMessage("start-game", handleStartGame);
     this.onMessage("host-skip", (client) => handleHostSkip(client));
     this.onMessage("host-end-game", (client) => handleHostEnd(client));
@@ -169,6 +218,7 @@ export class PartyRoom extends Room<RoomState> {
       const internalTypes = new Set<string>([
         "host:select-game",
         "host:set-complexity",
+        "host:set-player-input",
         "host:start-game",
         "host:skip",
         "host:end-game",
@@ -176,6 +226,7 @@ export class PartyRoom extends Room<RoomState> {
         // legacy aliases
         "select-game",
         "set-complexity",
+        "set-player-input",
         "start-game",
         "host-skip",
         "host-end-game",
@@ -203,6 +254,7 @@ export class PartyRoom extends Room<RoomState> {
         gameName: this.state.selectedGameId || "lobby",
         complexity: this.state.complexity as Complexity,
         playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
       });
       return;
     }
@@ -251,6 +303,7 @@ export class PartyRoom extends Room<RoomState> {
       gameName: this.state.selectedGameId || "lobby",
       complexity: this.state.complexity as Complexity,
       playerCount: this.state.players.size,
+      hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
     });
   }
 
@@ -292,6 +345,7 @@ export class PartyRoom extends Room<RoomState> {
         gameName: this.state.selectedGameId || "lobby",
         complexity: this.state.complexity as Complexity,
         playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
       });
       return;
     }
@@ -317,6 +371,7 @@ export class PartyRoom extends Room<RoomState> {
       gameName: this.state.selectedGameId || "lobby",
       complexity: this.state.complexity as Complexity,
       playerCount: this.state.players.size,
+      hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
     });
   }
 
@@ -360,6 +415,7 @@ export class PartyRoom extends Room<RoomState> {
     this.state.gamePhase = "";
     this.state.phase = "lobby";
     this.state.selectedGameId = "";
+    this.state.hotTakePlayerInputEnabled = false;
     this._currentPlugin = null;
 
     // Reset player states
@@ -413,6 +469,7 @@ export class PartyRoom extends Room<RoomState> {
       gameName: this.state.selectedGameId,
       complexity: this.state.complexity as Complexity,
       playerCount: this.state.players.size,
+      hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
     });
 
     try {

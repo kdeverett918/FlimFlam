@@ -145,6 +145,9 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
+      '@partyline/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@partyline/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
