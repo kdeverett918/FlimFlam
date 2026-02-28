@@ -47,7 +47,11 @@ pnpm build
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm build
+pnpm ci:gate
 ```
+
+See [GitHub gate setup](docs/github-gates.md) for required status checks, branch ruleset, and agent permissions.
 
 ## E2E (Playwright)
 
@@ -98,4 +102,3 @@ Set `PARTYLINE_TIMER_SCALE` (default `1`) to speed up timers:
 set PARTYLINE_TIMER_SCALE=0.05
 pnpm dev
 ```
-
