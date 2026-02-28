@@ -122,6 +122,30 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     }
 
     this.internal.worldState = { ...this.internal.scenario.worldState };
+    this.internal.currentSituation = this.internal.scenario.situation;
+
+    // Ensure scenario is usable even if AI/fallback data is partial.
+    if (!this.internal.scenario.setting.trim()) {
+      this.internal.scenario.setting = "An uncharted world awaits.";
+    }
+    if (!this.internal.scenario.situation.trim()) {
+      this.internal.scenario.situation =
+        "A crisis unfolds. Work together (and against each other) to shape what happens next.";
+      this.internal.currentSituation = this.internal.scenario.situation;
+    }
+
+    if (this.internal.scenario.roles.length < players.size) {
+      const existing = this.internal.scenario.roles.length;
+      for (let i = existing; i < players.size; i++) {
+        this.internal.scenario.roles.push({
+          roleName: `Adventurer ${i + 1}`,
+          publicIdentity: "A capable traveler with a mysterious past",
+          secretObjective: "Steer the story toward your own agenda",
+          specialAbility: "Once per game: bend fate in your favor",
+          scoringCriteria: "Earn points for creative, story-advancing choices",
+        });
+      }
+    }
 
     // Assign roles to players
     const playerKeys: string[] = [];
@@ -153,6 +177,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         secretObjective: role.secretObjective,
         specialAbility: role.specialAbility,
         abilityUsed: false,
+        abilityUsedRound: null,
         scoringCriteria: role.scoringCriteria,
       });
     }
@@ -199,6 +224,29 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     const gamePhase = s.gamePhase as string;
     const players = s.players as MapSchema;
 
+    if ((type === "player:ready" || type === "player-ready") && gamePhase === "role-reveal") {
+      const player = players.get(client.sessionId);
+      if (player) {
+        (player as Record<string, unknown>).ready = true;
+      }
+
+      let active = 0;
+      let readyCount = 0;
+      // biome-ignore lint/complexity/noForEach: MapSchema does not reliably support for...of
+      players.forEach((playerObj: Record<string, unknown>) => {
+        if (playerObj.connected) {
+          active++;
+          if (playerObj.ready) readyCount++;
+        }
+      });
+
+      if (active > 0 && readyCount >= active) {
+        this.clearTimer();
+        this._startRound(room, state);
+      }
+      return;
+    }
+
     if ((type === "player:submit" || type === "submit-action") && gamePhase === "action-input") {
       const msg = data as { content?: unknown };
       const validation = validateAction(msg?.content);
@@ -235,8 +283,9 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         }
       });
       this._broadcastHost(room, state, {
-        narrative: this.internal.scenario.situation,
+        narrative: this.internal.currentSituation || this.internal.scenario.situation,
         submittedPlayerIds,
+        worldState: this.internal.worldState,
       });
 
       // Check if all players submitted
@@ -254,6 +303,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         return;
       }
       roleData.abilityUsed = true;
+      roleData.abilityUsedRound = this.internal.round;
       const p = players.get(client.sessionId) as Record<string, unknown> | undefined;
       if (p) {
         p.abilityOrCustomBool = true;
@@ -296,6 +346,11 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
 
   private _startRound(room: Room, state: Schema): void {
     const s = state as unknown as Record<string, unknown>;
+    const currentPhase = s.gamePhase as string;
+    if (currentPhase === "action-input" || currentPhase === "ai-narrating") {
+      return;
+    }
+
     this.internal.round++;
     s.round = this.internal.round;
 
@@ -304,8 +359,9 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     this.setPhase(state, "action-input");
 
     this._broadcastHost(room, state, {
-      narrative: this.internal.scenario.situation,
+      narrative: this.internal.currentSituation || this.internal.scenario.situation,
       submittedPlayerIds: [],
+      worldState: this.internal.worldState,
     });
 
     this.startPhaseTimer(room, "action-input", this.internal.complexity, async () => {
@@ -322,24 +378,32 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     // Collect actions, using defaults for non-submitters
     const playerActions: { sessionId: string; name: string; role: string; action: string }[] = [];
     players.forEach((player: Record<string, unknown>, key: string) => {
-      if (player.connected) {
-        const existing = this.internal.playerActions.get(key);
-        if (existing) {
-          playerActions.push({ sessionId: key, ...existing });
-        } else {
-          const roleData = this.internal.playerRoles.get(key);
-          playerActions.push({
-            sessionId: key,
-            name: player.name as string,
-            role: roleData?.roleName ?? "Unknown",
-            action: "watches cautiously and does nothing",
-          });
-        }
-      }
+      if (!player.connected) return;
+
+      const roleData = this.internal.playerRoles.get(key);
+      const specialAbility = roleData?.specialAbility ?? "";
+      const existing = this.internal.playerActions.get(key);
+
+      const baseAction = existing?.action ?? "watches cautiously and does nothing";
+      const abilityThisRound =
+        roleData?.abilityUsedRound === this.internal.round && specialAbility.trim().length > 0;
+      const abilityNote = abilityThisRound ? ` (uses special ability: ${specialAbility})` : "";
+
+      playerActions.push({
+        sessionId: key,
+        name: (existing?.name ?? (player.name as string)) as string,
+        role: existing?.role ?? roleData?.roleName ?? "Unknown",
+        action: `${baseAction}${abilityNote}`,
+      });
     });
 
     // Generate narration via AI
     let narrationResult: RoundNarrationResult;
+    const clampProgressDelta = (delta: unknown): number => {
+      const value = typeof delta === "number" ? delta : 0;
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(-1, Math.min(1, Math.trunc(value)));
+    };
 
     try {
       const input = {
@@ -359,20 +423,41 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
       });
 
       const raw = result.parsed;
-      const outcomes = (raw.playerOutcomes ?? raw.player_outcomes ?? []).map((o) => ({
+      const rawOutcomes = (raw.playerOutcomes ?? raw.player_outcomes ?? []).map((o) => ({
         sessionId: o.sessionId ?? o.session_id ?? "",
         narration: o.narration,
         points: clampRoundPoints(o.points),
-        progressDelta: o.progressDelta ?? o.progress_delta ?? 0,
+        progressDelta: clampProgressDelta(o.progressDelta ?? o.progress_delta ?? 0),
         reason: o.reason,
       }));
 
+      const outcomeBySessionId = new Map(
+        rawOutcomes.filter((o) => Boolean(o.sessionId)).map((o) => [o.sessionId, o] as const),
+      );
+
+      const completeOutcomes = playerActions
+        .filter((a) => Boolean(a.sessionId))
+        .map((a) => {
+          const existing = outcomeBySessionId.get(a.sessionId);
+          if (existing) return existing;
+          return {
+            sessionId: a.sessionId,
+            narration: `${a.name} ${a.action}.`,
+            points: SCORING.DEFAULT_ROUND_POINTS,
+            progressDelta: 0,
+            reason: "Participation points",
+          };
+        });
+
+      const worldStateUpdate = (raw.worldStateUpdate ?? raw.world_state_update ?? {}) as Record<
+        string,
+        unknown
+      >;
+
       narrationResult = {
         narration: raw.narration,
-        playerOutcomes: outcomes,
-        worldStateUpdate: (raw.worldStateUpdate ??
-          raw.world_state_update ??
-          {}) as Partial<WorldState>,
+        playerOutcomes: completeOutcomes,
+        worldStateUpdate: worldStateUpdate as Partial<WorldState>,
         dramaticTwist: raw.dramaticTwist ?? raw.dramatic_twist,
       };
     } catch (error) {
@@ -392,8 +477,19 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
 
     // Store narration
     this.internal.narrations.push(narrationResult.narration);
+    this.internal.actionHistory.push({
+      narration: narrationResult.narration,
+      actions: playerActions.map((a) => ({
+        sessionId: a.sessionId,
+        name: a.name,
+        role: a.role,
+        action: a.action,
+      })),
+    });
 
     // Award points
+    const progressStep =
+      this.internal.totalRounds > 0 ? Math.ceil(100 / this.internal.totalRounds) : 0;
     for (const outcome of narrationResult.playerOutcomes) {
       if (outcome.sessionId) {
         this.addPoints(state, outcome.sessionId, outcome.points, outcome.reason);
@@ -402,21 +498,73 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         const player = players.get(outcome.sessionId);
         if (player) {
           const p = player as Record<string, unknown>;
-          p.progressOrCustomInt = ((p.progressOrCustomInt as number) || 0) + outcome.progressDelta;
+          const currentProgress =
+            typeof p.progressOrCustomInt === "number" && Number.isFinite(p.progressOrCustomInt)
+              ? (p.progressOrCustomInt as number)
+              : 0;
+          const nextProgress = Math.max(
+            0,
+            Math.min(100, currentProgress + (outcome.progressDelta ?? 0) * progressStep),
+          );
+          p.progressOrCustomInt = nextProgress;
         }
       }
     }
 
     // Update world state
     if (narrationResult.worldStateUpdate) {
-      const update = narrationResult.worldStateUpdate;
-      if (update.threats) this.internal.worldState.threats = update.threats;
-      if (update.opportunities) this.internal.worldState.opportunities = update.opportunities;
-      if (update.newDevelopments) this.internal.worldState.newDevelopments = update.newDevelopments;
-      if (update.location) this.internal.worldState.location = update.location;
-      if (update.timePressure) this.internal.worldState.timePressure = update.timePressure;
-      if (update.keyResources) this.internal.worldState.keyResources = update.keyResources;
+      const update = narrationResult.worldStateUpdate as unknown as Record<string, unknown>;
+      const toStringArray = (value: unknown): string[] | null => {
+        if (!Array.isArray(value)) return null;
+        return value.filter((v): v is string => typeof v === "string");
+      };
+
+      const threats = toStringArray(update.threats);
+      if (threats !== null) this.internal.worldState.threats = threats;
+
+      const opportunities = toStringArray(update.opportunities);
+      if (opportunities !== null) this.internal.worldState.opportunities = opportunities;
+
+      const newDevelopments = toStringArray(update.newDevelopments ?? update.new_developments);
+      if (newDevelopments !== null) this.internal.worldState.newDevelopments = newDevelopments;
+
+      if (typeof update.location === "string") {
+        this.internal.worldState.location = update.location;
+      }
+
+      const timePressure = update.timePressure ?? update.time_pressure;
+      if (typeof timePressure === "string") {
+        this.internal.worldState.timePressure = timePressure;
+      }
+
+      const keyResources = toStringArray(update.keyResources ?? update.key_resources);
+      if (keyResources !== null) {
+        this.internal.worldState.keyResources = keyResources;
+      }
+
+      if (Array.isArray(update.npcs)) {
+        this.internal.worldState.npcs = (update.npcs as unknown[])
+          .filter((n): n is Record<string, unknown> => Boolean(n) && typeof n === "object")
+          .map((n) => ({
+            name: typeof n.name === "string" ? n.name : "",
+            role: typeof n.role === "string" ? n.role : "",
+            disposition: typeof n.disposition === "string" ? n.disposition : "",
+            status: typeof n.status === "string" ? n.status : undefined,
+          }))
+          .filter((n) => n.name && n.role && n.disposition);
+      }
     }
+
+    const developments = this.internal.worldState.newDevelopments ?? [];
+    const nextSituation =
+      typeof narrationResult.dramaticTwist === "string" && narrationResult.dramaticTwist.trim()
+        ? narrationResult.dramaticTwist.trim()
+        : developments.length > 0
+          ? developments.slice(0, 2).join(" ")
+          : narrationResult.narration;
+
+    this.internal.currentSituation = nextSituation;
+    this.internal.scenario.situation = nextSituation;
 
     this.internal.roundResults.push({
       narration: narrationResult.narration,
@@ -435,6 +583,8 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     this.setPhase(state, "narration-display");
     this._broadcastHost(room, state, {
       narration: narrationResult.narration,
+      worldState: this.internal.worldState,
+      dramaticTwist: narrationResult.dramaticTwist,
     });
 
     this.startPhaseTimer(room, "narration-display", this.internal.complexity, () => {
@@ -466,23 +616,34 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
 
     // Try AI bonus judging
     try {
+      const rounds =
+        this.internal.actionHistory.length > 0
+          ? this.internal.actionHistory.map((r) => ({
+              narration: r.narration,
+              actions: r.actions.map((a) => ({
+                sessionId: a.sessionId,
+                name: a.name,
+                action: a.action,
+              })),
+            }))
+          : this.internal.narrations.map((narration, i) => {
+              const roundActions: { sessionId: string; name: string; action: string }[] = [];
+              players.forEach((player: Record<string, unknown>, key: string) => {
+                roundActions.push({
+                  sessionId: key,
+                  name: player.name as string,
+                  action: `(round ${i + 1} action)`,
+                });
+              });
+              return { narration, actions: roundActions };
+            });
+
       const gameHistory = {
         scenario: {
           setting: this.internal.scenario.setting,
           situation: this.internal.scenario.situation,
         },
-        rounds: this.internal.narrations.map((narration, i) => {
-          const roundActions: { sessionId: string; name: string; action: string }[] = [];
-          // We reconstruct from stored data as best we can
-          players.forEach((player: Record<string, unknown>, key: string) => {
-            roundActions.push({
-              sessionId: key,
-              name: player.name as string,
-              action: `(round ${i + 1} action)`,
-            });
-          });
-          return { narration, actions: roundActions };
-        }),
+        rounds,
       };
 
       const result = await enqueueAIRequest(room.roomId, async () => {
@@ -546,21 +707,19 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     > = {};
     players.forEach((player: Record<string, unknown>, key: string) => {
       const roleData = this.internal.playerRoles.get(key);
+      const rawProgress = (player.progressOrCustomInt as number) || 0;
+      const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
       roleReveals[key] = {
         roleName: roleData?.roleName ?? "Unknown",
         secretObjective: roleData?.secretObjective ?? "",
-        progress: (player.progressOrCustomInt as number) || 0,
+        progress,
       };
     });
 
-    const lastOutcomes = this.internal.roundResults.at(-1)?.playerOutcomes ?? [];
     this._broadcastHost(room, state, {
-      playerOutcomes: lastOutcomes.map((o) => ({
-        sessionId: o.sessionId,
-        narration: o.narration,
-        points: o.points,
-        reason: o.reason,
-      })),
+      roleReveals,
+      bonusAwards: this.internal.bonusResult ?? undefined,
+      worldState: this.internal.worldState,
     });
 
     // Timer before final scores
