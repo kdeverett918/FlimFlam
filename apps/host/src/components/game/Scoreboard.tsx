@@ -129,7 +129,15 @@ export function Scoreboard({ scores, previousScores }: ScoreboardProps) {
               <span className="flex-1 text-[32px] font-medium text-text-primary">{entry.name}</span>
 
               {/* Score */}
-              <span className="font-display text-[40px] text-accent-2">
+              <span
+                className={`font-display text-[40px] ${
+                  entry.score > 0
+                    ? "text-accent-2"
+                    : entry.score < 0
+                      ? "text-accent-1"
+                      : "text-text-muted"
+                }`}
+              >
                 <AnimatedScore target={entry.score} />
               </span>
             </motion.div>

@@ -37,7 +37,15 @@ export function RealityDriftHost({
         />
       );
     case "drift-check":
-      return <DriftCheckView payload={payload} players={players} />;
+      return (
+        <DriftCheckView
+          payload={payload}
+          players={players}
+          timerEndTime={timerEndTime}
+          round={round}
+          totalRounds={totalRounds}
+        />
+      );
     case "results":
       return <DriftResultsView payload={payload} players={players} />;
     case "final-scores":
@@ -85,7 +93,7 @@ function AnsweringView({
   const category = (payload.category as string) ?? "";
   const answeredIds = (payload.answeredPlayerIds as string[]) ?? [];
   const answered = answeredIds.length;
-  const total = players.length;
+  const total = players.filter((p) => p.connected).length;
 
   return (
     <div className="flex min-h-screen flex-col p-12">
@@ -109,10 +117,13 @@ function AnsweringView({
 
       {/* Options */}
       <div className="mb-10 grid grid-cols-2 gap-4">
-        {options.map((option) => (
-          <div key={option} className="rounded-2xl border-2 border-bg-card bg-bg-card/80 p-6">
+        {options.map((option, index) => (
+          <div
+            key={`${index}-${option}`}
+            className="rounded-2xl border-2 border-bg-card bg-bg-card/80 p-6"
+          >
             <span className="mr-4 font-display text-[28px] text-accent-4">
-              {String.fromCharCode(65 + options.indexOf(option))}
+              {String.fromCharCode(65 + index)}
             </span>
             <span className="text-[28px] text-text-primary">{option}</span>
           </div>
@@ -141,75 +152,64 @@ function AnsweringView({
 function DriftCheckView({
   payload,
   players,
+  timerEndTime,
+  round,
+  totalRounds,
 }: {
   payload: Record<string, unknown>;
   players: PlayerData[];
+  timerEndTime: number | null;
+  round: number;
+  totalRounds: number;
 }) {
-  const isDrift = (payload.isDrift as boolean) ?? false;
   const question = (payload.question as string) ?? "";
   const driftVoterIds = (payload.driftVoterIds as string[]) ?? [];
+  const totalConnected = players.filter((p) => p.connected).length;
+  const submitted = players.filter((p) => p.connected && p.hasSubmitted).length;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <h2 className="font-display text-[48px] text-text-muted">REALITY CHECK</h2>
-
-      <p className="max-w-4xl text-center text-[32px] text-text-primary">{question}</p>
-
-      {/* Drift alert animation */}
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
-        className={`rounded-3xl border-4 px-16 py-8 ${
-          isDrift
-            ? "animate-drift-alert border-accent-1 bg-accent-1/10"
-            : "border-accent-2 bg-accent-2/10"
-        }`}
-      >
-        <span className={`font-display text-[72px] ${isDrift ? "text-accent-1" : "text-accent-2"}`}>
-          {isDrift ? "DRIFT!" : "REALITY"}
+    <div className="flex min-h-screen flex-col p-12">
+      {/* Header */}
+      <div className="mb-8 flex items-center justify-between">
+        <span className="font-display text-[28px] text-text-muted">
+          ROUND {round} / {totalRounds}
         </span>
-      </motion.div>
+        {timerEndTime && <Timer endTime={timerEndTime} />}
+      </div>
 
-      {isDrift && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="text-[28px] text-accent-1"
-        >
-          This question was completely made up!
-        </motion.p>
-      )}
+      <div className="flex flex-1 flex-col items-center justify-center gap-10">
+        <h2 className="font-display text-[48px] text-text-muted">REALITY CHECK</h2>
 
-      {/* Who spotted the drift */}
-      {driftVoterIds.length > 0 && (
+        <p className="max-w-4xl text-center text-[32px] text-text-primary">{question}</p>
+
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="flex flex-col items-center gap-3"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 180 }}
+          className="rounded-3xl border-4 border-accent-4/30 bg-bg-card/60 px-16 py-8"
         >
-          <p className="text-[24px] text-text-muted">
-            {isDrift ? "Spotted the drift:" : "Incorrectly called drift:"}
-          </p>
-          <div className="flex gap-3">
-            {driftVoterIds.map((id) => {
-              const player = players.find((p) => p.sessionId === id);
-              if (!player) return null;
-              return (
-                <div
-                  key={id}
-                  className="flex h-[48px] w-[48px] items-center justify-center rounded-full text-[22px] font-bold text-bg-dark"
-                  style={{ backgroundColor: player.avatarColor }}
-                >
-                  {player.name.charAt(0).toUpperCase()}
-                </div>
-              );
-            })}
-          </div>
+          <span className="font-display text-[64px] text-accent-4">REAL OR DRIFT?</span>
         </motion.div>
-      )}
+
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-[24px] text-text-muted">Drift calls: {driftVoterIds.length}</p>
+
+          <div className="flex items-center gap-4">
+            <div className="h-4 w-[300px] overflow-hidden rounded-full bg-bg-card">
+              <motion.div
+                className="h-full rounded-full bg-accent-2"
+                animate={{
+                  width: `${totalConnected > 0 ? (submitted / totalConnected) * 100 : 0}%`,
+                }}
+                transition={{ type: "spring", stiffness: 100 }}
+              />
+            </div>
+            <span className="font-display text-[28px] text-text-primary">
+              {submitted} / {totalConnected}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -275,15 +275,21 @@ function DriftResultsView({
         {playerResults.map((result) => {
           const player = players.find((p) => p.sessionId === result.sessionId);
           if (!player) return null;
+
+          const points = result.points ?? 0;
+          const isPositive = points > 0;
+          const isNegative = points < 0;
           return (
             <motion.div
               key={result.sessionId}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               className={`flex flex-col items-center gap-2 rounded-2xl border-2 p-4 ${
-                result.correct
+                isPositive
                   ? "border-accent-2/50 bg-accent-2/10"
-                  : "border-accent-1/30 bg-accent-1/5"
+                  : isNegative
+                    ? "border-accent-1/50 bg-accent-1/10"
+                    : "border-bg-card bg-bg-card/60"
               }`}
             >
               <div
@@ -294,9 +300,11 @@ function DriftResultsView({
               </div>
               <span className="text-[20px] text-text-primary">{player.name}</span>
               <span
-                className={`font-display text-[22px] ${result.correct ? "text-accent-2" : "text-accent-1"}`}
+                className={`font-display text-[22px] ${
+                  isPositive ? "text-accent-2" : isNegative ? "text-accent-1" : "text-text-muted"
+                }`}
               >
-                {result.correct ? `+${result.points}` : "+0"}
+                {points > 0 ? `+${points}` : points === 0 ? "+0" : `${points}`}
               </span>
             </motion.div>
           );
