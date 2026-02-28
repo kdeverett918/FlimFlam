@@ -2,18 +2,29 @@
 
 import { GameView } from "@/components/game/GameView";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
-import { Scoreboard } from "@/components/game/Scoreboard";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
 import { useRoom } from "@/hooks/useRoom";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export default function RoomPage() {
+  const router = useRouter();
   const params = useParams();
-  const code = (params.code as string)?.toUpperCase() ?? "";
-  const { room, state, players, gameData, createRoom, joinRoom, sendMessage, error, connected } =
-    useRoom();
+  const routeCode = (params.code as string)?.toUpperCase() ?? "";
+  const {
+    room,
+    state,
+    players,
+    gameData,
+    createRoom,
+    joinRoom,
+    sendMessage,
+    error,
+    connected,
+    roomCode,
+    ready,
+  } = useRoom();
   const gameState = useGameState({ state, players, gameData });
   const initialized = useRef(false);
   const [showTransition, setShowTransition] = useState(false);
@@ -22,16 +33,28 @@ export default function RoomPage() {
 
   // Connect to room on mount
   useEffect(() => {
-    if (initialized.current || !code) return;
+    if (!ready || initialized.current || !routeCode) return;
+    if (connected && room) return;
     initialized.current = true;
 
-    // Try to join existing room, or create one
-    joinRoom(code).catch(() => {
-      createRoom().catch((err) => {
-        console.error("Failed to create or join room:", err);
-      });
+    const isCreateRoute = routeCode.length !== 4;
+
+    if (isCreateRoute) {
+      createRoom()
+        .then((createdCode) => {
+          router.replace(`/room/${createdCode}`);
+        })
+        .catch((err) => {
+          console.error("Failed to create room:", err);
+        });
+      return;
+    }
+
+    // Join existing room by code
+    joinRoom(routeCode).catch((err) => {
+      console.error("Failed to join room:", err);
     });
-  }, [code, joinRoom, createRoom]);
+  }, [ready, routeCode, connected, room, joinRoom, createRoom, router]);
 
   // Phase transition effect
   useEffect(() => {
@@ -52,7 +75,9 @@ export default function RoomPage() {
       <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
         <div className="flex flex-col items-center gap-6">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-accent-1/30 border-t-accent-1" />
-          <p className="font-display text-[36px] text-text-muted">Connecting to room {code}...</p>
+          <p className="font-display text-[36px] text-text-muted">
+            {routeCode.length === 4 ? `Connecting to room ${routeCode}...` : "Creating room..."}
+          </p>
           {error && <p className="text-[24px] text-red-400">{error}</p>}
         </div>
       </main>
@@ -67,12 +92,12 @@ export default function RoomPage() {
       {/* Main content based on game phase */}
       {gameState.screenView === "lobby" && (
         <LobbyScreen
-          roomCode={code}
+          roomCode={roomCode ?? routeCode}
           players={gameState.playerList}
           selectedGameId={gameState.selectedGameId}
           complexity={gameState.complexity}
           playerCount={gameState.playerCount}
-          onSelectGame={(gameId) => sendMessage("host:start-game", { gameId })}
+          onSelectGame={(gameId) => sendMessage("host:select-game", { gameId })}
           onSetComplexity={(complexity) => sendMessage("host:set-complexity", { complexity })}
           onStartGame={() => sendMessage("host:start-game", { gameId: gameState.selectedGameId })}
         />
@@ -89,17 +114,6 @@ export default function RoomPage() {
           timerEndTime={gameState.timerEndTime}
           room={room}
         />
-      )}
-
-      {gameState.screenView === "results" && (
-        <div className="flex min-h-screen items-center justify-center p-8">
-          <div className="w-full max-w-4xl">
-            <h1 className="mb-12 text-center font-display text-[64px] text-accent-3">
-              FINAL SCORES
-            </h1>
-            <Scoreboard scores={gameState.scores} />
-          </div>
-        </div>
       )}
     </main>
   );

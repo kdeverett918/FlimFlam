@@ -8,8 +8,8 @@ import {
   getDrawerScore,
   getGuessScore,
   isCorrectGuess,
-} from "./state.js";
-import { pickRandomWord } from "./word-bank.js";
+} from "./state";
+import { pickRandomWord } from "./word-bank";
 
 // biome-ignore lint/style/noNonNullAssertion: manifest is always present for known game IDs
 const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "quick-draw")!;
@@ -17,6 +17,17 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "quick-draw")!;
 export class QuickDrawPlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: QuickDrawInternalState;
+
+  private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
+    const s = state as unknown as Record<string, unknown>;
+    room.broadcast("game-data", {
+      gameId: this.manifest.id,
+      phase: (s.phase as string) ?? (s.gamePhase as string) ?? "",
+      round: (s.round as number) ?? 0,
+      totalRounds: (s.totalRounds as number) ?? 0,
+      payload,
+    });
+  }
 
   createState(): Schema {
     return {} as Schema;
@@ -86,7 +97,7 @@ export class QuickDrawPlugin extends BaseGamePlugin {
         },
         { except: client },
       );
-    } else if (type === "submit-action" && gamePhase === "guessing") {
+    } else if ((type === "player:submit" || type === "submit-action") && gamePhase === "guessing") {
       // Drawer cannot guess
       if (client.sessionId === this.internal.currentDrawerSessionId) {
         return;
@@ -116,12 +127,13 @@ export class QuickDrawPlugin extends BaseGamePlugin {
           (player as Record<string, unknown>).hasSubmitted = true;
         }
 
-        room.broadcast("game-data", {
-          type: "correct-guess",
-          sessionId: client.sessionId,
-          name: (player as Record<string, unknown>)?.name ?? "Unknown",
-          position: position + 1,
-          points,
+        const playerName = ((player as Record<string, unknown>)?.name as string) ?? "Unknown";
+        this.internal.recentGuesses.push({ playerName, guess, correct: true });
+        this.internal.recentGuesses = this.internal.recentGuesses.slice(-20);
+
+        this._broadcastHost(room, state, {
+          drawerId: this.internal.currentDrawerSessionId,
+          recentGuesses: this.internal.recentGuesses,
         });
 
         // Check if all non-drawer players guessed
@@ -133,14 +145,16 @@ export class QuickDrawPlugin extends BaseGamePlugin {
       } else {
         // Wrong guess - broadcast it (so other players can see guesses)
         const player = players.get(client.sessionId);
-        room.broadcast("game-data", {
-          type: "wrong-guess",
-          sessionId: client.sessionId,
-          name: (player as Record<string, unknown>)?.name ?? "Unknown",
-          guess,
+        const playerName = ((player as Record<string, unknown>)?.name as string) ?? "Unknown";
+        this.internal.recentGuesses.push({ playerName, guess, correct: false });
+        this.internal.recentGuesses = this.internal.recentGuesses.slice(-20);
+
+        this._broadcastHost(room, state, {
+          drawerId: this.internal.currentDrawerSessionId,
+          recentGuesses: this.internal.recentGuesses,
         });
       }
-    } else if (type === "host-skip") {
+    } else if (type === "host:skip" || type === "host-skip") {
       if (gamePhase === "picking-drawer" || gamePhase === "drawing" || gamePhase === "guessing") {
         this.clearTimer();
         this._endDrawingRound(room, state);
@@ -172,6 +186,7 @@ export class QuickDrawPlugin extends BaseGamePlugin {
 
     this.internal.guessedPlayers.clear();
     this.internal.guessOrder = [];
+    this.internal.recentGuesses = [];
     this.resetSubmissions(state);
 
     // Pick next drawer (cycling through order)
@@ -184,13 +199,14 @@ export class QuickDrawPlugin extends BaseGamePlugin {
 
     this.setPhase(state, "picking-drawer");
 
-    // Notify everyone who the drawer is
-    room.broadcast("game-data", {
-      type: "drawer-picked",
-      drawerSessionId: this.internal.currentDrawerSessionId,
-      round: this.internal.round,
-      totalRounds: this.internal.totalRounds,
+    // Mark drawer/guesser roles on the schema (for controller UI)
+    const players = s.players as MapSchema;
+    players.forEach((player: Record<string, unknown>, key: string) => {
+      player.role = key === this.internal.currentDrawerSessionId ? "drawer" : "guesser";
     });
+
+    // Host view: show who is drawing
+    this._broadcastHost(room, state, { drawerId: this.internal.currentDrawerSessionId });
 
     // Send the word ONLY to the drawer
     const drawerClient = room.clients.find(
@@ -199,7 +215,15 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     if (drawerClient) {
       room.send(drawerClient, "private-data", {
         word: this.internal.currentWord,
+        isDrawer: true,
       });
+    }
+
+    // Tell everyone else they are guessing (clears stale private state on reconnect)
+    for (const client of room.clients) {
+      if (client.sessionId !== this.internal.currentDrawerSessionId) {
+        room.send(client, "private-data", { isDrawer: false, word: undefined });
+      }
     }
 
     // After a brief pause, start the drawing/guessing phase
@@ -212,20 +236,18 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     this.setPhase(state, "drawing");
     this.internal.roundStartTime = Date.now();
 
-    // Both drawing and guessing happen simultaneously
-    // The phase timer covers the entire draw+guess period
-    room.broadcast("game-data", {
-      type: "drawing-start",
-      wordLength: this.internal.currentWord.length,
-      wordHint: this.internal.currentWord
-        .split("")
-        .map((c) => (c === " " ? " " : "_"))
-        .join(""),
-    });
+    // Clear the shared canvas
+    room.broadcast("clear-canvas", {});
+
+    this._broadcastHost(room, state, { drawerId: this.internal.currentDrawerSessionId });
 
     // After a short delay, also switch to guessing phase (they overlap)
     room.clock.setTimeout(() => {
       this.setPhase(state, "guessing");
+      this._broadcastHost(room, state, {
+        drawerId: this.internal.currentDrawerSessionId,
+        recentGuesses: this.internal.recentGuesses,
+      });
     }, 1000);
 
     this.startPhaseTimer(room, "drawing", this.internal.complexity, () => {
@@ -248,13 +270,9 @@ export class QuickDrawPlugin extends BaseGamePlugin {
       );
     }
 
-    // Broadcast reveal
-    room.broadcast("game-data", {
-      type: "word-reveal",
+    this._broadcastHost(room, state, {
       word: this.internal.currentWord,
-      drawerSessionId: this.internal.currentDrawerSessionId,
-      guessOrder: this.internal.guessOrder,
-      drawerPoints,
+      correctGuessers: this.internal.guessOrder,
     });
 
     this.startPhaseTimer(room, "results-display", this.internal.complexity, () => {
@@ -265,11 +283,7 @@ export class QuickDrawPlugin extends BaseGamePlugin {
   private _advanceAfterReveal(room: Room, state: Schema): void {
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
-      const leaderboard = this.getLeaderboard(state);
-      room.broadcast("game-data", {
-        type: "final-scores",
-        leaderboard,
-      });
+      this._broadcastHost(room, state, {});
     } else {
       this._startRound(room, state);
     }

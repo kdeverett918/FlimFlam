@@ -1,9 +1,9 @@
-export type { GamePlugin } from "./GamePlugin.js";
-export { BaseGamePlugin } from "./BaseGamePlugin.js";
-export { GameRegistry } from "./GameRegistry.js";
-export { ScoringEngine } from "./ScoringEngine.js";
+export type { GamePlugin } from "./GamePlugin";
+export { BaseGamePlugin } from "./BaseGamePlugin";
+export { GameRegistry } from "./GameRegistry";
+export { ScoringEngine } from "./ScoringEngine";
 export {
   computePhaseDuration,
   computeTimerEndTimestamp,
   getRoundCount,
-} from "./TimerSystem.js";
+} from "./TimerSystem";

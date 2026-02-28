@@ -5,9 +5,9 @@ export type {
   RoomOptions,
   RoomMetadata,
   GameSettings,
-} from "./types/room.js";
+} from "./types/room";
 
-export type { PlayerData } from "./types/player.js";
+export type { PlayerData } from "./types/player";
 
 export type {
   GameManifest,
@@ -21,7 +21,7 @@ export type {
   HostViewData,
   PlayerViewData,
   ScoreEntry,
-} from "./types/game.js";
+} from "./types/game";
 
 export type {
   ClientMessageType,
@@ -30,13 +30,14 @@ export type {
   PlayerVoteMessage,
   PlayerDrawStrokeMessage,
   PlayerUseAbilityMessage,
+  HostSelectGameMessage,
   HostStartGameMessage,
   SliderVoteMessage,
   GameDataMessage,
   PrivateDataMessage,
   DrawStrokeBroadcast,
   ErrorMessage,
-} from "./types/messages.js";
+} from "./types/messages";
 
 export type {
   AIRequestOptions,
@@ -51,7 +52,7 @@ export type {
   BonusJudgingResult,
   BluffPrompt,
   TriviaQuestion,
-} from "./types/ai.js";
+} from "./types/ai";
 
 // Schemas
 export {
@@ -61,7 +62,7 @@ export {
   BluffPromptSchema,
   TriviaQuestionSchema,
   TriviaBatchSchema,
-} from "./schemas/ai-responses.js";
+} from "./schemas/ai-responses";
 
 export type {
   GeneratedScenarioRaw,
@@ -70,7 +71,7 @@ export type {
   BluffPromptRaw,
   TriviaQuestionRaw,
   TriviaBatchRaw,
-} from "./schemas/ai-responses.js";
+} from "./schemas/ai-responses";
 
 // Constants
 export {
@@ -91,28 +92,4 @@ export {
   DEFAULT_PHASE_TIMERS,
   AVATAR_COLORS,
   GAME_MANIFESTS,
-} from "./constants.js";
-
-// Test Utilities
-export {
-  createMockClient,
-  resetClientIdCounter,
-  createMockRoom,
-  mockScenarioKids,
-  mockScenarioStandard,
-  mockScenarioAdvanced,
-  mockScenarios,
-  mockNarrationResults,
-  mockBonusJudging,
-  mockBluffPrompts,
-  mockTriviaQuestions,
-  malformedJsonString,
-  partialValidJsonString,
-} from "./test-utils/index.js";
-
-export type {
-  MockClient,
-  MockRoom,
-  MockClock,
-  CreateMockRoomOptions,
-} from "./test-utils/index.js";
+} from "./constants";

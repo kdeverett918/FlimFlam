@@ -1,13 +1,16 @@
 import { createServer } from "node:http";
+import { createRequire } from "node:module";
 import { monitor } from "@colyseus/monitor";
 import { COLYSEUS_PORT, GAME_MANIFESTS } from "@partyline/shared";
-import { Server } from "colyseus";
 import cors from "cors";
 import express from "express";
-import { PartyRoom } from "./rooms/PartyRoom.js";
+import { PartyRoom } from "./rooms/PartyRoom";
 
 // Register all games (this triggers the side-effect of loading game factories into the registry)
-import "./register-games.js";
+import "./register-games";
+
+const require = createRequire(import.meta.url);
+const { Server } = require("colyseus") as typeof import("colyseus");
 
 const app = express();
 app.use(cors());

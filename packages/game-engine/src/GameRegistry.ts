@@ -1,5 +1,5 @@
 import type { GameManifest } from "@partyline/shared";
-import type { GamePlugin } from "./GamePlugin.js";
+import type { GamePlugin } from "./GamePlugin";
 
 type GameFactory = () => GamePlugin;
 

@@ -1,4 +1,4 @@
-import type { Complexity } from "./room.js";
+import type { Complexity } from "./room";
 
 export interface GameManifest {
   id: string;

@@ -12,6 +12,7 @@ export interface QuickDrawInternalState {
   drawerIndex: number;
   guessedPlayers: Set<string>;
   guessOrder: string[];
+  recentGuesses: Array<{ playerName: string; guess: string; correct: boolean }>;
   usedWords: Set<string>;
   roundStartTime: number;
 }
@@ -27,6 +28,7 @@ export function createQuickDrawInternalState(complexity: Complexity): QuickDrawI
     drawerIndex: 0,
     guessedPlayers: new Set(),
     guessOrder: [],
+    recentGuesses: [],
     usedWords: new Set(),
     roundStartTime: 0,
   };

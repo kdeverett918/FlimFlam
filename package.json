@@ -12,10 +12,19 @@
     "test:e2e": "playwright test"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@biomejs/biome", "esbuild", "lefthook", "msgpackr-extract", "sharp"]
+    "onlyBuiltDependencies": [
+      "@biomejs/biome",
+      "esbuild",
+      "lefthook",
+      "msgpackr-extract",
+      "playwright",
+      "sharp"
+    ]
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.0.0",
     "lefthook": "^1.9.4",
     "turbo": "^2.4.4",
     "typescript": "^5.7.3",

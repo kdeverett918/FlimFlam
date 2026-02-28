@@ -215,16 +215,32 @@ export function GameController({
   }
 
   function renderQuickDraw(currentPhase: string) {
+    const isDrawer = Boolean(privateData?.isDrawer);
+    const word = typeof privateData?.word === "string" ? (privateData.word as string) : null;
+
+    // Drawer keeps drawing even after the host transitions to "guessing" (phases overlap).
+    if ((currentPhase === "drawing" || currentPhase === "guessing") && isDrawer) {
+      return (
+        <div className="flex flex-col gap-4 pb-16 pt-4">
+          {word && (
+            <div className="mx-4 rounded-xl border-2 border-accent-2/40 bg-accent-2/10 px-4 py-3 text-center">
+              <div className="text-xs font-medium uppercase tracking-wider text-accent-2">
+                Your Word
+              </div>
+              <div className="font-display text-2xl text-text-primary">{word.toUpperCase()}</div>
+            </div>
+          )}
+          <p className="px-4 text-center text-lg font-medium text-text-primary">
+            Draw the word — be quick!
+          </p>
+          <DrawCanvas onStrokeSend={handleDrawStroke} />
+        </div>
+      );
+    }
+
     switch (currentPhase) {
       case "drawing":
-        return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            <p className="px-4 text-center text-lg font-medium text-text-primary">
-              Draw the word — be quick!
-            </p>
-            <DrawCanvas onStrokeSend={handleDrawStroke} />
-          </div>
-        );
+        return <WaitingScreen phase="drawing" />;
       case "guessing":
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">

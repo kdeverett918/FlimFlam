@@ -11,6 +11,7 @@ interface RoomState {
   complexity: Complexity;
   round: number;
   totalRounds: number;
+  timerEndsAt: number;
 }
 
 interface UseRoomReturn {
@@ -24,10 +25,12 @@ interface UseRoomReturn {
   error: string | null;
   connected: boolean;
   roomCode: string | null;
+  ready: boolean;
 }
 
 const RECONNECT_TOKEN_KEY = "partyline_host_reconnect_token";
 const ROOM_CODE_KEY = "partyline_host_room_code";
+const ROOM_CODE_TIMEOUT_MS = 5000;
 
 export function useRoom(): UseRoomReturn {
   const [room, setRoom] = useState<Room | null>(null);
@@ -37,6 +40,7 @@ export function useRoom(): UseRoomReturn {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const reconnectAttempted = useRef(false);
 
   const attachListeners = useCallback((joinedRoom: Room) => {
@@ -67,6 +71,7 @@ export function useRoom(): UseRoomReturn {
       complexity: (roomState.complexity as Complexity) ?? "standard",
       round: (roomState.round as number) ?? 0,
       totalRounds: (roomState.totalRounds as number) ?? 0,
+      timerEndsAt: (roomState.timerEndsAt as number) ?? 0,
     });
 
     listenField("phase", (value) => {
@@ -87,6 +92,10 @@ export function useRoom(): UseRoomReturn {
 
     listenField("totalRounds", (value) => {
       setState((prev) => (prev ? { ...prev, totalRounds: value as number } : prev));
+    });
+
+    listenField("timerEndsAt", (value) => {
+      setState((prev) => (prev ? { ...prev, timerEndsAt: value as number } : prev));
     });
 
     // Player tracking
@@ -116,29 +125,19 @@ export function useRoom(): UseRoomReturn {
           });
 
           // Listen for individual player changes
-          const p = player as Record<string, unknown>;
-          if (typeof p.listen === "function") {
-            p.listen("score", () => {
+          const schemaPlayer = player as Record<string, unknown>;
+          if (typeof schemaPlayer.listen === "function") {
+            const refresh = () => {
               setPlayers((prev) => {
                 const next = new Map(prev);
-                next.set(key, { ...p } as unknown as PlayerData);
+                next.set(key, player as PlayerData);
                 return next;
               });
-            });
-            p.listen("ready", () => {
-              setPlayers((prev) => {
-                const next = new Map(prev);
-                next.set(key, { ...p } as unknown as PlayerData);
-                return next;
-              });
-            });
-            p.listen("connected", () => {
-              setPlayers((prev) => {
-                const next = new Map(prev);
-                next.set(key, { ...p } as unknown as PlayerData);
-                return next;
-              });
-            });
+            };
+
+            schemaPlayer.listen("score", refresh);
+            schemaPlayer.listen("ready", refresh);
+            schemaPlayer.listen("connected", refresh);
           }
         });
       }
@@ -178,31 +177,56 @@ export function useRoom(): UseRoomReturn {
   const createRoom = useCallback(async (): Promise<string> => {
     setError(null);
     const client = getColyseusClient();
-    const joinedRoom = await client.create("party", {
-      isHost: true,
-      name: "Host",
-    });
+    let joinedRoom: Room;
+    try {
+      joinedRoom = await client.create("party", {
+        isHost: true,
+        name: "Host",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create room";
+      setError(message);
+      throw err;
+    }
     attachListeners(joinedRoom);
 
-    // The room code is in the metadata - wait for it
-    const metadata = joinedRoom.state as Record<string, unknown>;
-    const code = (metadata.roomCode as string) ?? joinedRoom.roomId.slice(0, 4).toUpperCase();
+    const stateObj = joinedRoom.state as Record<string, unknown>;
+    const immediateCode =
+      typeof stateObj.roomCode === "string" && stateObj.roomCode.length === 4
+        ? stateObj.roomCode
+        : null;
+
+    const code =
+      (
+        immediateCode ??
+        (await new Promise<string>((resolve, reject) => {
+          if (typeof stateObj.listen !== "function") {
+            reject(new Error("Room code not available (no state listener)."));
+            return;
+          }
+
+          const timeoutId = setTimeout(() => {
+            reject(new Error("Timed out waiting for room code."));
+          }, ROOM_CODE_TIMEOUT_MS);
+
+          stateObj.listen("roomCode", (value: unknown) => {
+            if (typeof value === "string" && value.length === 4) {
+              clearTimeout(timeoutId);
+              resolve(value);
+            }
+          });
+        }))
+      )?.toUpperCase() ?? "";
+
+    if (!code) {
+      setError("Failed to read room code from server.");
+      throw new Error("Failed to read room code from server.");
+    }
+
     setRoomCode(code);
 
     if (typeof window !== "undefined") {
       sessionStorage.setItem(ROOM_CODE_KEY, code);
-    }
-
-    // Also listen for roomCode in state
-    if (typeof metadata.listen === "function") {
-      metadata.listen("roomCode", (value: unknown) => {
-        if (value) {
-          setRoomCode(value as string);
-          if (typeof window !== "undefined") {
-            sessionStorage.setItem(ROOM_CODE_KEY, value as string);
-          }
-        }
-      });
     }
 
     return code;
@@ -213,20 +237,36 @@ export function useRoom(): UseRoomReturn {
       setError(null);
       const client = getColyseusClient();
 
-      const rooms = await client.getAvailableRooms("party");
-      const target = rooms.find(
-        (r) => r.metadata && (r.metadata as Record<string, unknown>).code === code.toUpperCase(),
-      );
+      let rooms: Array<{ roomId: string; metadata?: unknown }>;
+      try {
+        rooms = await client.getAvailableRooms("party");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to fetch rooms";
+        setError(message);
+        throw err;
+      }
+
+      const target = rooms.find((r) => {
+        if (!r.metadata || typeof r.metadata !== "object") return false;
+        return (r.metadata as Record<string, unknown>).code === code.toUpperCase();
+      });
 
       if (!target) {
         setError(`Room with code "${code}" not found.`);
         return;
       }
 
-      const joinedRoom = await client.joinById(target.roomId, {
-        isHost: true,
-        name: "Host",
-      });
+      let joinedRoom: Room;
+      try {
+        joinedRoom = await client.joinById(target.roomId, {
+          isHost: true,
+          name: "Host",
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to join room";
+        setError(message);
+        throw err;
+      }
       attachListeners(joinedRoom);
       setRoomCode(code.toUpperCase());
 
@@ -251,29 +291,41 @@ export function useRoom(): UseRoomReturn {
     if (reconnectAttempted.current) return;
     reconnectAttempted.current = true;
 
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      setReady(true);
+      return;
+    }
 
     const savedToken = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
     const savedCode = sessionStorage.getItem(ROOM_CODE_KEY);
 
-    if (savedToken) {
-      const client = getColyseusClient();
-      client
-        .reconnect(savedToken)
-        .then((joinedRoom) => {
-          attachListeners(joinedRoom);
-          const metadata = joinedRoom.state as Record<string, unknown>;
-          const code =
-            (metadata.roomCode as string) ??
-            savedCode ??
-            joinedRoom.roomId.slice(0, 4).toUpperCase();
-          setRoomCode(code);
-        })
-        .catch(() => {
-          sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
-          sessionStorage.removeItem(ROOM_CODE_KEY);
-        });
+    if (!savedToken) {
+      setReady(true);
+      return;
     }
+
+    const client = getColyseusClient();
+    client
+      .reconnect(savedToken)
+      .then((joinedRoom) => {
+        attachListeners(joinedRoom);
+        const stateObj = joinedRoom.state as Record<string, unknown>;
+        const codeFromState =
+          typeof stateObj.roomCode === "string" && stateObj.roomCode.length === 4
+            ? stateObj.roomCode
+            : null;
+        const normalized = (codeFromState ?? savedCode ?? "").toUpperCase();
+        if (normalized) {
+          setRoomCode(normalized);
+        }
+      })
+      .catch(() => {
+        sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
+        sessionStorage.removeItem(ROOM_CODE_KEY);
+      })
+      .finally(() => {
+        setReady(true);
+      });
   }, [attachListeners]);
 
   return {
@@ -287,5 +339,6 @@ export function useRoom(): UseRoomReturn {
     error,
     connected,
     roomCode,
+    ready,
   };
 }

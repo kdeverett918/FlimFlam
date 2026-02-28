@@ -29,6 +29,15 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", "dist", ".next", ".turbo", "coverage", "*.tsbuildinfo"]
+    "ignore": [
+      "node_modules",
+      "dist",
+      ".next",
+      ".turbo",
+      "coverage",
+      "playwright-report",
+      "test-results",
+      "*.tsbuildinfo"
+    ]
   }
 }

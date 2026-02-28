@@ -1,9 +1,9 @@
 "use client";
 
-import type { Complexity, HostViewData, PlayerData, ScoreEntry } from "@partyline/shared";
+import type { Complexity, HostViewData, PlayerData } from "@partyline/shared";
 import { useMemo } from "react";
 
-export type ScreenView = "lobby" | "game" | "results";
+export type ScreenView = "lobby" | "game";
 
 export interface GameUIState {
   screenView: ScreenView;
@@ -14,7 +14,6 @@ export interface GameUIState {
   totalRounds: number;
   playerCount: number;
   playerList: PlayerData[];
-  scores: ScoreEntry[];
   isTransitioning: boolean;
   timerEndTime: number | null;
   gamePayload: Record<string, unknown>;
@@ -27,17 +26,16 @@ interface UseGameStateParams {
     complexity: Complexity;
     round: number;
     totalRounds: number;
+    timerEndsAt: number;
   } | null;
   players: Map<string, PlayerData>;
   gameData: HostViewData | null;
 }
 
-const LOBBY_PHASES = new Set(["lobby", ""]);
-const RESULTS_PHASES = new Set(["final-scores"]);
+const LOBBY_PHASES = new Set(["lobby", "", "between-games"]);
 
 function deriveScreenView(phase: string): ScreenView {
   if (LOBBY_PHASES.has(phase)) return "lobby";
-  if (RESULTS_PHASES.has(phase)) return "results";
   return "game";
 }
 
@@ -50,25 +48,13 @@ export function useGameState({ state, players, gameData }: UseGameStateParams): 
     return list.sort((a, b) => b.score - a.score);
   }, [players]);
 
-  const scores: ScoreEntry[] = useMemo(() => {
-    return playerList.map((p, i) => ({
-      sessionId: p.sessionId,
-      name: p.name,
-      score: p.score,
-      rank: i + 1,
-      breakdown: [],
-    }));
-  }, [playerList]);
-
   const phase = state?.phase ?? "lobby";
   const screenView = deriveScreenView(phase);
 
   const timerEndTime = useMemo(() => {
-    if (gameData?.timer) {
-      return gameData.timer.startedAt + gameData.timer.durationMs;
-    }
-    return null;
-  }, [gameData]);
+    const endsAt = state?.timerEndsAt ?? 0;
+    return endsAt > 0 ? endsAt : null;
+  }, [state?.timerEndsAt]);
 
   const gamePayload = useMemo(() => {
     return gameData?.payload ?? {};
@@ -83,7 +69,6 @@ export function useGameState({ state, players, gameData }: UseGameStateParams): 
     totalRounds: state?.totalRounds ?? 0,
     playerCount: playerList.length,
     playerList,
-    scores,
     isTransitioning: false,
     timerEndTime,
     gamePayload,

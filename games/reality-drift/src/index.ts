@@ -13,12 +13,12 @@ import {
   type TriviaQuestionRaw,
 } from "@partyline/shared";
 import type { Client, Room } from "colyseus";
-import { SCORING } from "./scoring.js";
+import { SCORING } from "./scoring";
 import {
   type RealityDriftInternalState,
   computeDriftCount,
   createRealityDriftInternalState,
-} from "./state.js";
+} from "./state";
 
 // biome-ignore lint/style/noNonNullAssertion: manifest is always present for known game IDs
 const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "reality-drift")!;
@@ -26,6 +26,17 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "reality-drift")!;
 export class RealityDriftPlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: RealityDriftInternalState;
+
+  private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
+    const s = state as unknown as Record<string, unknown>;
+    room.broadcast("game-data", {
+      gameId: this.manifest.id,
+      phase: (s.phase as string) ?? (s.gamePhase as string) ?? "",
+      round: (s.round as number) ?? 0,
+      totalRounds: (s.totalRounds as number) ?? 0,
+      payload,
+    });
+  }
 
   createState(): Schema {
     return {} as Schema;
@@ -50,6 +61,7 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     });
 
     this.setPhase(state, "generating-questions");
+    this._broadcastHost(room, state, {});
 
     // Pre-generate ALL questions at once
     const driftCount = computeDriftCount(this.internal.totalRounds, complexity);
@@ -145,14 +157,26 @@ export class RealityDriftPlugin extends BaseGamePlugin {
       p.hasSubmitted = true;
       this.internal.answers.set(client.sessionId, msg.targetIndex);
 
+      const answeredPlayerIds: string[] = [];
+      players.forEach((playerObj: Record<string, unknown>, key: string) => {
+        if (playerObj.connected && playerObj.hasSubmitted) {
+          answeredPlayerIds.push(key);
+        }
+      });
+      this._broadcastHost(room, state, {
+        question: this.internal.currentQuestion?.question ?? "",
+        options: this.internal.currentQuestion?.options ?? [],
+        category: this.internal.currentQuestion?.category ?? "",
+        answeredPlayerIds,
+      });
+
       if (this.allPlayersSubmitted(state)) {
         this.clearTimer();
         this._startDriftCheck(room, state);
       }
-    } else if (type === "submit-action" && gamePhase === "drift-check") {
-      const msg = data as { content?: unknown };
-      const callDrift =
-        msg?.content === "drift" || msg?.content === true || msg?.content === "true";
+    } else if (type === "player:vote" && gamePhase === "drift-check") {
+      const msg = data as { targetIndex?: unknown };
+      const callDrift = msg?.targetIndex === 1;
 
       const player = players.get(client.sessionId);
       if (!player) return;
@@ -166,11 +190,21 @@ export class RealityDriftPlugin extends BaseGamePlugin {
       p.hasSubmitted = true;
       this.internal.driftCalls.set(client.sessionId, callDrift);
 
+      const driftVoterIds: string[] = [];
+      for (const [sid, called] of this.internal.driftCalls) {
+        if (called) driftVoterIds.push(sid);
+      }
+      this._broadcastHost(room, state, {
+        isDrift: this.internal.currentQuestion?.isDrift ?? false,
+        question: this.internal.currentQuestion?.question ?? "",
+        driftVoterIds,
+      });
+
       if (this.allPlayersSubmitted(state)) {
         this.clearTimer();
         this._showResults(room, state);
       }
-    } else if (type === "host-skip") {
+    } else if (type === "host:skip" || type === "host-skip") {
       if (gamePhase === "answering") {
         this.clearTimer();
         this._startDriftCheck(room, state);
@@ -219,15 +253,22 @@ export class RealityDriftPlugin extends BaseGamePlugin {
 
     this.setPhase(state, "answering");
 
-    // Broadcast question (without revealing if it's drift)
-    room.broadcast("game-data", {
-      type: "trivia-question",
+    this._broadcastHost(room, state, {
       question: this.internal.currentQuestion.question,
       options: this.internal.currentQuestion.options,
       category: this.internal.currentQuestion.category,
-      round: this.internal.round,
-      totalRounds: this.internal.totalRounds,
+      answeredPlayerIds: [],
     });
+
+    // Send answer options to controllers
+    for (const client of room.clients) {
+      room.send(client, "private-data", {
+        answerOptions: this.internal.currentQuestion.options.map((opt, index) => ({
+          index,
+          label: opt,
+        })),
+      });
+    }
 
     this.startPhaseTimer(room, "trivia-answer", this.internal.complexity, () => {
       this._startDriftCheck(room, state);
@@ -238,9 +279,10 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     this.resetSubmissions(state);
     this.setPhase(state, "drift-check");
 
-    room.broadcast("game-data", {
-      type: "drift-check",
-      message: "Is this question real or drift (fabricated)?",
+    this._broadcastHost(room, state, {
+      isDrift: this.internal.currentQuestion?.isDrift ?? false,
+      question: this.internal.currentQuestion?.question ?? "",
+      driftVoterIds: [],
     });
 
     // Use the rating timer for drift check
@@ -311,13 +353,20 @@ export class RealityDriftPlugin extends BaseGamePlugin {
       });
     });
 
-    room.broadcast("game-data", {
-      type: "round-results",
-      isDrift,
+    const driftSoFar = this.internal.questions
+      .slice(0, this.internal.round)
+      .filter((q) => q.isDrift).length;
+    const realityMeter = this.internal.round > 0 ? 1 - driftSoFar / this.internal.round : 1;
+
+    this._broadcastHost(room, state, {
       correctAnswer: question.correctAnswer,
-      correctAnswerIndex,
-      question: question.question,
-      playerResults,
+      isDrift,
+      realityMeter,
+      playerResults: playerResults.map((r) => ({
+        sessionId: r.sessionId,
+        correct: r.points > 0,
+        points: r.points,
+      })),
     });
 
     this.startPhaseTimer(room, "results-display", this.internal.complexity, () => {
@@ -335,11 +384,7 @@ export class RealityDriftPlugin extends BaseGamePlugin {
   }
 
   private _showFinalScores(room: Room, state: Schema): void {
-    const leaderboard = this.getLeaderboard(state);
-    room.broadcast("game-data", {
-      type: "final-scores",
-      leaderboard,
-    });
+    this._broadcastHost(room, state, {});
   }
 }
 

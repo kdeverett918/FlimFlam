@@ -5,26 +5,26 @@ export {
   AIApiError,
   AIParseError,
   getTokenUsage,
-} from "./client.js";
+} from "./client";
 
-export { enqueueAIRequest, clearRoomQueue, getQueueSize } from "./queue.js";
+export { enqueueAIRequest, clearRoomQueue, getQueueSize } from "./queue";
 
-export { extractJSON, snakeToCamelCase, transformKeys, parseAIResponse } from "./parser.js";
+export { extractJSON, snakeToCamelCase, transformKeys, parseAIResponse } from "./parser";
 
 export {
   buildScenarioPrompt,
   buildNarrationPrompt,
   buildBonusJudgingPrompt,
-} from "./prompts/world-builder.js";
+} from "./prompts/world-builder";
 
-export { buildBluffPromptGeneration } from "./prompts/bluff-engine.js";
+export { buildBluffPromptGeneration } from "./prompts/bluff-engine";
 
-export { buildTriviaBatchPrompt } from "./prompts/reality-drift.js";
+export { buildTriviaBatchPrompt } from "./prompts/reality-drift";
 
 export {
   FALLBACK_SCENARIOS,
   FALLBACK_BLUFF_PROMPTS,
   FALLBACK_TRIVIA_QUESTIONS,
-} from "./fallbacks.js";
+} from "./fallbacks";
 
-export { CostTracker, costTracker } from "./cost-tracker.js";
+export { CostTracker, costTracker } from "./cost-tracker";

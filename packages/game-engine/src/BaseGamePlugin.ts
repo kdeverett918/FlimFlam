@@ -2,9 +2,9 @@ import type { MapSchema, Schema } from "@colyseus/schema";
 import type { Complexity, GameManifest, ScoreEntry } from "@partyline/shared";
 import { MIN_PLAYERS } from "@partyline/shared";
 import type { Client, Delayed, Room } from "colyseus";
-import type { GamePlugin } from "./GamePlugin.js";
-import { ScoringEngine } from "./ScoringEngine.js";
-import { computePhaseDuration } from "./TimerSystem.js";
+import type { GamePlugin } from "./GamePlugin";
+import { ScoringEngine } from "./ScoringEngine";
+import { computePhaseDuration } from "./TimerSystem";
 
 /** Helper to access schema properties dynamically */
 function asRecord(schema: Schema): Record<string, unknown> {
@@ -95,12 +95,13 @@ export abstract class BaseGamePlugin implements GamePlugin {
    */
   protected setPhase(state: Schema, newPhase: string): void {
     asRecord(state).gamePhase = newPhase;
+    asRecord(state).phase = newPhase;
   }
 
   // ─── Scoring ──────────────────────────────────────────────────────────
 
   /**
-   * Award points to a player and update their totalPoints on the schema.
+   * Award points to a player and update their score on the schema.
    */
   protected addPoints(state: Schema, sessionId: string, points: number, reason: string): void {
     const round = (asRecord(state).round as number) ?? 0;
@@ -110,7 +111,7 @@ export abstract class BaseGamePlugin implements GamePlugin {
     if (players) {
       const player = players.get(sessionId);
       if (player) {
-        (player as unknown as Record<string, unknown>).totalPoints =
+        (player as unknown as Record<string, unknown>).score =
           this.scoringEngine.getTotalPoints(sessionId);
       }
     }

@@ -164,17 +164,18 @@ function CanvasMirror({ room }: { room: Room | null }) {
       drawStroke(stroke);
     };
 
-    room.onMessage("draw-stroke", handler);
+    const unsubscribeStroke = room.onMessage("draw-stroke", handler);
 
     // Clear canvas on phase change
     const clearHandler = () => {
       strokesRef.current = [];
       redrawAll();
     };
-    room.onMessage("clear-canvas", clearHandler);
+    const unsubscribeClear = room.onMessage("clear-canvas", clearHandler);
 
     return () => {
-      room.removeAllListeners();
+      unsubscribeStroke();
+      unsubscribeClear();
     };
   }, [room, drawStroke, redrawAll]);
 

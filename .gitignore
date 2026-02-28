@@ -7,3 +7,6 @@ dist
 .env.local
 coverage
 .pnpm-store
+playwright-report
+test-results
+.cache/ms-playwright

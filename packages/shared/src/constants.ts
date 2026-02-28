@@ -1,5 +1,5 @@
-import type { GameManifest } from "./types/game.js";
-import type { Complexity } from "./types/room.js";
+import type { GameManifest } from "./types/game";
+import type { Complexity } from "./types/room";
 
 export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

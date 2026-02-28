@@ -17,15 +17,16 @@ import {
   GeneratedScenarioRawSchema,
   type RoundNarrationRaw,
   RoundNarrationRawSchema,
+  type RoundNarrationResult,
   type WorldState,
 } from "@partyline/shared";
 import type { Client, Room } from "colyseus";
-import { SCORING, clampRoundPoints } from "./scoring.js";
+import { SCORING, clampRoundPoints } from "./scoring";
 import {
   type WorldBuilderInternalState,
   createInitialInternalState,
   validateAction,
-} from "./state.js";
+} from "./state";
 
 // biome-ignore lint/style/noNonNullAssertion: manifest is always present for known game IDs
 const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "world-builder")!;
@@ -33,6 +34,17 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "world-builder")!;
 export class WorldBuilderPlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: WorldBuilderInternalState;
+
+  private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
+    const s = state as unknown as Record<string, unknown>;
+    room.broadcast("game-data", {
+      gameId: this.manifest.id,
+      phase: (s.phase as string) ?? (s.gamePhase as string) ?? "",
+      round: (s.round as number) ?? 0,
+      totalRounds: (s.totalRounds as number) ?? 0,
+      payload,
+    });
+  }
 
   createState(): Schema {
     // We use the room's RoomState, so this is just a formality.
@@ -148,25 +160,26 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     // Move to role reveal phase
     this.setPhase(state, "role-reveal");
 
-    // Send private data to each player with their secret objective
+    // Send private data to each player with their role + secret objective
     for (const [sessionId, roleData] of this.internal.playerRoles) {
       const client = room.clients.find((c: { sessionId: string }) => c.sessionId === sessionId);
       if (client) {
         room.send(client, "private-data", {
+          role: roleData.roleName,
+          publicIdentity: (players.get(sessionId) as Record<string, unknown> | undefined)
+            ?.publicInfo,
           secretObjective: roleData.secretObjective,
           specialAbility: roleData.specialAbility,
+          abilityId: "special",
           scoringCriteria: roleData.scoringCriteria,
         });
       }
     }
 
-    // Broadcast scenario info to everyone
-    room.broadcast("game-data", {
-      type: "scenario",
+    // Broadcast scenario info for the host view
+    this._broadcastHost(room, state, {
       setting: this.internal.scenario.setting,
       situation: this.internal.scenario.situation,
-      worldState: this.internal.worldState,
-      tone: this.internal.scenario.tone,
     });
 
     // Start role reveal timer, then move to first round
@@ -186,7 +199,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     const gamePhase = s.gamePhase as string;
     const players = s.players as MapSchema;
 
-    if (type === "submit-action" && gamePhase === "action-input") {
+    if ((type === "player:submit" || type === "submit-action") && gamePhase === "action-input") {
       const msg = data as { content?: unknown };
       const validation = validateAction(msg?.content);
 
@@ -214,12 +227,27 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         action: validation.value ?? "",
       });
 
+      // Update host with live submission progress
+      const submittedPlayerIds: string[] = [];
+      players.forEach((playerObj: Record<string, unknown>, key: string) => {
+        if (playerObj.connected && playerObj.hasSubmitted) {
+          submittedPlayerIds.push(key);
+        }
+      });
+      this._broadcastHost(room, state, {
+        narrative: this.internal.scenario.situation,
+        submittedPlayerIds,
+      });
+
       // Check if all players submitted
       if (this.allPlayersSubmitted(state)) {
         this.clearTimer();
         await this._processActions(room, state);
       }
-    } else if (type === "use-ability" && gamePhase === "action-input") {
+    } else if (
+      (type === "player:use-ability" || type === "use-ability") &&
+      gamePhase === "action-input"
+    ) {
       const roleData = this.internal.playerRoles.get(client.sessionId);
       if (!roleData || roleData.abilityUsed) {
         room.send(client, "error", { message: "Ability already used or not available" });
@@ -230,12 +258,8 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
       if (p) {
         p.abilityOrCustomBool = true;
       }
-      room.broadcast("game-data", {
-        type: "ability-used",
-        sessionId: client.sessionId,
-        ability: roleData.specialAbility,
-      });
-    } else if (type === "host-skip") {
+      // Optional: could broadcast an effect to the host.
+    } else if (type === "host:skip" || type === "host-skip") {
       // Host can skip the current phase timer
       if (gamePhase === "role-reveal") {
         this.clearTimer();
@@ -279,12 +303,9 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     this.resetSubmissions(state);
     this.setPhase(state, "action-input");
 
-    // Broadcast world state update
-    room.broadcast("game-data", {
-      type: "round-start",
-      round: this.internal.round,
-      totalRounds: this.internal.totalRounds,
-      worldState: this.internal.worldState,
+    this._broadcastHost(room, state, {
+      narrative: this.internal.scenario.situation,
+      submittedPlayerIds: [],
     });
 
     this.startPhaseTimer(room, "action-input", this.internal.complexity, async () => {
@@ -296,6 +317,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     const s = state as unknown as Record<string, unknown>;
     const players = s.players as MapSchema;
     this.setPhase(state, "ai-narrating");
+    this._broadcastHost(room, state, {});
 
     // Collect actions, using defaults for non-submitters
     const playerActions: { sessionId: string; name: string; role: string; action: string }[] = [];
@@ -317,17 +339,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     });
 
     // Generate narration via AI
-    let narrationResult: {
-      narration: string;
-      playerOutcomes: {
-        sessionId: string;
-        points: number;
-        reason: string;
-        progressDelta: number;
-      }[];
-      worldStateUpdate: Partial<WorldState>;
-      dramaticTwist?: string;
-    };
+    let narrationResult: RoundNarrationResult;
 
     try {
       const input = {
@@ -369,6 +381,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         narration: `Round ${this.internal.round}: The adventurers make their moves. ${playerActions.map((a) => `${a.name} ${a.action}.`).join(" ")} The situation evolves...`,
         playerOutcomes: playerActions.map((a) => ({
           sessionId: a.sessionId,
+          narration: `${a.name} ${a.action}.`,
           points: SCORING.DEFAULT_ROUND_POINTS,
           reason: "Participation points",
           progressDelta: 0,
@@ -405,14 +418,23 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
       if (update.keyResources) this.internal.worldState.keyResources = update.keyResources;
     }
 
-    // Broadcast narration
-    this.setPhase(state, "narration-display");
-    room.broadcast("game-data", {
-      type: "narration",
+    this.internal.roundResults.push({
       narration: narrationResult.narration,
-      outcomes: narrationResult.playerOutcomes,
-      worldState: this.internal.worldState,
+      playerOutcomes: narrationResult.playerOutcomes.map((o) => ({
+        sessionId: o.sessionId,
+        narration: o.narration ?? "",
+        points: o.points,
+        progressDelta: o.progressDelta,
+        reason: o.reason,
+      })),
+      worldStateUpdate: narrationResult.worldStateUpdate,
       dramaticTwist: narrationResult.dramaticTwist,
+    });
+
+    // Broadcast narration for the host
+    this.setPhase(state, "narration-display");
+    this._broadcastHost(room, state, {
+      narration: narrationResult.narration,
     });
 
     this.startPhaseTimer(room, "narration-display", this.internal.complexity, () => {
@@ -438,7 +460,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     players.forEach((player: Record<string, unknown>, key: string) => {
       if (player.connected) {
         this.scoringEngine.addBonus(key, SCORING.SURVIVOR_BONUS, "Survivor Bonus");
-        player.totalPoints = this.scoringEngine.getTotalPoints(key);
+        player.score = this.scoringEngine.getTotalPoints(key);
       }
     });
 
@@ -479,7 +501,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
           this.scoringEngine.addBonus(sid, SCORING.BEST_ACTION_BONUS, "Best Action");
           const p = players.get(sid);
           if (p) {
-            (p as Record<string, unknown>).totalPoints = this.scoringEngine.getTotalPoints(sid);
+            (p as Record<string, unknown>).score = this.scoringEngine.getTotalPoints(sid);
           }
         }
       }
@@ -491,7 +513,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
           this.scoringEngine.addBonus(sid, SCORING.CHAOS_AGENT_BONUS, "Chaos Agent");
           const p = players.get(sid);
           if (p) {
-            (p as Record<string, unknown>).totalPoints = this.scoringEngine.getTotalPoints(sid);
+            (p as Record<string, unknown>).score = this.scoringEngine.getTotalPoints(sid);
           }
         }
       }
@@ -531,11 +553,14 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
       };
     });
 
-    room.broadcast("game-data", {
-      type: "reveal",
-      roleReveals,
-      bonuses: this.internal.bonusResult,
-      leaderboard: this.getLeaderboard(state),
+    const lastOutcomes = this.internal.roundResults.at(-1)?.playerOutcomes ?? [];
+    this._broadcastHost(room, state, {
+      playerOutcomes: lastOutcomes.map((o) => ({
+        sessionId: o.sessionId,
+        narration: o.narration,
+        points: o.points,
+        reason: o.reason,
+      })),
     });
 
     // Timer before final scores
@@ -546,10 +571,8 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
   }
 
   private _showFinalScores(room: Room, state: Schema): void {
-    const leaderboard = this.getLeaderboard(state);
-    room.broadcast("game-data", {
-      type: "final-scores",
-      leaderboard,
+    this._broadcastHost(room, state, {
+      bonusAwards: this.internal.bonusResult ?? undefined,
     });
   }
 }

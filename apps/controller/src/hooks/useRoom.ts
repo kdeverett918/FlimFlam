@@ -37,6 +37,7 @@ interface UseRoomReturn {
   error: string | null;
   connected: boolean;
   myPlayer: PlayerData | null;
+  ready: boolean;
 }
 
 export function useRoom(): UseRoomReturn {
@@ -47,8 +48,10 @@ export function useRoom(): UseRoomReturn {
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [myPlayer, setMyPlayer] = useState<PlayerData | null>(null);
+  const [ready, setReady] = useState(false);
   const previousPhaseRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const reconnectAttempted = useRef(false);
 
   const vibrate = useCallback((duration: number) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -74,7 +77,7 @@ export function useRoom(): UseRoomReturn {
         const stateObj = newState as unknown as Record<string, unknown>;
 
         const phase = (stateObj.phase as string) ?? "lobby";
-        const gameId = (stateObj.gameId as string) ?? "";
+        const gameId = (stateObj.selectedGameId as string) ?? "";
         const round = (stateObj.round as number) ?? 0;
         const totalRounds = (stateObj.totalRounds as number) ?? 0;
         const timerEndsAt = (stateObj.timerEndsAt as number) ?? 0;
@@ -91,6 +94,10 @@ export function useRoom(): UseRoomReturn {
         const playersMap = stateObj.players as
           | Map<string, PlayerData>
           | Record<string, PlayerData>
+          | {
+              forEach?: (cb: (player: unknown, key: string) => void) => void;
+              entries?: () => Iterable<[string, unknown]>;
+            }
           | undefined;
 
         if (playersMap) {
@@ -100,13 +107,18 @@ export function useRoom(): UseRoomReturn {
               playerList.push(player as unknown as PlayerData);
             }
           } else if (typeof playersMap === "object") {
-            // Colyseus MapSchema serialized as object with forEach or plain object
             const mapLike = playersMap as unknown as {
-              entries?: () => Iterable<[string, PlayerData]>;
+              forEach?: (cb: (player: unknown, key: string) => void) => void;
+              entries?: () => Iterable<[string, unknown]>;
             };
-            if (typeof mapLike.entries === "function") {
+            if (typeof mapLike.forEach === "function") {
+              // biome-ignore lint/complexity/noForEach: Colyseus MapSchema exposes forEach but not reliably entries()
+              mapLike.forEach((player: unknown) => {
+                playerList.push(player as PlayerData);
+              });
+            } else if (typeof mapLike.entries === "function") {
               for (const [, player] of mapLike.entries()) {
-                playerList.push(player as unknown as PlayerData);
+                playerList.push(player as PlayerData);
               }
             } else {
               for (const key of Object.keys(playersMap)) {
@@ -154,19 +166,43 @@ export function useRoom(): UseRoomReturn {
   // Try reconnection on mount
   useEffect(() => {
     const tryReconnect = async () => {
-      if (typeof sessionStorage === "undefined") return;
+      if (reconnectAttempted.current) return;
+      reconnectAttempted.current = true;
+
+      if (typeof sessionStorage === "undefined") {
+        setReady(true);
+        return;
+      }
 
       const token = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
-      if (!token) return;
+      if (!token) {
+        setReady(true);
+        return;
+      }
 
       try {
         const client = getColyseusClient();
-        const reconnectedRoom = await client.reconnect(token);
+        // Avoid an indefinite loading state if the server is unreachable.
+        const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
+          client.reconnect(token).then(
+            (joinedRoom) => {
+              clearTimeout(timeout);
+              resolve(joinedRoom);
+            },
+            (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            },
+          );
+        });
         setupRoomListeners(reconnectedRoom);
       } catch {
         // Clear stale tokens
         sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
         sessionStorage.removeItem(ROOM_ID_KEY);
+      } finally {
+        setReady(true);
       }
     };
 
@@ -174,7 +210,9 @@ export function useRoom(): UseRoomReturn {
 
     return () => {
       if (roomRef.current) {
-        roomRef.current.leave(true);
+        // Treat route transitions like an unconsented disconnect so the next page can reconnect
+        // using the saved reconnection token.
+        roomRef.current.leave(false);
         roomRef.current = null;
       }
     };
@@ -230,5 +268,6 @@ export function useRoom(): UseRoomReturn {
     error,
     connected,
     myPlayer,
+    ready,
   };
 }

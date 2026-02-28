@@ -1,4 +1,4 @@
-import type { RoundType } from "./state.js";
+import type { RoundType } from "./state";
 
 /**
  * Hot Take scoring.

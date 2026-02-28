@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+import { clearRoomQueue, costTracker } from "@partyline/ai";
 import type { GamePlugin } from "@partyline/game-engine";
 import { GameRegistry } from "@partyline/game-engine";
 import {
@@ -10,12 +12,15 @@ import {
   ROOM_IDLE_TIMEOUT_MS,
 } from "@partyline/shared";
 import type { Client, Delayed } from "colyseus";
-import { Room } from "colyseus";
-import { GamePlayerSchema, RoomState } from "./LobbyState.js";
-import { generateRoomCode } from "./room-code.js";
+import { GamePlayerSchema, RoomState } from "./LobbyState";
+import { generateRoomCode } from "./room-code";
+
+const require = createRequire(import.meta.url);
+const { Room } = require("colyseus") as typeof import("colyseus");
 
 export class PartyRoom extends Room<RoomState> {
-  maxClients = MAX_PLAYERS;
+  // +1 to allow a non-playing host client in addition to MAX_PLAYERS players.
+  maxClients = MAX_PLAYERS + 1;
 
   private _currentPlugin: GamePlugin | null = null;
   private _roomCode = "";
@@ -25,6 +30,7 @@ export class PartyRoom extends Room<RoomState> {
     const state = new RoomState();
     this._roomCode = generateRoomCode();
     state.roomCode = this._roomCode;
+    state.phase = "lobby";
     this.setState(state);
 
     this.setMetadata({
@@ -38,98 +44,174 @@ export class PartyRoom extends Room<RoomState> {
 
     // ─── Message Handlers ───────────────────────────────────────
 
-    this.onMessage("select-game", (client, data: { gameId: string }) => {
+    const requireHost = (client: Client): boolean => {
       if (client.sessionId !== this.state.hostSessionId) {
-        this.send(client, "error", { message: "Only the host can select a game" });
-        return;
+        this.send(client, "error", { message: "Only the host can do that" });
+        return false;
       }
+      return true;
+    };
+
+    const handleSelectGame = (client: Client, data: { gameId?: string }) => {
+      if (!requireHost(client)) return;
       if (this.state.lobbyPhase !== "waiting" && this.state.lobbyPhase !== "between-games") {
         this.send(client, "error", { message: "Cannot change game during play" });
         return;
       }
-      const plugin = GameRegistry.getGame(data.gameId);
-      if (!plugin) {
-        this.send(client, "error", { message: `Unknown game: ${data.gameId}` });
-        return;
-      }
-      this.state.selectedGameId = data.gameId;
-      this.broadcast("game-data", { type: "game-selected", gameId: data.gameId });
-    });
 
-    this.onMessage("set-complexity", (client, data: { complexity: string }) => {
-      if (client.sessionId !== this.state.hostSessionId) {
-        this.send(client, "error", { message: "Only the host can set complexity" });
+      const gameId = (data.gameId ?? "").trim();
+      if (!gameId) {
+        this.send(client, "error", { message: "No game selected" });
         return;
       }
-      const valid = ["kids", "standard", "advanced"];
-      if (!valid.includes(data.complexity)) {
+
+      const plugin = GameRegistry.getGame(gameId);
+      if (!plugin) {
+        this.send(client, "error", { message: `Unknown game: ${gameId}` });
+        return;
+      }
+
+      this.state.selectedGameId = gameId;
+      this.setMetadata({
+        code: this._roomCode,
+        gameName: gameId,
+        complexity: this.state.complexity as Complexity,
+        playerCount: this.state.players.size,
+      });
+    };
+
+    const handleSetComplexity = (client: Client, data: { complexity?: unknown }) => {
+      if (!requireHost(client)) return;
+      const valid: Complexity[] = ["kids", "standard", "advanced"];
+      const complexity = data.complexity;
+      if (typeof complexity !== "string" || !valid.includes(complexity as Complexity)) {
         this.send(client, "error", { message: "Invalid complexity" });
         return;
       }
-      this.state.complexity = data.complexity;
+
+      this.state.complexity = complexity;
       this.setMetadata({
         code: this._roomCode,
         gameName: this.state.selectedGameId || "lobby",
-        complexity: data.complexity as Complexity,
+        complexity: complexity as Complexity,
         playerCount: this.state.players.size,
       });
-    });
+    };
 
-    this.onMessage("start-game", (client, _data: unknown) => {
-      if (client.sessionId !== this.state.hostSessionId) {
-        this.send(client, "error", { message: "Only the host can start the game" });
+    const handleStartGame = (client: Client, data: { gameId?: string }) => {
+      if (!requireHost(client)) return;
+      if (this.state.lobbyPhase === "in-game") {
+        this.send(client, "error", { message: "Game already in progress" });
         return;
       }
+
+      if (typeof data?.gameId === "string" && data.gameId.trim()) {
+        // Allow passing gameId at start-time (host UI convenience).
+        this.state.selectedGameId = data.gameId.trim();
+      }
+
       if (!this.state.selectedGameId) {
         this.send(client, "error", { message: "No game selected" });
+        return;
+      }
+
+      if (!GameRegistry.getGame(this.state.selectedGameId)) {
+        this.send(client, "error", { message: `Unknown game: ${this.state.selectedGameId}` });
         return;
       }
       if (this.state.players.size < MIN_PLAYERS) {
         this.send(client, "error", { message: `Need at least ${MIN_PLAYERS} players` });
         return;
       }
-      if (this.state.lobbyPhase === "in-game") {
-        this.send(client, "error", { message: "Game already in progress" });
-        return;
-      }
 
       this._startGame();
-    });
+    };
 
-    this.onMessage("host-skip", (client, _data: unknown) => {
-      if (client.sessionId !== this.state.hostSessionId) {
-        return;
-      }
-      // Let the plugin handle skip if it wants to
+    const handleHostSkip = (client: Client) => {
+      if (!requireHost(client)) return;
       if (this._currentPlugin) {
-        this._currentPlugin.onPlayerMessage(this, this.state, client, "host-skip", {});
+        this._currentPlugin.onPlayerMessage(this, this.state, client, "host:skip", {});
       }
-    });
+    };
 
-    this.onMessage("host-end-game", (client, _data: unknown) => {
-      if (client.sessionId !== this.state.hostSessionId) {
-        return;
-      }
+    const handleHostEnd = (client: Client) => {
+      if (!requireHost(client)) return;
       this.transitionToLobby();
-    });
+    };
 
-    this.onMessage("player-ready", (client, _data: unknown) => {
+    const handlePlayerReady = (client: Client) => {
       const player = this.state.players.get(client.sessionId);
       if (player) {
-        player.hasSubmitted = true;
+        player.ready = true;
       }
-    });
+    };
+
+    // Host messages (preferred)
+    this.onMessage("host:select-game", handleSelectGame);
+    this.onMessage("host:set-complexity", handleSetComplexity);
+    this.onMessage("host:start-game", handleStartGame);
+    this.onMessage("host:skip", (client) => handleHostSkip(client));
+    this.onMessage("host:end-game", (client) => handleHostEnd(client));
+
+    // Player messages (preferred)
+    this.onMessage("player:ready", (client) => handlePlayerReady(client));
+
+    // Backward-compatible aliases (older clients/spec drafts)
+    this.onMessage("select-game", handleSelectGame);
+    this.onMessage("set-complexity", handleSetComplexity);
+    this.onMessage("start-game", handleStartGame);
+    this.onMessage("host-skip", (client) => handleHostSkip(client));
+    this.onMessage("host-end-game", (client) => handleHostEnd(client));
+    this.onMessage("player-ready", (client) => handlePlayerReady(client));
 
     // Wildcard handler: delegate all other messages to the current game plugin
     this.onMessage("*", (client, type, data) => {
+      const internalTypes = new Set<string>([
+        "host:select-game",
+        "host:set-complexity",
+        "host:start-game",
+        "host:skip",
+        "host:end-game",
+        "player:ready",
+        // legacy aliases
+        "select-game",
+        "set-complexity",
+        "start-game",
+        "host-skip",
+        "host-end-game",
+        "player-ready",
+      ]);
+
+      if (typeof type === "string" && internalTypes.has(type)) {
+        return;
+      }
+
       if (this._currentPlugin && this.state.lobbyPhase === "in-game") {
         this._currentPlugin.onPlayerMessage(this, this.state, client, type as string, data);
       }
     });
   }
 
-  onJoin(client: Client, options: { name?: string; isHost?: boolean; color?: number }): void {
+  onJoin(client: Client, options: { name?: string; isHost?: boolean; color?: string }): void {
     this._resetIdleTimeout();
+
+    if (options.isHost) {
+      // Host connects as a non-playing client. Players join from their own devices.
+      this.state.hostSessionId = client.sessionId;
+      this.setMetadata({
+        code: this._roomCode,
+        gameName: this.state.selectedGameId || "lobby",
+        complexity: this.state.complexity as Complexity,
+        playerCount: this.state.players.size,
+      });
+      return;
+    }
+
+    if (this.state.players.size >= MAX_PLAYERS) {
+      this.send(client, "error", { message: "Room is full" });
+      client.leave(1000);
+      return;
+    }
 
     const name = (options.name ?? "Player").slice(0, MAX_NAME_LENGTH).trim() || "Player";
 
@@ -150,14 +232,14 @@ export class PartyRoom extends Room<RoomState> {
     player.sessionId = client.sessionId;
     player.name = finalName;
 
-    // Assign avatar color based on join order
-    const colorIndex = this.state.players.size % AVATAR_COLORS.length;
-    player.avatarColor = AVATAR_COLORS[colorIndex] ?? "#FF3366";
-
-    // First player is the host
-    if (this.state.players.size === 0) {
-      player.isHost = true;
-      this.state.hostSessionId = client.sessionId;
+    // Use player-selected color when provided, else assign based on join order.
+    if (typeof options.color === "string" && /^#?[0-9a-fA-F]{6}$/.test(options.color.trim())) {
+      player.avatarColor = options.color.trim().startsWith("#")
+        ? options.color.trim()
+        : `#${options.color.trim()}`;
+    } else {
+      const colorIndex = this.state.players.size % AVATAR_COLORS.length;
+      player.avatarColor = AVATAR_COLORS[colorIndex] ?? "#FF3366";
     }
 
     player.connected = true;
@@ -170,14 +252,10 @@ export class PartyRoom extends Room<RoomState> {
       complexity: this.state.complexity as Complexity,
       playerCount: this.state.players.size,
     });
-
-    // Lock at max
-    if (this.state.players.size >= MAX_PLAYERS) {
-      this.lock();
-    }
   }
 
   async onLeave(client: Client, consented: boolean): Promise<void> {
+    const isHostClient = client.sessionId === this.state.hostSessionId;
     const player = this.state.players.get(client.sessionId);
     if (player) {
       player.connected = false;
@@ -202,11 +280,36 @@ export class PartyRoom extends Room<RoomState> {
       // Reconnection timed out or was rejected
     }
 
-    // Fully remove if consent or reconnection failed
-    // Check if we should transfer host
-    if (player?.isHost) {
+    if (isHostClient) {
+      this.state.hostSessionId = "";
+      if (this.state.lobbyPhase === "in-game") {
+        this.broadcast("error", { message: "Host disconnected. Returning to lobby." });
+        this.transitionToLobby();
+      }
+
+      this.setMetadata({
+        code: this._roomCode,
+        gameName: this.state.selectedGameId || "lobby",
+        complexity: this.state.complexity as Complexity,
+        playerCount: this.state.players.size,
+      });
+      return;
+    }
+
+    // Fully remove if consent or reconnection failed.
+    // This keeps player counts and host assignment accurate.
+    const wasHost = player?.isHost ?? false;
+    this.state.players.delete(client.sessionId);
+
+    if (wasHost) {
       this._transferHost(client.sessionId);
     }
+
+    if (this.state.lobbyPhase !== "in-game") {
+      this.unlock();
+    }
+
+    this._resetIdleTimeout();
 
     // Update metadata
     this.setMetadata({
@@ -219,6 +322,8 @@ export class PartyRoom extends Room<RoomState> {
 
   onDispose(): void {
     this._clearIdleTimeout();
+    clearRoomQueue(this.roomId);
+    costTracker.clearRoom(this.roomId);
   }
 
   // ─── Transitions ──────────────────────────────────────────────────
@@ -226,13 +331,15 @@ export class PartyRoom extends Room<RoomState> {
   transitionToBetweenGames(): void {
     this.state.lobbyPhase = "between-games";
     this.state.gamePhase = "";
+    this.state.phase = "between-games";
     this._currentPlugin = null;
 
     // Reset player states for next game
     // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
     this.state.players.forEach((player) => {
+      player.ready = false;
       player.hasSubmitted = false;
-      player.totalPoints = 0;
+      player.score = 0;
       player.role = "";
       player.publicInfo = "";
       player.progressOrCustomInt = 0;
@@ -244,25 +351,23 @@ export class PartyRoom extends Room<RoomState> {
     this.state.totalRounds = 0;
     this.state.timerEndsAt = 0;
 
-    this.broadcast("game-data", { type: "between-games" });
-
-    // Unlock for new players
-    if (this.state.players.size < MAX_PLAYERS) {
-      this.unlock();
-    }
+    // Unlock so a host can (re)join even if the player list is full.
+    this.unlock();
   }
 
   transitionToLobby(): void {
     this.state.lobbyPhase = "waiting";
     this.state.gamePhase = "";
+    this.state.phase = "lobby";
     this.state.selectedGameId = "";
     this._currentPlugin = null;
 
     // Reset player states
     // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
     this.state.players.forEach((player) => {
+      player.ready = false;
       player.hasSubmitted = false;
-      player.totalPoints = 0;
+      player.score = 0;
       player.role = "";
       player.publicInfo = "";
       player.progressOrCustomInt = 0;
@@ -274,11 +379,8 @@ export class PartyRoom extends Room<RoomState> {
     this.state.totalRounds = 0;
     this.state.timerEndsAt = 0;
 
-    this.broadcast("game-data", { type: "return-to-lobby" });
-
-    if (this.state.players.size < MAX_PLAYERS) {
-      this.unlock();
-    }
+    // Unlock so a host can (re)join even if the player list is full.
+    this.unlock();
   }
 
   // ─── Private Helpers ──────────────────────────────────────────────
@@ -293,8 +395,9 @@ export class PartyRoom extends Room<RoomState> {
     // Reset all player game state
     // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
     this.state.players.forEach((player) => {
+      player.ready = false;
       player.hasSubmitted = false;
-      player.totalPoints = 0;
+      player.score = 0;
       player.role = "";
       player.publicInfo = "";
       player.progressOrCustomInt = 0;
@@ -327,6 +430,12 @@ export class PartyRoom extends Room<RoomState> {
   }
 
   private _transferHost(leavingSessionId: string): void {
+    this.state.hostSessionId = "";
+    // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
+    this.state.players.forEach((p) => {
+      p.isHost = false;
+    });
+
     let newHostFound = false;
     this.state.players.forEach((player, key) => {
       if (!newHostFound && key !== leavingSessionId && player.connected) {

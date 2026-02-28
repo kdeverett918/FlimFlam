@@ -10,17 +10,13 @@ import { useEffect } from "react";
 
 export default function PlayPage() {
   const router = useRouter();
-  const { state, players, privateData, sendMessage, connected, myPlayer, error } = useRoom();
+  const { state, players, privateData, sendMessage, connected, myPlayer, error, ready } = useRoom();
 
-  // Redirect to join page if not connected after a short delay
+  // Only redirect after we've finished attempting an auto-reconnect.
   useEffect(() => {
-    if (!connected) {
-      const timeout = setTimeout(() => {
-        router.push("/");
-      }, 3000);
-      return () => clearTimeout(timeout);
-    }
-  }, [connected, router]);
+    if (!ready || connected) return;
+    router.push("/");
+  }, [connected, ready, router]);
 
   if (!connected) {
     return (

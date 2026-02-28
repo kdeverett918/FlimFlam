@@ -1,24 +1,16 @@
 "use client";
 
-import { useRoom } from "@/hooks/useRoom";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 export default function HomePage() {
   const router = useRouter();
-  const { createRoom, error } = useRoom();
   const [loading, setLoading] = useState(false);
 
   const handleCreateRoom = useCallback(async () => {
     setLoading(true);
-    try {
-      const code = await createRoom();
-      router.push(`/room/${code}`);
-    } catch (err) {
-      console.error("Failed to create room:", err);
-      setLoading(false);
-    }
-  }, [createRoom, router]);
+    router.push("/room/new");
+  }, [router]);
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
@@ -74,13 +66,6 @@ export default function HomePage() {
           <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-accent-1/10 to-transparent" />
           <span className="relative">{loading ? "CONNECTING..." : "CREATE ROOM"}</span>
         </button>
-
-        {/* Error display */}
-        {error && (
-          <div className="rounded-xl border border-red-500/50 bg-red-500/10 px-8 py-4 text-[24px] text-red-400">
-            {error}
-          </div>
-        )}
 
         {/* Footer info */}
         <div className="flex flex-col items-center gap-2 text-[20px] text-text-muted">

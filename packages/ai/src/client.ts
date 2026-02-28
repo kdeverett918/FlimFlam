@@ -6,7 +6,7 @@ import {
   AI_REQUEST_TIMEOUT_MS,
 } from "@partyline/shared";
 import type { ZodSchema } from "zod";
-import { parseAIResponse } from "./parser.js";
+import { parseAIResponse } from "./parser";
 
 const MODEL = "claude-sonnet-4-5-20250929";
 

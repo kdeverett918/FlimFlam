@@ -3,7 +3,7 @@
 import { JoinForm } from "@/components/join/JoinForm";
 import { useRoom } from "@/hooks/useRoom";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback } from "react";
+import { Suspense, useCallback, useEffect } from "react";
 
 function JoinPageContent() {
   const searchParams = useSearchParams();
@@ -14,18 +14,26 @@ function JoinPageContent() {
 
   const handleJoin = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
-      const success = await joinRoom(code, name, color);
-      if (success) {
-        router.push("/play");
-      }
-      return success;
+      return joinRoom(code, name, color);
     },
-    [joinRoom, router],
+    [joinRoom],
   );
 
+  useEffect(() => {
+    if (connected) {
+      router.replace("/play");
+    }
+  }, [connected, router]);
+
   if (connected) {
-    router.push("/play");
-    return null;
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-text-muted/30 border-t-accent-1" />
+          <p className="text-text-muted">Joining room...</p>
+        </div>
+      </main>
+    );
   }
 
   return (

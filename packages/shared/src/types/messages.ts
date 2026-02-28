@@ -5,6 +5,7 @@ export type ClientMessageType =
   | "player:ready"
   | "player:draw-stroke"
   | "player:use-ability"
+  | "host:select-game"
   | "host:start-game"
   | "host:next-round"
   | "host:skip"
@@ -35,6 +36,11 @@ export interface PlayerUseAbilityMessage {
 
 export interface HostStartGameMessage {
   type: "host:start-game";
+  gameId: string;
+}
+
+export interface HostSelectGameMessage {
+  type: "host:select-game";
   gameId: string;
 }
 

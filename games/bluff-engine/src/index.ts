@@ -13,14 +13,14 @@ import {
   GAME_MANIFESTS,
 } from "@partyline/shared";
 import type { Client, Room } from "colyseus";
-import { SCORING } from "./scoring.js";
+import { SCORING } from "./scoring";
 import {
   type BluffEngineInternalState,
   createBluffInternalState,
   isTooSimilarToReal,
   shuffleArray,
   validateAnswer,
-} from "./state.js";
+} from "./state";
 
 // biome-ignore lint/style/noNonNullAssertion: manifest is always present for known game IDs
 const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "bluff-engine")!;
@@ -28,6 +28,17 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "bluff-engine")!;
 export class BluffEnginePlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: BluffEngineInternalState;
+
+  private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
+    const s = state as unknown as Record<string, unknown>;
+    room.broadcast("game-data", {
+      gameId: this.manifest.id,
+      phase: (s.phase as string) ?? (s.gamePhase as string) ?? "",
+      round: (s.round as number) ?? 0,
+      totalRounds: (s.totalRounds as number) ?? 0,
+      payload,
+    });
+  }
 
   createState(): Schema {
     return {} as Schema;
@@ -65,7 +76,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     const gamePhase = s.gamePhase as string;
     const players = s.players as MapSchema;
 
-    if (type === "submit-action" && gamePhase === "answer-input") {
+    if ((type === "player:submit" || type === "submit-action") && gamePhase === "answer-input") {
       const msg = data as { content?: unknown };
       const validation = validateAnswer(msg?.content);
 
@@ -97,6 +108,18 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       p.hasSubmitted = true;
       p.currentInput = validation.value ?? "";
       this.internal.fakeAnswers.set(client.sessionId, validation.value ?? "");
+
+      const submittedPlayerIds: string[] = [];
+      players.forEach((playerObj: Record<string, unknown>, key: string) => {
+        if (playerObj.connected && playerObj.hasSubmitted) {
+          submittedPlayerIds.push(key);
+        }
+      });
+      this._broadcastHost(room, state, {
+        question: this.internal.currentPrompt?.question ?? "",
+        category: this.internal.currentPrompt?.category ?? "",
+        submittedPlayerIds,
+      });
 
       if (this.allPlayersSubmitted(state)) {
         this.clearTimer();
@@ -133,11 +156,23 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       p.hasSubmitted = true;
       this.internal.votes.set(client.sessionId, msg.targetIndex);
 
+      const votedPlayerIds: string[] = [];
+      players.forEach((playerObj: Record<string, unknown>, key: string) => {
+        if (playerObj.connected && playerObj.hasSubmitted) {
+          votedPlayerIds.push(key);
+        }
+      });
+      this._broadcastHost(room, state, {
+        question: this.internal.currentPrompt?.question ?? "",
+        answers: this.internal.answerOptions.map((o, index) => ({ text: o.text, index })),
+        votedPlayerIds,
+      });
+
       if (this.allPlayersSubmitted(state)) {
         this.clearTimer();
         this._showResults(room, state);
       }
-    } else if (type === "host-skip") {
+    } else if (type === "host:skip" || type === "host-skip") {
       if (gamePhase === "answer-input") {
         this.clearTimer();
         this._startVoting(room, state);
@@ -175,6 +210,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     this.resetSubmissions(state);
 
     this.setPhase(state, "generating-prompt");
+    this._broadcastHost(room, state, {});
 
     // Generate prompt via AI
     const previousAccuracy =
@@ -222,13 +258,10 @@ export class BluffEnginePlugin extends BaseGamePlugin {
 
     this.setPhase(state, "answer-input");
 
-    // Broadcast the question (not the answer!)
-    room.broadcast("game-data", {
-      type: "bluff-question",
+    this._broadcastHost(room, state, {
       question: this.internal.currentPrompt.question,
       category: this.internal.currentPrompt.category,
-      round: this.internal.round,
-      totalRounds: this.internal.totalRounds,
+      submittedPlayerIds: [],
     });
 
     this.startPhaseTimer(room, "answer-input", this.internal.complexity, () => {
@@ -267,12 +300,18 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     shuffleArray(options);
     this.internal.answerOptions = options;
 
-    // Broadcast options (without revealing which is real)
-    room.broadcast("game-data", {
-      type: "vote-options",
-      options: options.map((o) => o.text),
-      question: this.internal.currentPrompt?.question,
+    this._broadcastHost(room, state, {
+      question: this.internal.currentPrompt?.question ?? "",
+      answers: options.map((o, index) => ({ text: o.text, index })),
+      votedPlayerIds: [],
     });
+
+    // Send voting options to controllers
+    for (const client of room.clients) {
+      room.send(client, "private-data", {
+        voteOptions: options.map((o, index) => ({ index, label: o.text })),
+      });
+    }
 
     this.startPhaseTimer(room, "voting", this.internal.complexity, () => {
       this._showResults(room, state);
@@ -282,9 +321,6 @@ export class BluffEnginePlugin extends BaseGamePlugin {
   private _showResults(room: Room, state: Schema): void {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
     this.setPhase(state, "results");
-
-    // Find the real answer index
-    const realIndex = this.internal.answerOptions.findIndex((o) => o.isReal);
 
     // Score each voter
     const roundResults: {
@@ -340,19 +376,27 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       this.addPoints(state, authorId, points, `Fooled ${count} player${count > 1 ? "s" : ""}`);
     }
 
-    // Broadcast results
-    room.broadcast("game-data", {
-      type: "round-results",
-      realAnswerIndex: realIndex,
-      realAnswer: this.internal.currentPrompt?.realAnswer,
-      options: this.internal.answerOptions.map((o) => ({
+    const voterNamesByIndex = new Map<number, string[]>();
+    for (const [voterId, votedIndex] of this.internal.votes) {
+      const voter = players.get(voterId) as Record<string, unknown> | undefined;
+      if (!voter) continue;
+      const list = voterNamesByIndex.get(votedIndex) ?? [];
+      list.push((voter.name as string) ?? "Unknown");
+      voterNamesByIndex.set(votedIndex, list);
+    }
+
+    this._broadcastHost(room, state, {
+      answers: this.internal.answerOptions.map((o, index) => ({
         text: o.text,
+        index,
         isReal: o.isReal,
-        authorSessionId: o.authorSessionId,
+        authorName: o.authorSessionId
+          ? ((players.get(o.authorSessionId) as Record<string, unknown> | undefined)?.name as
+              | string
+              | undefined)
+          : undefined,
+        voterNames: voterNamesByIndex.get(index) ?? [],
       })),
-      votes: Object.fromEntries(this.internal.votes),
-      roundResults,
-      foolCounts: Object.fromEntries(foolCounts),
     });
 
     this.startPhaseTimer(room, "results-display", this.internal.complexity, () => {
@@ -363,11 +407,7 @@ export class BluffEnginePlugin extends BaseGamePlugin {
   private async _advanceAfterResults(room: Room, state: Schema): Promise<void> {
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
-      const leaderboard = this.getLeaderboard(state);
-      room.broadcast("game-data", {
-        type: "final-scores",
-        leaderboard,
-      });
+      this._broadcastHost(room, state, {});
     } else {
       await this._startRound(room, state);
     }

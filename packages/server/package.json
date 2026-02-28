@@ -25,7 +25,7 @@
     "@partyline/hot-take": "workspace:*",
     "colyseus": "^0.15.55",
     "@colyseus/schema": "^2.0.35",
-    "@colyseus/monitor": "^0.17.7",
+    "@colyseus/monitor": "^0.16.7",
     "express": "^4.21.2",
     "cors": "^2.8.5"
   },
