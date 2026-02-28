@@ -10,6 +10,7 @@ import {
   type Complexity,
   GAME_MANIFESTS,
   TriviaBatchSchema,
+  type TriviaQuestion,
   type TriviaQuestionRaw,
 } from "@partyline/shared";
 import type { Client, Room } from "colyseus";
@@ -17,6 +18,7 @@ import { SCORING } from "./scoring";
 import {
   type RealityDriftInternalState,
   computeDriftCount,
+  computeDriftSchedule,
   createRealityDriftInternalState,
 } from "./state";
 
@@ -66,6 +68,7 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     // Pre-generate ALL questions at once
     const driftCount = computeDriftCount(this.internal.totalRounds, complexity);
 
+    const generatedQuestions: TriviaQuestion[] = [];
     try {
       const result = await enqueueAIRequest(room.roomId, async () => {
         const prompts = buildTriviaBatchPrompt(complexity, this.internal.totalRounds, driftCount);
@@ -77,44 +80,25 @@ export class RealityDriftPlugin extends BaseGamePlugin {
         );
       });
 
-      this.internal.questions = result.parsed.questions.map((q) => ({
-        question: q.question,
-        correctAnswer: q.correctAnswer ?? q.correct_answer ?? "",
-        options: q.options,
-        isDrift: q.isDrift ?? q.is_drift ?? false,
-        category: q.category,
-      }));
-
-      // Ensure we have enough questions
-      while (this.internal.questions.length < this.internal.totalRounds) {
-        const fallback =
-          FALLBACK_TRIVIA_QUESTIONS[
-            this.internal.questions.length % FALLBACK_TRIVIA_QUESTIONS.length
-          ];
-        if (fallback) this.internal.questions.push(fallback);
+      for (const q of result.parsed.questions) {
+        generatedQuestions.push({
+          question: q.question,
+          correctAnswer: q.correctAnswer ?? q.correct_answer ?? "",
+          options: q.options,
+          isDrift: q.isDrift ?? q.is_drift ?? false,
+          category: q.category ?? "",
+        });
       }
     } catch (error) {
       console.warn("AI trivia generation failed, using fallbacks:", error);
-      // Shuffle fallbacks and take what we need
-      const shuffled = [...FALLBACK_TRIVIA_QUESTIONS].sort(() => Math.random() - 0.5);
-      this.internal.questions = shuffled.slice(0, this.internal.totalRounds);
-      // Ensure at least some are drift
-      let driftSoFar = this.internal.questions.filter((q) => q.isDrift).length;
-      for (let i = 0; i < this.internal.questions.length && driftSoFar < driftCount; i++) {
-        const q = this.internal.questions[i];
-        if (!q) continue;
-        if (!q.isDrift) {
-          // Find a drift question from fallbacks that isn't already used
-          const driftQ = FALLBACK_TRIVIA_QUESTIONS.find(
-            (fq) => fq.isDrift && !this.internal.questions.includes(fq),
-          );
-          if (driftQ) {
-            this.internal.questions[i] = driftQ;
-            driftSoFar++;
-          }
-        }
-      }
     }
+
+    this.internal.questions = buildQuestionDeck(
+      generatedQuestions,
+      this.internal.totalRounds,
+      driftCount,
+      complexity,
+    );
 
     this._startRound(room, state);
   }
@@ -176,7 +160,14 @@ export class RealityDriftPlugin extends BaseGamePlugin {
       }
     } else if (type === "player:vote" && gamePhase === "drift-check") {
       const msg = data as { targetIndex?: unknown };
-      const callDrift = msg?.targetIndex === 1;
+      if (
+        typeof msg?.targetIndex !== "number" ||
+        (msg.targetIndex !== 0 && msg.targetIndex !== 1)
+      ) {
+        room.send(client, "error", { message: "Invalid choice" });
+        return;
+      }
+      const callDrift = msg.targetIndex === 1;
 
       const player = players.get(client.sessionId);
       if (!player) return;
@@ -195,7 +186,6 @@ export class RealityDriftPlugin extends BaseGamePlugin {
         if (called) driftVoterIds.push(sid);
       }
       this._broadcastHost(room, state, {
-        isDrift: this.internal.currentQuestion?.isDrift ?? false,
         question: this.internal.currentQuestion?.question ?? "",
         driftVoterIds,
       });
@@ -280,7 +270,6 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     this.setPhase(state, "drift-check");
 
     this._broadcastHost(room, state, {
-      isDrift: this.internal.currentQuestion?.isDrift ?? false,
       question: this.internal.currentQuestion?.question ?? "",
       driftVoterIds: [],
     });
@@ -390,4 +379,98 @@ export class RealityDriftPlugin extends BaseGamePlugin {
 
 export function createRealityDriftPlugin(): RealityDriftPlugin {
   return new RealityDriftPlugin();
+}
+
+function normalizeTriviaQuestion(question: TriviaQuestion): TriviaQuestion | null {
+  const q = question.question.trim();
+  const correctAnswer = question.correctAnswer.trim();
+  const category = question.category?.trim() ?? "";
+
+  if (!q || !correctAnswer) return null;
+  if (!Array.isArray(question.options)) return null;
+
+  const options = question.options
+    .map((o) => (typeof o === "string" ? o.trim() : ""))
+    .filter((o) => o.length > 0);
+
+  if (options.length !== 4) return null;
+  const unique = Array.from(new Set(options));
+  if (unique.length !== 4) return null;
+
+  const exact = unique.find((o) => o === correctAnswer);
+  const caseInsensitive = unique.find((o) => o.toLowerCase() === correctAnswer.toLowerCase());
+  const normalizedCorrect = exact ?? caseInsensitive;
+  if (!normalizedCorrect) return null;
+
+  return {
+    question: q,
+    correctAnswer: normalizedCorrect,
+    options: unique,
+    isDrift: Boolean(question.isDrift),
+    category,
+  };
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = result[i];
+    result[i] = result[j] as T;
+    result[j] = tmp as T;
+  }
+  return result;
+}
+
+function buildQuestionDeck(
+  generatedQuestions: TriviaQuestion[],
+  totalRounds: number,
+  driftCount: number,
+  complexity: Complexity,
+): TriviaQuestion[] {
+  const schedule = computeDriftSchedule(totalRounds, driftCount, complexity);
+
+  const normalized = generatedQuestions
+    .map(normalizeTriviaQuestion)
+    .filter((q): q is TriviaQuestion => q !== null);
+
+  const realPool = shuffle(normalized.filter((q) => !q.isDrift));
+  const driftPool = shuffle(normalized.filter((q) => q.isDrift));
+
+  const fallbackReal = FALLBACK_TRIVIA_QUESTIONS.filter((q) => !q.isDrift);
+  const fallbackDrift = FALLBACK_TRIVIA_QUESTIONS.filter((q) => q.isDrift);
+
+  let realFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackReal.length));
+  let driftFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackDrift.length));
+
+  const nextFallback = (wantDrift: boolean): TriviaQuestion => {
+    const pool = wantDrift ? fallbackDrift : fallbackReal;
+    if (pool.length === 0) {
+      const any = FALLBACK_TRIVIA_QUESTIONS[0];
+      if (any) {
+        return { ...any, options: [...any.options], isDrift: wantDrift };
+      }
+      return {
+        question: "Reality Drift",
+        correctAnswer: "A",
+        options: ["A", "B", "C", "D"],
+        isDrift: wantDrift,
+        category: "",
+      };
+    }
+
+    const idx = wantDrift ? driftFallbackCursor++ : realFallbackCursor++;
+    const q = pool[idx % pool.length];
+    // biome-ignore lint/style/noNonNullAssertion: pool length checked above
+    return { ...q!, options: [...q!.options] };
+  };
+
+  const deck: TriviaQuestion[] = [];
+  for (let roundIndex = 0; roundIndex < totalRounds; roundIndex++) {
+    const wantDrift = schedule[roundIndex] ?? false;
+    const q = wantDrift ? driftPool.shift() : realPool.shift();
+    deck.push(q ?? nextFallback(wantDrift));
+  }
+
+  return deck;
 }

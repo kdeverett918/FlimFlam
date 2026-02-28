@@ -87,3 +87,26 @@ export interface TriviaQuestion {
   isDrift: boolean;
   category: string;
 }
+
+export interface HotTakePlayerProfile {
+  sessionId: string;
+  name: string;
+  topic: string;
+  category: string;
+}
+
+export interface HotTakeRoundHistory {
+  round: number;
+  statement: string;
+  votes: Map<string, number>;
+  median: number;
+  spread: number;
+  wasUnanimous: boolean;
+  wasPolarized: boolean;
+}
+
+export interface GeneratedHotTakePrompt {
+  statement: string;
+  reasoning?: string;
+  escalationLevel?: number;
+}

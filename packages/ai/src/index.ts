@@ -20,6 +20,7 @@ export {
 export { buildBluffPromptGeneration } from "./prompts/bluff-engine";
 
 export { buildTriviaBatchPrompt } from "./prompts/reality-drift";
+export { buildHotTakeInitialPrompt, buildHotTakeAdaptivePrompt } from "./prompts/hot-take";
 
 export {
   FALLBACK_SCENARIOS,

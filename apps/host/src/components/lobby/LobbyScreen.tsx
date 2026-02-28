@@ -13,9 +13,11 @@ interface LobbyScreenProps {
   players: PlayerData[];
   selectedGameId: string;
   complexity: Complexity;
+  hotTakePlayerInputEnabled: boolean;
   playerCount: number;
   onSelectGame: (gameId: string) => void;
   onSetComplexity: (complexity: Complexity) => void;
+  onSetHotTakePlayerInput: (enabled: boolean) => void;
   onStartGame: () => void;
 }
 
@@ -24,9 +26,11 @@ export function LobbyScreen({
   players,
   selectedGameId,
   complexity,
+  hotTakePlayerInputEnabled,
   playerCount,
   onSelectGame,
   onSetComplexity,
+  onSetHotTakePlayerInput,
   onStartGame,
 }: LobbyScreenProps) {
   const [qrSvg, setQrSvg] = useState<string>("");
@@ -39,6 +43,10 @@ export function LobbyScreen({
 
   const joinUrl = `${controllerUrl}?code=${roomCode}`;
   const canStart = playerCount >= MIN_PLAYERS && selectedGameId !== "";
+  const showHotTakeToggle = selectedGameId === "hot-take";
+  const effectiveHotTakePlayerInputEnabled =
+    complexity === "advanced" ? true : complexity === "kids" ? false : hotTakePlayerInputEnabled;
+  const hotTakeToggleDisabled = complexity !== "standard";
 
   useEffect(() => {
     if (qrGenerated.current && qrSvg) return;
@@ -162,6 +170,45 @@ export function LobbyScreen({
         <h2 className="mb-4 font-display text-[36px] text-text-primary">DIFFICULTY</h2>
         <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
       </div>
+
+      {showHotTakeToggle && (
+        <div className="mb-8 rounded-2xl border-2 border-accent-2/30 bg-bg-card p-6">
+          <div className="mb-3 flex items-center justify-between gap-6">
+            <div>
+              <h3 className="font-display text-[30px] text-text-primary">AI PLAYER INPUT</h3>
+              <p className="text-[20px] text-text-muted">
+                Players submit topics and AI tailors prompts to the group.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={hotTakeToggleDisabled}
+              onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
+              className={`relative h-14 w-28 rounded-full border-2 transition-all ${
+                effectiveHotTakePlayerInputEnabled
+                  ? "border-accent-2 bg-accent-2/30"
+                  : "border-text-muted/30 bg-bg-dark"
+              } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-[1.03]"}`}
+              aria-pressed={effectiveHotTakePlayerInputEnabled}
+              aria-label="Toggle Hot Take player input mode"
+            >
+              <span
+                className={`absolute top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-text-primary transition-all ${
+                  effectiveHotTakePlayerInputEnabled ? "left-[52px]" : "left-2"
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[18px] text-text-muted">
+            {complexity === "advanced" && "Advanced mode always enables player input."}
+            {complexity === "kids" && "Kids mode always uses static prompts."}
+            {complexity === "standard" &&
+              (effectiveHotTakePlayerInputEnabled
+                ? "Enabled for this game."
+                : "Disabled - Hot Take will use static prompts.")}
+          </p>
+        </div>
+      )}
 
       {/* Start game button */}
       <div className="mt-auto flex justify-center pb-8">

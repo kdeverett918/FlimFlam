@@ -4,6 +4,8 @@ Opinion slider game. Players rate statements and score based on matching the gro
 
 ## Phases
 
+- `topic-setup`: players submit topic/category preferences (Player Input mode only)
+- `ai-generating`: AI generates personalized prompt batch (Player Input mode only)
 - `showing-prompt`: show statement
 - `voting`: players submit slider vote (-2..+2)
 - `results`: spectrum + scoring
@@ -18,4 +20,3 @@ Opinion slider game. Players rate statements and score based on matching the gro
 
 - Majority rounds: score based on proximity to group median
 - Lone-wolf rounds: score based on uniqueness (distance from group average)
-
