@@ -1,4 +1,4 @@
-import { computeDriftCount } from "../state";
+import { computeDriftCount, computeDriftSchedule } from "../state";
 
 describe("reality-drift/state", () => {
   it("computeDriftCount returns at least 1", () => {
@@ -12,5 +12,18 @@ describe("reality-drift/state", () => {
     expect(computeDriftCount(rounds, "advanced")).toBeGreaterThanOrEqual(
       computeDriftCount(rounds, "standard"),
     );
+  });
+
+  it("computeDriftSchedule returns correct length + count", () => {
+    const totalRounds = 7;
+    const driftCount = 3;
+    const schedule = computeDriftSchedule(totalRounds, driftCount, "advanced");
+    expect(schedule).toHaveLength(totalRounds);
+    expect(schedule.filter(Boolean)).toHaveLength(driftCount);
+  });
+
+  it("computeDriftSchedule keeps round 1 real when possible", () => {
+    const schedule = computeDriftSchedule(5, 2, "standard");
+    expect(schedule[0]).toBe(false);
   });
 });

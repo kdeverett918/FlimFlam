@@ -157,7 +157,8 @@ export abstract class BaseGamePlugin implements GamePlugin {
     let count = 0;
     // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
     players.forEach((player: unknown) => {
-      if ((player as Record<string, unknown>).hasSubmitted) {
+      const p = player as Record<string, unknown>;
+      if (p.connected && p.hasSubmitted) {
         count++;
       }
     });
