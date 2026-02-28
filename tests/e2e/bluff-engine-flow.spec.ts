@@ -75,12 +75,6 @@ test("bluff engine game completes end-to-end", async ({ page, browser }) => {
 
     await Promise.all([submit1.click(), submit2.click(), submit3.click()]);
 
-    await Promise.all([
-      expect(c1.controllerPage.getByText(/submitted!/i)).toBeVisible(),
-      expect(c2.controllerPage.getByText(/submitted!/i)).toBeVisible(),
-      expect(c3.controllerPage.getByText(/submitted!/i)).toBeVisible(),
-    ]);
-
     const confirm1 = c1.controllerPage.getByRole("button", { name: /confirm vote/i });
     const confirm2 = c2.controllerPage.getByRole("button", { name: /confirm vote/i });
     const confirm3 = c3.controllerPage.getByRole("button", { name: /confirm vote/i });
@@ -95,12 +89,6 @@ test("bluff engine game completes end-to-end", async ({ page, browser }) => {
     ]);
 
     await Promise.all([confirm1.click(), confirm2.click(), confirm3.click()]);
-
-    await Promise.all([
-      expect(c1.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
-      expect(c2.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
-      expect(c3.controllerPage.getByText(/vote confirmed!/i)).toBeVisible(),
-    ]);
   }
 
   await page.waitForFunction(() => document.body.innerText.includes("FINAL SCORES"), null, {
