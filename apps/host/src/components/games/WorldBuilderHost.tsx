@@ -3,7 +3,7 @@
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
 import { TypewriterText } from "@/components/game/TypewriterText";
-import type { PlayerData, ScoreEntry } from "@partyline/shared";
+import type { PlayerData, ScoreEntry, WorldState } from "@partyline/shared";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
@@ -46,7 +46,7 @@ export function WorldBuilderHost({
     case "narration-display":
       return <NarrationDisplayView payload={payload} />;
     case "reveal":
-      return <RevealView payload={payload} players={players} />;
+      return <RevealView payload={payload} players={players} timerEndTime={timerEndTime} />;
     case "final-scores":
       return <FinalScoresView payload={payload} players={players} />;
     default:
@@ -154,6 +154,7 @@ function ActionInputView({
 }) {
   const narrative = (payload.narrative as string) ?? "The story continues...";
   const submittedIds = (payload.submittedPlayerIds as string[]) ?? [];
+  const worldState = (payload.worldState as WorldState | undefined) ?? undefined;
   const submitted = submittedIds.length;
   const total = players.length;
 
@@ -171,6 +172,49 @@ function ActionInputView({
       <div className="mb-12 max-w-5xl">
         <p className="text-[32px] leading-relaxed text-text-primary">{narrative}</p>
       </div>
+
+      {/* World state summary */}
+      {worldState && (
+        <div className="mb-12 w-full max-w-5xl rounded-2xl border border-bg-card bg-bg-card/40 p-6">
+          <div className="mb-4 grid grid-cols-2 gap-6 text-[20px] text-text-muted">
+            <div>
+              <span className="font-display text-text-primary">Location:</span>{" "}
+              {worldState.location || "Unknown"}
+            </div>
+            <div>
+              <span className="font-display text-text-primary">Time Pressure:</span>{" "}
+              {worldState.timePressure || "None"}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-6 text-[18px] text-text-muted">
+            <div>
+              <div className="mb-2 font-display text-[18px] text-accent-4">RESOURCES</div>
+              <ul className="list-disc pl-5">
+                {(worldState.keyResources ?? []).slice(0, 5).map((r) => (
+                  <li key={r}>{r}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-2 font-display text-[18px] text-accent-1">THREATS</div>
+              <ul className="list-disc pl-5">
+                {(worldState.threats ?? []).slice(0, 5).map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <div className="mb-2 font-display text-[18px] text-accent-2">OPPORTUNITIES</div>
+              <ul className="list-disc pl-5">
+                {(worldState.opportunities ?? []).slice(0, 5).map((o) => (
+                  <li key={o}>{o}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Player action status */}
       <div className="mt-auto flex flex-col items-center gap-6">
@@ -280,39 +324,62 @@ function NarrationDisplayView({ payload }: { payload: Record<string, unknown> })
 function RevealView({
   payload,
   players,
+  timerEndTime,
 }: {
   payload: Record<string, unknown>;
   players: PlayerData[];
+  timerEndTime: number | null;
 }) {
-  const outcomes =
-    (payload.playerOutcomes as Array<{
-      sessionId: string;
-      narration: string;
-      points: number;
-      reason: string;
-    }>) ?? [];
+  const roleReveals =
+    (payload.roleReveals as
+      | Record<string, { roleName: string; secretObjective: string; progress: number }>
+      | undefined) ?? {};
+
+  const revealEntries = players
+    .map((player) => {
+      const reveal = roleReveals[player.sessionId];
+      if (!reveal) return null;
+      return { player, reveal };
+    })
+    .filter(Boolean) as Array<{
+    player: PlayerData;
+    reveal: { roleName: string; secretObjective: string; progress: number };
+  }>;
+
   const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
-    if (visibleCount < outcomes.length) {
+    if (visibleCount < revealEntries.length) {
+      const remainingMs = timerEndTime ? Math.max(timerEndTime - Date.now(), 0) : 15_000;
+      const intervalMs = Math.max(
+        350,
+        Math.floor((remainingMs * 0.85) / Math.max(revealEntries.length, 1)),
+      );
       const timer = setTimeout(() => {
         setVisibleCount((prev) => prev + 1);
-      }, 2000);
+      }, intervalMs);
       return () => clearTimeout(timer);
     }
-  }, [visibleCount, outcomes.length]);
+  }, [visibleCount, revealEntries.length, timerEndTime]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-12">
+      {timerEndTime && (
+        <div className="absolute right-12 top-12">
+          <Timer endTime={timerEndTime} />
+        </div>
+      )}
       <h2 className="mb-6 font-display text-[56px] text-accent-1">THE REVEAL</h2>
 
       <div className="flex w-full max-w-5xl flex-col gap-6">
         <AnimatePresence>
-          {outcomes.slice(0, visibleCount).map((outcome, index) => {
-            const player = players.find((p) => p.sessionId === outcome.sessionId);
+          {revealEntries.slice(0, visibleCount).map((entry, index) => {
+            const player = entry.player;
+            const reveal = entry.reveal;
+            const progress = Math.max(0, Math.min(100, reveal.progress ?? 0));
             return (
               <motion.div
-                key={outcome.sessionId}
+                key={player.sessionId}
                 initial={{ opacity: 0, x: -60 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ type: "spring", stiffness: 150, damping: 20, delay: index * 0.1 }}
@@ -329,12 +396,27 @@ function RevealView({
                     <span className="font-display text-[28px] text-text-primary">
                       {player?.name ?? "Unknown"}
                     </span>
-                    <span className="font-display text-[28px] text-accent-3">
-                      +{outcome.points} pts
+                    <span className="rounded-full bg-accent-4/15 px-3 py-1 font-display text-[18px] text-accent-4">
+                      {reveal.roleName}
                     </span>
                   </div>
-                  <p className="text-[24px] leading-relaxed text-text-muted">{outcome.narration}</p>
-                  <p className="text-[20px] italic text-accent-4/70">{outcome.reason}</p>
+                  <p className="text-[22px] leading-relaxed text-text-muted">
+                    {reveal.secretObjective || "No objective revealed."}
+                  </p>
+
+                  <div className="mt-2 flex items-center gap-4">
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-bg-card">
+                      <motion.div
+                        className="h-full rounded-full bg-accent-2"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ type: "spring", stiffness: 120, damping: 18 }}
+                      />
+                    </div>
+                    <span className="w-[72px] text-right font-display text-[20px] text-accent-2">
+                      {progress}%
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             );

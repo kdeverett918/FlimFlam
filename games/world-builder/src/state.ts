@@ -12,7 +12,12 @@ export interface WorldBuilderInternalState {
   complexity: Complexity;
   scenario: GeneratedScenario;
   worldState: WorldState;
+  currentSituation: string;
   narrations: string[];
+  actionHistory: {
+    narration: string;
+    actions: { sessionId: string; name: string; role: string; action: string }[];
+  }[];
   roundResults: RoundNarrationResult[];
   playerActions: Map<string, { name: string; role: string; action: string }>;
   playerRoles: Map<
@@ -22,6 +27,7 @@ export interface WorldBuilderInternalState {
       secretObjective: string;
       specialAbility: string;
       abilityUsed: boolean;
+      abilityUsedRound: number | null;
       scoringCriteria: string;
     }
   >;
@@ -55,7 +61,9 @@ export function createInitialInternalState(complexity: Complexity): WorldBuilder
       threats: [],
       opportunities: [],
     },
+    currentSituation: "",
     narrations: [],
+    actionHistory: [],
     roundResults: [],
     playerActions: new Map(),
     playerRoles: new Map(),
