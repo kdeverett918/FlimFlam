@@ -25,7 +25,25 @@ jobs:
       contents: 'read'
       pull-requests: 'read'
     steps:
+      - name: 'Detect dependency graph availability'
+        id: 'depgraph'
+        env:
+          GITHUB_TOKEN: '${{ github.token }}'
+        run: |-
+          status_code="$(curl -sS -o /tmp/sbom.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/dependency-graph/sbom")"
+
+          if [[ "${status_code}" == '200' ]]; then
+            echo 'enabled=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo 'enabled=false' >> "${GITHUB_OUTPUT}"
+            echo "::notice::Dependency Graph unavailable (HTTP ${status_code}); dependency diff scan skipped."
+          fi
+
       - name: 'Dependency review'
+        if: "${{ steps.depgraph.outputs.enabled == 'true' }}"
         uses: 'actions/dependency-review-action@05fe4576374b728f0c523d6a13d64c25081e0803' # ratchet:actions/dependency-review-action@v4.8.3
         with:
           fail-on-severity: 'high'
