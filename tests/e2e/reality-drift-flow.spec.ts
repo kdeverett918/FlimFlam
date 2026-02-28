@@ -73,7 +73,7 @@ test("reality drift game completes end-to-end", async ({ page, browser }) => {
   };
 
   const driftCheck = async (controllerPage: Page, choice: "real" | "drift") => {
-    const buttonName = choice === "drift" ? /hallucination \u2014/i : /real \u2014/i;
+    const buttonName = choice === "drift" ? /^hallucination\b/i : /^real\b/i;
     await controllerPage.getByRole("button", { name: buttonName }).click();
     await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
   };

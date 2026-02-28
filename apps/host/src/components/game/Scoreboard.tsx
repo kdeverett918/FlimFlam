@@ -13,9 +13,9 @@ interface ScoreboardProps {
 }
 
 const PODIUM_COLORS: Record<number, { text: string; glow: string }> = {
-  1: { text: "text-[#f59e0b]", glow: "0 0 24px oklch(0.75 0.18 85 / 0.5)" },
-  2: { text: "text-[#94a3b8]", glow: "0 0 24px oklch(0.7 0.02 270 / 0.3)" },
-  3: { text: "text-[#d97706]", glow: "0 0 24px oklch(0.65 0.15 70 / 0.4)" },
+  1: { text: "text-accent-3", glow: "0 0 24px oklch(0.75 0.18 85 / 0.5)" },
+  2: { text: "text-text-muted", glow: "0 0 24px oklch(0.7 0.02 270 / 0.3)" },
+  3: { text: "text-[oklch(0.65_0.15_70)]", glow: "0 0 24px oklch(0.65 0.15 70 / 0.4)" },
 };
 
 function getRankChange(

@@ -502,7 +502,7 @@ function FinalScoresView({
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
       <AnimatedBackground variant="subtle" />
 
-      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-3">
+      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-2">
         FINAL SCORES
       </h1>
 
@@ -521,7 +521,7 @@ function FinalScoresView({
           {bonusAwards.bestAction && (
             <BonusCard
               title="Best Action"
-              icon={<Award className="h-8 w-8 text-accent-3" />}
+              icon={<Award className="h-8 w-8 text-accent-2" />}
               playerName={
                 players.find((p) => p.sessionId === bonusAwards.bestAction?.sessionId)?.name ??
                 "Unknown"
@@ -573,7 +573,7 @@ function BonusCard({
   return (
     <GlassPanel glow rounded="2xl" className="flex flex-col items-center gap-2 p-6">
       {icon}
-      <span className="font-display text-[24px] font-bold text-accent-3">{title}</span>
+      <span className="font-display text-[24px] font-bold text-accent-2">{title}</span>
       <span className="font-display text-[28px] font-semibold text-text-primary">{playerName}</span>
       <p className="max-w-xs text-center font-body text-[20px] text-text-muted">{reason}</p>
       <span className="font-mono text-[24px] font-bold text-accent-2">+{points} pts</span>

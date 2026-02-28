@@ -46,7 +46,6 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
           >
             <GlassPanel
               glow={isSelected}
-              glowColor={isSelected ? undefined : undefined}
               rounded="2xl"
               className={`flex min-w-[320px] flex-col gap-3 border p-6 transition-all duration-300 ${
                 isSelected

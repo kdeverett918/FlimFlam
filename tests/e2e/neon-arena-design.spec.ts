@@ -1,21 +1,23 @@
 import { expect, test } from "@playwright/test";
 
+const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+
 test.describe("Neon Arena Design System", () => {
   test("host home page has dark theme and correct visual elements", async ({ page }) => {
     await page.goto("/");
 
-    // Verify dark background — the body/html should have a near-black background
+    // Verify dark background - the body/html should have a near-black background
     const bgColor = await page.evaluate(() => {
       return window.getComputedStyle(document.body).backgroundColor;
     });
-    // Expect a very dark color (close to oklch(0.08 0.02 280) ≈ #0e0e19)
+    // Expect a very dark color (close to oklch(0.08 0.02 280) ~= #0e0e19)
     expect(bgColor).not.toBe("rgb(255, 255, 255)");
 
     // Verify "PARTYLINE" logo is present with display font
     const logo = page.locator("h1");
     await expect(logo).toHaveText("PARTYLINE");
     const fontFamily = await logo.evaluate((el) => window.getComputedStyle(el).fontFamily);
-    expect(fontFamily.toLowerCase()).toContain("space grotesk");
+    expect(fontFamily.toLowerCase()).toMatch(/space[ _-]?grotesk/);
 
     // Verify tagline is present
     await expect(page.getByText("Party games. Reimagined.")).toBeVisible();
@@ -36,7 +38,7 @@ test.describe("Neon Arena Design System", () => {
   test("controller join page has dark theme and glass inputs", async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
-    await page.goto("http://127.0.0.1:3001");
+    await page.goto(CONTROLLER_URL);
 
     // Verify "PARTYLINE" logo on controller
     const logo = page.locator("h1");
@@ -134,11 +136,14 @@ test.describe("Neon Arena Design System", () => {
 
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const controllerPage = await context.newPage();
-    await controllerPage.goto(`http://127.0.0.1:3001/?code=${code}`);
+    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
 
     await controllerPage.getByLabel("Your Name").fill("TestPlayer");
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
+    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
+      timeout: 30_000,
+    });
 
     // Verify "You're in!" message is shown in lobby
     await expect(controllerPage.getByText(/you're in!/i)).toBeVisible();
