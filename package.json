@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "prestart": "pnpm --filter @partyline/server build",
     "start": "pnpm --filter @partyline/server start",
     "test": "turbo test",
     "lint": "biome check .",
