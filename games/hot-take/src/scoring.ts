@@ -23,6 +23,17 @@ export const SCORING = {
   LONE_WOLF_DEFAULT: 50,
 } as const;
 
+export function computeMedianVoteValue(values: number[]): number {
+  if (values.length === 0) return 0;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 !== 0) {
+    return sorted[mid] ?? 0;
+  }
+  return Math.round(((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2);
+}
+
 /**
  * Calculate majority round scores.
  * Players score based on proximity to the group median.
@@ -31,16 +42,11 @@ export function calculateMajorityScores(
   votes: Map<string, number>,
 ): Map<string, { points: number; reason: string }> {
   const results = new Map<string, { points: number; reason: string }>();
-  const values = Array.from(votes.values()).sort((a, b) => a - b);
+  const values = Array.from(votes.values());
 
   if (values.length === 0) return results;
 
-  // Calculate median
-  const mid = Math.floor(values.length / 2);
-  const median =
-    values.length % 2 !== 0
-      ? (values[mid] ?? 0)
-      : Math.round(((values[mid - 1] ?? 0) + (values[mid] ?? 0)) / 2);
+  const median = computeMedianVoteValue(values);
 
   for (const [sessionId, vote] of votes) {
     const distance = Math.abs(vote - median);
@@ -64,37 +70,55 @@ export function calculateLoneWolfScores(
   votes: Map<string, number>,
 ): Map<string, { points: number; reason: string }> {
   const results = new Map<string, { points: number; reason: string }>();
-  const values = Array.from(votes.values());
+  const entries = Array.from(votes.entries());
+  if (entries.length === 0) return results;
 
-  if (values.length === 0) return results;
+  const len = entries.length;
+  const sum = entries.reduce((total, [, v]) => total + v, 0);
 
-  // Calculate average
-  const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const distances = entries.map(([sessionId, vote]) => ({
+    sessionId,
+    distanceNumerator: Math.abs(vote * len - sum),
+  }));
 
-  // Calculate distance from average for each player
-  const distances: { sessionId: string; distance: number }[] = [];
-  for (const [sessionId, vote] of votes) {
-    distances.push({ sessionId, distance: Math.abs(vote - avg) });
+  let maxDistance = 0;
+  let minDistance = Number.POSITIVE_INFINITY;
+  for (const d of distances) {
+    maxDistance = Math.max(maxDistance, d.distanceNumerator);
+    minDistance = Math.min(minDistance, d.distanceNumerator);
   }
 
-  // Sort by distance descending (most unique first)
-  distances.sort((a, b) => b.distance - a.distance);
+  // If everyone is equally (un)unique, treat it as "no lone wolves" and award default points.
+  if (maxDistance === 0 || maxDistance === minDistance) {
+    for (const d of distances) {
+      results.set(d.sessionId, {
+        points: SCORING.LONE_WOLF_DEFAULT,
+        reason: "No lone wolves this round",
+      });
+    }
+    return results;
+  }
 
-  for (let i = 0; i < distances.length; i++) {
-    const entry = distances[i];
-    if (!entry) continue;
-    if (i === 0) {
-      results.set(entry.sessionId, {
+  distances.sort((a, b) => b.distanceNumerator - a.distanceNumerator);
+
+  const topDistance = distances[0]?.distanceNumerator ?? 0;
+  const secondDistance = distances.find(
+    (d) => d.distanceNumerator < topDistance,
+  )?.distanceNumerator;
+
+  for (const d of distances) {
+    if (d.distanceNumerator === topDistance) {
+      results.set(d.sessionId, {
         points: SCORING.LONE_WOLF_MOST_UNIQUE,
         reason: "Lone wolf! Most unique opinion",
       });
-    } else if (i === 1) {
-      results.set(entry.sessionId, {
+    } else if (secondDistance !== undefined && d.distanceNumerator === secondDistance) {
+      results.set(d.sessionId, {
         points: SCORING.LONE_WOLF_SECOND,
         reason: "Second most unique",
       });
     } else {
-      results.set(entry.sessionId, {
+      results.set(d.sessionId, {
         points: SCORING.LONE_WOLF_DEFAULT,
         reason: "Part of the crowd",
       });
