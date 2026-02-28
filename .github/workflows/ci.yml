@@ -23,6 +23,7 @@ env:
 
 jobs:
   lint:
+    name: 'ci / lint'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 10
     steps:
@@ -33,7 +34,6 @@ jobs:
         uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' # ratchet:actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: 'Setup pnpm'
         run: |-
@@ -47,6 +47,7 @@ jobs:
         run: 'pnpm lint'
 
   typecheck:
+    name: 'ci / typecheck'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 15
     steps:
@@ -57,7 +58,6 @@ jobs:
         uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' # ratchet:actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: 'Setup pnpm'
         run: |-
@@ -71,6 +71,7 @@ jobs:
         run: 'pnpm typecheck'
 
   test:
+    name: 'ci / test'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 15
     steps:
@@ -81,7 +82,6 @@ jobs:
         uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' # ratchet:actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: 'Setup pnpm'
         run: |-
@@ -95,6 +95,7 @@ jobs:
         run: 'pnpm test'
 
   build:
+    name: 'ci / build'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 15
     steps:
@@ -105,7 +106,6 @@ jobs:
         uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' # ratchet:actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: 'Setup pnpm'
         run: |-

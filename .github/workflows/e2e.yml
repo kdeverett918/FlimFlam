@@ -22,6 +22,7 @@ env:
 
 jobs:
   playwright:
+    name: 'e2e / playwright'
     runs-on: 'ubuntu-latest'
     timeout-minutes: 30
     steps:
@@ -32,7 +33,6 @@ jobs:
         uses: 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' # ratchet:actions/setup-node@v4
         with:
           node-version: '24'
-          cache: 'pnpm'
 
       - name: 'Setup pnpm'
         run: |-
