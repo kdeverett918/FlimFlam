@@ -9,19 +9,25 @@ const BRUSH_SIZES = [
   { label: "L", size: 16 },
 ];
 
+const MAX_POINTS_PER_STROKE = 512;
+
 interface Point {
-  x: number;
-  y: number;
+  x: number; // normalized 0..1
+  y: number; // normalized 0..1
 }
 
 interface Stroke {
   points: Point[];
   color: string;
-  size: number;
+  size: number; // CSS pixels
 }
 
 interface DrawCanvasProps {
   onStrokeSend: (stroke: { points: Point[]; color: string; size: number }) => void;
+}
+
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
 }
 
 export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
@@ -32,52 +38,62 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const currentStrokeRef = useRef<Point[]>([]);
   const isDrawingRef = useRef(false);
+  const canvasSizeRef = useRef<{ width: number; height: number; dpr: number }>({
+    width: 0,
+    height: 0,
+    dpr: 1,
+  });
 
   const getCanvasPoint = useCallback((clientX: number, clientY: number): Point | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
 
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    if (rect.width <= 0 || rect.height <= 0) return null;
 
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: clamp01((clientX - rect.left) / rect.width),
+      y: clamp01((clientY - rect.top) / rect.height),
     };
   }, []);
 
-  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
-    if (stroke.points.length < 2) {
-      // Single point — draw a dot
-      const pt = stroke.points[0];
-      if (pt) {
+  const drawStroke = useCallback(
+    (ctx: CanvasRenderingContext2D, stroke: Stroke, width: number, height: number) => {
+      const toX = (p: Point) => p.x * width;
+      const toY = (p: Point) => p.y * height;
+
+      if (stroke.points.length < 2) {
+        const pt = stroke.points[0];
+        if (!pt) return;
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, stroke.size / 2, 0, Math.PI * 2);
+        ctx.arc(toX(pt), toY(pt), stroke.size / 2, 0, Math.PI * 2);
         ctx.fillStyle = stroke.color;
         ctx.fill();
+        return;
       }
-      return;
-    }
 
-    ctx.beginPath();
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.size;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.size;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
-    const first = stroke.points[0];
-    if (first) {
-      ctx.moveTo(first.x, first.y);
-    }
-    for (let i = 1; i < stroke.points.length; i++) {
-      const point = stroke.points[i];
-      if (point) {
-        ctx.lineTo(point.x, point.y);
+      const first = stroke.points[0];
+      if (first) {
+        ctx.moveTo(toX(first), toY(first));
       }
-    }
-    ctx.stroke();
-  }, []);
+
+      for (let i = 1; i < stroke.points.length; i++) {
+        const point = stroke.points[i];
+        if (point) {
+          ctx.lineTo(toX(point), toY(point));
+        }
+      }
+
+      ctx.stroke();
+    },
+    [],
+  );
 
   const redrawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -86,52 +102,64 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Clear to white
+    const { width, height, dpr } = canvasSizeRef.current;
+    if (width <= 0 || height <= 0) return;
+
+    // Reset transform after resizes.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // Clear to white (CSS pixels).
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
 
-    // Redraw all strokes
     for (const stroke of strokes) {
-      drawStroke(ctx, stroke);
+      drawStroke(ctx, stroke, width, height);
     }
 
-    // Draw current in-progress stroke
     if (currentStrokeRef.current.length > 0) {
-      drawStroke(ctx, {
-        points: currentStrokeRef.current,
-        color: currentColor,
-        size: currentSize,
-      });
+      drawStroke(
+        ctx,
+        { points: currentStrokeRef.current, color: currentColor, size: currentSize },
+        width,
+        height,
+      );
     }
-  }, [strokes, currentColor, currentSize, drawStroke]);
+  }, [currentColor, currentSize, drawStroke, strokes]);
 
-  // Resize canvas to match container
+  // Resize canvas to match container.
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
     const resizeCanvas = () => {
-      const width = container.clientWidth;
-      const height = Math.round(width * 0.75); // 4:3 aspect ratio
-      canvas.width = width * 2; // 2x for retina
-      canvas.height = height * 2;
+      const rect = container.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width));
+      const height = Math.max(1, Math.round(width * 0.75)); // 4:3 aspect ratio
+      const dpr = typeof window !== "undefined" ? (window.devicePixelRatio ?? 1) : 1;
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.scale(2, 2);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       }
+
+      canvasSizeRef.current = { width, height, dpr };
+      redrawCanvas();
     };
 
     resizeCanvas();
-    // Use a simple redraw after resize
-    const timeoutId = setTimeout(redrawCanvas, 0);
-    return () => clearTimeout(timeoutId);
+
+    const resizeObserver = new ResizeObserver(() => resizeCanvas());
+    resizeObserver.observe(container);
+
+    return () => resizeObserver.disconnect();
   }, [redrawCanvas]);
 
-  // Redraw whenever strokes change
   useEffect(() => {
     redrawCanvas();
   }, [redrawCanvas]);
@@ -162,7 +190,9 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
 
       const point = getCanvasPoint(touch.clientX, touch.clientY);
       if (point) {
-        currentStrokeRef.current.push(point);
+        if (currentStrokeRef.current.length < MAX_POINTS_PER_STROKE) {
+          currentStrokeRef.current.push(point);
+        }
         redrawCanvas();
       }
     },
@@ -179,29 +209,15 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
       currentStrokeRef.current = [];
 
       if (points.length > 0) {
-        const newStroke: Stroke = {
-          points,
-          color: currentColor,
-          size: currentSize,
-        };
+        const newStroke: Stroke = { points, color: currentColor, size: currentSize };
         setStrokes((prev) => [...prev, newStroke]);
-
-        // Normalize points to 0-1 range for network send
-        const canvas = canvasRef.current;
-        if (canvas) {
-          const rect = canvas.getBoundingClientRect();
-          const normalizedPoints = points.map((p) => ({
-            x: p.x / rect.width,
-            y: p.y / rect.height,
-          }));
-          onStrokeSend({ points: normalizedPoints, color: currentColor, size: currentSize });
-        }
+        onStrokeSend({ points, color: currentColor, size: currentSize });
       }
     },
     [currentColor, currentSize, onStrokeSend],
   );
 
-  // Mouse fallback for non-touch devices
+  // Mouse fallback for non-touch devices.
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
       isDrawingRef.current = true;
@@ -219,7 +235,9 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
       if (!isDrawingRef.current) return;
       const point = getCanvasPoint(e.clientX, e.clientY);
       if (point) {
-        currentStrokeRef.current.push(point);
+        if (currentStrokeRef.current.length < MAX_POINTS_PER_STROKE) {
+          currentStrokeRef.current.push(point);
+        }
         redrawCanvas();
       }
     },
@@ -234,22 +252,9 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
     currentStrokeRef.current = [];
 
     if (points.length > 0) {
-      const newStroke: Stroke = {
-        points,
-        color: currentColor,
-        size: currentSize,
-      };
+      const newStroke: Stroke = { points, color: currentColor, size: currentSize };
       setStrokes((prev) => [...prev, newStroke]);
-
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        const normalizedPoints = points.map((p) => ({
-          x: p.x / rect.width,
-          y: p.y / rect.height,
-        }));
-        onStrokeSend({ points: normalizedPoints, color: currentColor, size: currentSize });
-      }
+      onStrokeSend({ points, color: currentColor, size: currentSize });
     }
   }, [currentColor, currentSize, onStrokeSend]);
 

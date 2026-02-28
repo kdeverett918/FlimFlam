@@ -274,7 +274,7 @@ function ResultsView({
                 {/* Who voted for this */}
                 {revealed && answer.voterNames && answer.voterNames.length > 0 && (
                   <div className="mt-3 text-[20px] text-text-muted">
-                    Fooled: {answer.voterNames.join(", ")}
+                    {answer.isReal ? "Correct" : "Fooled"}: {answer.voterNames.join(", ")}
                   </div>
                 )}
               </motion.div>

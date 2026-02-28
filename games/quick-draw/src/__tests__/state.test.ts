@@ -3,7 +3,7 @@ import { getDrawerScore, getGuessScore, isCorrectGuess } from "../state";
 describe("quick-draw/state", () => {
   it("isCorrectGuess: normalizes case, punctuation, and whitespace", () => {
     expect(isCorrectGuess(" Plot  twist ", "plot twist")).toBe(true);
-    expect(isCorrectGuess("deja-vu!", "déjà vu")).toBe(false); // accents not normalized by current implementation
+    expect(isCorrectGuess("deja-vu!", "déjà vu")).toBe(true);
     expect(isCorrectGuess("CAT", "cat")).toBe(true);
   });
 

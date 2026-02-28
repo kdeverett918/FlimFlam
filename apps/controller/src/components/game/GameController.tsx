@@ -2,6 +2,7 @@
 
 import { AbilityButton } from "@/components/controls/AbilityButton";
 import { DrawCanvas } from "@/components/controls/DrawCanvas";
+import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
 import { Slider } from "@/components/controls/Slider";
 import { TextInput } from "@/components/controls/TextInput";
 import { TopicSetup } from "@/components/controls/TopicSetup";
@@ -25,6 +26,7 @@ interface GameControllerProps {
   round: number;
   totalRounds: number;
   privateData: PrivateData | null;
+  errorNonce?: number;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
 }
 
@@ -34,6 +36,7 @@ export function GameController({
   round,
   totalRounds,
   privateData,
+  errorNonce,
   sendMessage,
 }: GameControllerProps) {
   const handleTextSubmit = useCallback(
@@ -175,29 +178,53 @@ export function GameController({
   }
 
   function renderBluffEngine(currentPhase: string) {
+    const question =
+      typeof privateData?.question === "string" ? (privateData.question as string) : "";
+    const category =
+      typeof privateData?.category === "string" ? (privateData.category as string) : "";
+
     switch (currentPhase) {
       case "answer-input":
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
+            {category && (
+              <div className="mx-4 rounded-full bg-accent-4/15 px-3 py-1 text-center text-xs font-medium uppercase tracking-wider text-accent-4">
+                {category}
+              </div>
+            )}
+            {question && (
+              <p className="px-4 text-center text-lg font-medium text-text-primary">{question}</p>
+            )}
             <TextInput
               prompt={`Round ${round}/${totalRounds} — Write a convincing fake answer!`}
               placeholder="Write your bluff..."
               onSubmit={handleTextSubmit}
+              maxChars={80}
+              resetNonce={errorNonce}
             />
           </div>
         );
       case "voting": {
         // The options will come from game-data messages
         const options = (privateData?.voteOptions as { index: number; label: string }[]) ?? [];
+        const disallowedVoteIndex =
+          typeof privateData?.disallowedVoteIndex === "number"
+            ? (privateData.disallowedVoteIndex as number)
+            : null;
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
+            {question && (
+              <p className="px-4 text-center text-base font-medium text-text-primary">{question}</p>
+            )}
             <VoteGrid
-              prompt="Which answer do you think is real?"
+              prompt="Which answer do you think is real? (You can't vote for your own answer.)"
               options={options.map((opt) => ({
                 index: opt.index,
                 label: opt.label,
+                disabled: disallowedVoteIndex === opt.index,
               }))}
               onConfirm={handleVoteConfirm}
+              resetNonce={errorNonce}
             />
           </div>
         );
@@ -219,6 +246,7 @@ export function GameController({
   function renderQuickDraw(currentPhase: string) {
     const isDrawer = Boolean(privateData?.isDrawer);
     const word = typeof privateData?.word === "string" ? (privateData.word as string) : null;
+    const guessedCorrectly = Boolean(privateData?.qdCorrect);
 
     // Drawer keeps drawing even after the host transitions to "guessing" (phases overlap).
     if ((currentPhase === "drawing" || currentPhase === "guessing") && isDrawer) {
@@ -244,9 +272,27 @@ export function GameController({
       case "drawing":
         return <WaitingScreen phase="drawing" />;
       case "guessing":
-        return (
+        return guessedCorrectly ? (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
+              <svg
+                className="h-8 w-8 text-accent-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+                role="img"
+              >
+                <title>Correct</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-xl font-medium text-accent-2">You got it!</p>
+            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
+          </div>
+        ) : (
           <div className="flex flex-col gap-4 pb-16 pt-4">
-            <TextInput
+            <QuickGuessInput
               prompt="What is being drawn?"
               placeholder="Type your guess..."
               onSubmit={handleTextSubmit}
@@ -254,6 +300,31 @@ export function GameController({
           </div>
         );
       case "word-reveal":
+        return guessedCorrectly ? (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent-2/20">
+              <svg
+                className="h-8 w-8 text-accent-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={3}
+                role="img"
+              >
+                <title>Correct</title>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-xl font-medium text-accent-2">You got it!</p>
+            <p className="text-center text-sm text-text-muted">Keep watching the main screen…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Check the main screen for the reveal!
+            </p>
+          </div>
+        );
       case "final-scores":
         return (
           <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">

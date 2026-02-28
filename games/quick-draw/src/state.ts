@@ -37,12 +37,21 @@ export function createQuickDrawInternalState(complexity: Complexity): QuickDrawI
 // ─── Guess Validation ───────────────────────────────────────────────────
 
 export function isCorrectGuess(guess: string, word: string): boolean {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\s]/g, "")
-      .replace(/\s+/g, " ");
+  const normalize = (s: string) => {
+    const withoutDiacritics = s
+      .normalize("NFD")
+      // Strip combining marks (accents/diacritics)
+      .replace(/\p{M}/gu, "");
+
+    return (
+      withoutDiacritics
+        .toLowerCase()
+        // Treat punctuation/symbols as word separators.
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
+        .trim()
+        .replace(/\s+/g, " ")
+    );
+  };
   return normalize(guess) === normalize(word);
 }
 

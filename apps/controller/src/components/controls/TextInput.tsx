@@ -1,34 +1,52 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-
-const MAX_CHARS = 140;
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TextInputProps {
   prompt?: string;
   placeholder?: string;
   onSubmit: (text: string) => void;
+  maxChars?: number;
+  resetNonce?: number;
 }
 
 export function TextInput({
   prompt,
   placeholder = "Type your answer...",
   onSubmit,
+  maxChars = 140,
+  resetNonce,
 }: TextInputProps) {
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const lastResetNonceRef = useRef<number | undefined>(resetNonce);
 
   const charCount = text.length;
-  const isNearLimit = charCount >= MAX_CHARS - 20;
-  const isAtLimit = charCount >= MAX_CHARS;
+  const isNearLimit = charCount >= maxChars - 20;
+  const isAtLimit = charCount >= maxChars;
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    if (value.length <= MAX_CHARS) {
-      setText(value);
+  useEffect(() => {
+    if (resetNonce === undefined) return;
+    if (lastResetNonceRef.current === undefined) {
+      lastResetNonceRef.current = resetNonce;
+      return;
     }
-  }, []);
+    if (resetNonce !== lastResetNonceRef.current) {
+      lastResetNonceRef.current = resetNonce;
+      setSubmitted(false);
+    }
+  }, [resetNonce]);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      if (value.length <= maxChars) {
+        setText(value);
+      }
+    },
+    [maxChars],
+  );
 
   const handleFocus = useCallback(() => {
     // Scroll into view for keyboard awareness
@@ -89,7 +107,7 @@ export function TextInput({
             isAtLimit ? "text-accent-1" : isNearLimit ? "text-accent-3" : "text-text-muted"
           }`}
         >
-          {charCount}/{MAX_CHARS}
+          {charCount}/{maxChars}
         </span>
       </div>
 
