@@ -9,7 +9,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "typecheck": "turbo typecheck",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "ci:gate": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
