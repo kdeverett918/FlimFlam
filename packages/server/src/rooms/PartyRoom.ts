@@ -191,6 +191,19 @@ export class PartyRoom extends Room<RoomState> {
       if (player) {
         player.ready = true;
       }
+
+      // Allow the active game plugin to react to readiness (e.g., skip role reveal when all ready).
+      if (this._currentPlugin && this.state.lobbyPhase === "in-game") {
+        try {
+          Promise.resolve(
+            this._currentPlugin.onPlayerMessage(this, this.state, client, "player:ready", {}),
+          ).catch((error) => {
+            console.error("Error handling player:ready:", error);
+          });
+        } catch (error) {
+          console.error("Error handling player:ready:", error);
+        }
+      }
     };
 
     // Host messages (preferred)
