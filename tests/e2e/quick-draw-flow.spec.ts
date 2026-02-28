@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -32,7 +34,7 @@ test("quick draw completes end-to-end", async ({ page, browser }) => {
   const joinController = async (name: string) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const controllerPage = await context.newPage();
-    await controllerPage.goto(`http://127.0.0.1:3001/?code=${code}`);
+    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);

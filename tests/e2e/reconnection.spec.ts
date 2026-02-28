@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+
 test("controller reconnects after refresh", async ({ page, browser }) => {
   await page.goto("/");
 
@@ -27,7 +29,7 @@ test("controller reconnects after refresh", async ({ page, browser }) => {
 
   const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const controllerPage = await context.newPage();
-  await controllerPage.goto(`http://127.0.0.1:3001/?code=${code}`);
+  await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
 
   await controllerPage.getByLabel("Your Name").fill("Alice");
   await controllerPage.getByRole("button", { name: /^join$/i }).click();
