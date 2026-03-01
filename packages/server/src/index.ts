@@ -45,6 +45,11 @@ gameServer.define("party", PartyRoom);
 // ─── Start Listening ────────────────────────────────────────────────────
 const explicitPort = Number(process.env.PORT);
 const port = Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : COLYSEUS_PORT;
+const listenOptions = {
+  host: "0.0.0.0",
+  port,
+  reusePort: true,
+} as const;
 
 // Colyseus Cloud ingress expects a stable app port. During rolling restarts,
 // we may briefly hit EADDRINUSE, so retry binding on the same port.
@@ -68,7 +73,7 @@ function startListening(attempt = 0) {
     process.exit(1);
   });
 
-  httpServer.listen(port, () => {
+  httpServer.listen(listenOptions, () => {
     console.log(`[PartyLine] Server listening on port ${port}`);
     console.log(`[PartyLine] Health: http://localhost:${port}/health`);
     if (process.env.NODE_ENV !== "production") {

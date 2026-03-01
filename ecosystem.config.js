@@ -8,7 +8,9 @@
 module.exports = {
   apps: [
     {
-      name: "partyline",
+      // New app name avoids inheriting stale PM2 scale state from older failed
+      // rollouts that accumulated extra instances.
+      name: "partyline-server",
       script: "scripts/cloud-server-runner.mjs",
       interpreter: "node",
       time: true,
