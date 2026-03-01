@@ -5,13 +5,11 @@
  *
  * Uses sharp if available, otherwise falls back to a canvas-free approach
  * using the `@resvg/resvg-js` or Playwright's built-in Chromium via a
- * headless screenshot. Falls back to a simple solid-color placeholder so
- * the build never fails on CI.
+ * headless screenshot.
  *
  * Run: node scripts/generate-icons.mjs
  */
 
-import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -93,11 +91,9 @@ async function main() {
     }
   }
 
-  // Last resort: install sharp inline and retry
-  console.log("  Installing sharp locally…");
-  execSync("pnpm add -w --save-dev sharp", { cwd: root, stdio: "inherit" });
-  await trySharp();
-  console.log("\nDone (installed sharp).");
+  throw new Error(
+    "No SVG renderer available. Install one of: sharp (recommended), @resvg/resvg-js, or playwright.",
+  );
 }
 
 main().catch((e) => {
