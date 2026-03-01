@@ -5,8 +5,7 @@ const pnpm = "pnpm";
 const hostPort = process.env.PARTYLINE_E2E_HOST_PORT ?? "3300";
 const controllerPort = process.env.PARTYLINE_E2E_CONTROLLER_PORT ?? "3301";
 const skipServer =
-  process.env.PARTYLINE_E2E_SKIP_SERVER === "1" ||
-  process.env.PARTYLINE_E2E_SKIP_SERVER === "true";
+  process.env.PARTYLINE_E2E_SKIP_SERVER === "1" || process.env.PARTYLINE_E2E_SKIP_SERVER === "true";
 
 let shuttingDown = false;
 const children = [];
