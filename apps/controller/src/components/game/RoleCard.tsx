@@ -29,6 +29,7 @@ export function RoleCard({
       <button
         type="button"
         onClick={handleToggle}
+        aria-expanded={false}
         className="mx-4 flex h-14 items-center gap-3 rounded-xl border border-accent-4/30 px-4 transition-all active:scale-[0.98]"
         style={{
           background: "oklch(1 0 0 / 0.04)",
@@ -58,6 +59,7 @@ export function RoleCard({
       <button
         type="button"
         onClick={handleToggle}
+        aria-expanded={true}
         className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-4/15">

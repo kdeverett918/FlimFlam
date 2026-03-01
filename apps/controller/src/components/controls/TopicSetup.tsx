@@ -109,7 +109,10 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
             id="hot-take-topic"
             value={topic}
             onChange={(e) => setTopic(e.target.value.slice(0, 140))}
-            onFocus={() => haptics.tap()}
+            onFocus={(e) => {
+              haptics.tap();
+              setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+            }}
             placeholder="Type your topic..."
             maxLength={140}
             rows={2}

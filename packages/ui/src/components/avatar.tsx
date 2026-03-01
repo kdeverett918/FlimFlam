@@ -59,7 +59,9 @@ const Avatar = React.forwardRef<React.ComponentRef<typeof AvatarPrimitive.Root>,
             status === "away" && "bg-warning",
             status === "offline" && "bg-text-dim",
           )}
-        />
+        >
+          <span className="sr-only">{status}</span>
+        </span>
       )}
       <style>{`
         @keyframes avatarRingPulse {

@@ -18,7 +18,7 @@ const MotionCard = React.forwardRef<HTMLDivElement, MotionCardProps>(
       <div
         ref={ref}
         className={cn(
-          "relative rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 text-text-primary",
+          "group relative rounded-xl border border-white/[0.08] bg-white/[0.04] p-6 text-text-primary",
           "backdrop-blur-xl backdrop-saturate-[1.2]",
           "transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
           !disableHover && ["hover:-translate-y-1 hover:border-white/[0.14]", "hover:shadow-xl"],

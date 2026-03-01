@@ -156,6 +156,15 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
           aria-valuenow={value}
           aria-valuetext={LABELS[value + 2]}
           tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              setValue((v) => Math.min(2, v + 1));
+            } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              setValue((v) => Math.max(-2, v - 1));
+            }
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}

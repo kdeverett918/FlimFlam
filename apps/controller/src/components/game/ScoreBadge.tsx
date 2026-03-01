@@ -62,6 +62,7 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
         background: "oklch(0.09 0.02 250 / 0.9)",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div className="relative flex items-center gap-3">
