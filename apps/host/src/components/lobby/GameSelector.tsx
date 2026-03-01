@@ -42,7 +42,9 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
             key={game.id}
             type="button"
             onClick={() => onSelect(game.id)}
-            className="snap-center transition-transform duration-200 hover:-translate-y-1"
+            aria-label={game.name}
+            aria-pressed={isSelected}
+            className="snap-center rounded-2xl transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
           >
             <GlassPanel
               glow={isSelected}

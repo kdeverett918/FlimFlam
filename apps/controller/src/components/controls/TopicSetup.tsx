@@ -75,6 +75,7 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
             <button
               key={category}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => {
                 haptics.tap();
                 setSelectedCategory(category);

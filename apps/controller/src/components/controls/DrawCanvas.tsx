@@ -6,9 +6,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const PRESET_COLORS = ["#FFFFFF", "#FF3366", "#00D4AA", "#FFB800", "#7B61FF", "#000000"];
 const BRUSH_SIZES = [
-  { label: "S", size: 3, dot: 4 },
-  { label: "M", size: 8, dot: 8 },
-  { label: "L", size: 16, dot: 14 },
+  { label: "S", size: 3, dot: 4, ariaLabel: "Small brush" },
+  { label: "M", size: 8, dot: 8, ariaLabel: "Medium brush" },
+  { label: "L", size: 16, dot: 14, ariaLabel: "Large brush" },
 ];
 
 const MAX_POINTS_PER_STROKE = 512;
@@ -287,6 +287,8 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
       >
         <canvas
           ref={canvasRef}
+          role="img"
+          aria-label="Drawing canvas"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -334,6 +336,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
               <button
                 key={brush.label}
                 type="button"
+                aria-label={brush.ariaLabel}
                 onClick={() => {
                   haptics.tap();
                   setCurrentSize(brush.size);

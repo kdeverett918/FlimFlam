@@ -50,8 +50,9 @@ export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps
             key={opt.value}
             type="button"
             aria-pressed={isActive}
+            aria-label={`${opt.label}: ${opt.description}`}
             onClick={() => onChange(opt.value)}
-            className={`flex flex-col items-center gap-1 border-y-2 border-transparent px-10 py-5 transition-all duration-300 ${
+            className={`flex flex-col items-center gap-1 border-y-2 border-transparent px-10 py-5 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep ${
               isActive ? opt.activeColor : "hover:bg-white/[0.04]"
             }`}
           >
@@ -60,7 +61,7 @@ export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps
             >
               {opt.label}
             </span>
-            <span className="font-body text-[18px] text-text-muted">{opt.description}</span>
+            <span className="font-body text-[22px] text-text-muted">{opt.description}</span>
           </button>
         );
       })}

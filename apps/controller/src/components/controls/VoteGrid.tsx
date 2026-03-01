@@ -82,6 +82,7 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
             <button
               key={option.index}
               type="button"
+              aria-pressed={isSelected}
               disabled={isDisabled}
               onClick={() => handleSelect(option.index, option.disabled)}
               className={`min-h-[60px] w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${

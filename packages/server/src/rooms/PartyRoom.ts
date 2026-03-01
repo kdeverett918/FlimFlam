@@ -372,7 +372,7 @@ export class PartyRoom extends Room<RoomState> {
         try {
           this._currentPlugin.onPlayerReconnect?.(this, this.state, client);
         } catch (error) {
-          console.error("[PartyLine] Error in onPlayerReconnect:", error);
+          console.error("[FlimFlam] Error in onPlayerReconnect:", error);
         }
       }
       return;

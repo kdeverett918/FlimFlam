@@ -66,7 +66,7 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="oklch(0.15 0.04 270)"
+          stroke="oklch(0.16 0.03 245)"
           strokeWidth={8}
         />
         {/* Progress arc */}

@@ -78,7 +78,7 @@ function LobbyContent({
     let cancelled = false;
     QRCode.toDataURL(joinUrl, {
       color: {
-        dark: "#e8e6f0",
+        dark: "#f0ede6",
         light: "#00000000",
       },
       margin: 1,
@@ -117,7 +117,7 @@ function LobbyContent({
               {roomCode}
             </span>
           </GlassPanel>
-          <p className="font-body text-[20px] text-text-muted">Enter this code on your phone</p>
+          <p className="font-body text-[24px] text-text-muted">Enter this code on your phone</p>
         </div>
 
         {/* QR Code */}
@@ -127,7 +127,7 @@ function LobbyContent({
               <img src={qrDataUrl} alt="QR code to join the game" className="h-[200px] w-[200px]" />
             )}
           </GlassPanel>
-          <p className="font-body text-[18px] text-text-muted">Scan to join</p>
+          <p className="font-body text-[24px] text-text-muted">Scan to join</p>
         </div>
       </div>
 
@@ -255,7 +255,8 @@ function LobbyContent({
           type="button"
           onClick={onStartGame}
           disabled={!canStart}
-          className="w-full max-w-2xl rounded-2xl border border-primary/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none"
+          aria-label="Start the game"
+          className="w-full max-w-2xl rounded-2xl border border-primary/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none"
           style={{
             backdropFilter: "blur(16px)",
           }}

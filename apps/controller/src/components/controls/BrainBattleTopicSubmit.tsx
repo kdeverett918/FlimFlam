@@ -48,17 +48,24 @@ export function BrainBattleTopicSubmit({ sendMessage }: BrainBattleTopicSubmitPr
       </p>
 
       {[
-        { value: topic1, setter: setTopic1, label: "Topic 1" },
-        { value: topic2, setter: setTopic2, label: "Topic 2" },
-        { value: topic3, setter: setTopic3, label: "Topic 3" },
-      ].map(({ value, setter, label }) => (
+        { value: topic1, setter: setTopic1, label: "Topic 1", index: 0 },
+        { value: topic2, setter: setTopic2, label: "Topic 2", index: 1 },
+        { value: topic3, setter: setTopic3, label: "Topic 3", index: 2 },
+      ].map(({ value, setter, label, index }) => (
         <div key={label} className="relative">
           <input
             type="text"
             value={value}
             onChange={(e) => setter(e.target.value.slice(0, 40))}
-            onFocus={() => haptics.tap()}
+            onFocus={(e) => {
+              haptics.tap();
+              setTimeout(
+                () => e.target.scrollIntoView({ behavior: "smooth", block: "center" }),
+                300,
+              );
+            }}
             placeholder={label}
+            aria-label={`Topic ${index + 1}`}
             maxLength={40}
             className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-7/50 focus:shadow-[0_0_12px_oklch(0.65_0.22_260_/_0.15)]"
           />

@@ -472,7 +472,7 @@ export function GameController({
                       {categories.map((cat) => (
                         <th
                           key={cat}
-                          className="px-1 py-1 text-center font-display text-[10px] font-bold text-accent-7 uppercase tracking-wider"
+                          className="px-1 py-1 text-center font-display text-xs font-bold text-accent-7 uppercase tracking-wider"
                         >
                           {cat.length > 8 ? `${cat.slice(0, 8)}...` : cat}
                         </th>

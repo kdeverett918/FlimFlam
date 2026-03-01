@@ -114,7 +114,7 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
   const thumbPosition = ((value + 2) / 4) * 100;
 
   const getTrackGradient = () => {
-    return "linear-gradient(to right, oklch(0.65 0.25 25), oklch(0.65 0.25 25 / 0.5), oklch(0.6 0.03 270 / 0.5), oklch(0.65 0.2 145 / 0.5), oklch(0.65 0.2 145))";
+    return "linear-gradient(to right, oklch(0.65 0.25 25), oklch(0.65 0.25 25 / 0.5), oklch(0.65 0.02 80 / 0.5), oklch(0.65 0.2 145 / 0.5), oklch(0.65 0.2 145))";
   };
 
   const currentLabel = LABELS[value + 2];
@@ -150,6 +150,12 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
           ref={trackRef}
           className="relative h-3 w-full cursor-pointer rounded-full"
           style={{ background: getTrackGradient() }}
+          role="slider"
+          aria-valuemin={-2}
+          aria-valuemax={2}
+          aria-valuenow={value}
+          aria-valuetext={LABELS[value + 2]}
+          tabIndex={0}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -194,7 +200,7 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
           {LABELS.map((label) => (
             <span
               key={label}
-              className="max-w-16 text-center font-body text-[10px] leading-tight text-text-muted"
+              className="max-w-16 text-center font-body text-xs leading-tight text-text-muted"
             >
               {label}
             </span>

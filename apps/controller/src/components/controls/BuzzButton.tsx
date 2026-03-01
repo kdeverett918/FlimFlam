@@ -75,6 +75,7 @@ export function BuzzButton({
       ) : (
         <motion.button
           type="button"
+          aria-label="Buzz in"
           onClick={handleBuzz}
           whileTap={{ scale: 0.95 }}
           animate={{ scale: 1 }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatedBackground } from "@flimflam/ui";
+import { AnimatedBackground, GradientText } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,13 +29,20 @@ export default function HomePage() {
           className="flex flex-col items-center gap-4"
         >
           <h1
-            className="font-display font-extrabold leading-none tracking-[-0.02em] text-text-primary"
+            className="font-display font-extrabold leading-none tracking-[-0.02em]"
             style={{
               fontSize: "clamp(3rem, 8vw, 7rem)",
-              textShadow: "0 0 40px oklch(0.72 0.22 25 / 0.4), 0 0 80px oklch(0.70 0.15 185 / 0.2)",
             }}
           >
-            FLIMFLAM
+            <GradientText
+              animated
+              style={{
+                textShadow:
+                  "0 0 40px oklch(0.72 0.22 25 / 0.4), 0 0 80px oklch(0.70 0.15 185 / 0.2)",
+              }}
+            >
+              FLIMFLAM
+            </GradientText>
           </h1>
         </motion.div>
 
@@ -44,7 +51,8 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="font-body text-[28px] text-text-muted"
+          className="font-body text-text-muted"
+          style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
         >
           Games that get weird.
         </motion.p>
@@ -59,7 +67,8 @@ export default function HomePage() {
           type="button"
           onClick={handleCreateRoom}
           disabled={loading}
-          className="group relative h-[72px] overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-16 font-display text-[36px] font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Create a new game room"
+          className="group relative h-[72px] overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-16 font-display text-[36px] font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             backdropFilter: "blur(16px)",
           }}
@@ -83,7 +92,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.1 }}
-          className="flex flex-col items-center gap-2 text-[20px] text-text-muted"
+          className="flex flex-col items-center gap-2 text-[24px] text-text-muted"
         >
           <p>Display this screen on a shared TV or monitor</p>
           <p>Players join from their phones</p>
