@@ -1,11 +1,14 @@
 // Colyseus Cloud runs your app under PM2 and expects an ecosystem file at the
 // repository root.
 //
-// IMPORTANT: this repo is a pnpm monorepo. Runtime deps (colyseus, tsx, etc.)
-// are installed under `packages/server/node_modules`, not at the workspace root.
-// Set `cwd` accordingly so Node can resolve dependencies reliably in production.
-
-const path = require("node:path");
+// IMPORTANT: Colyseus Cloud runs `colyseus-post-deploy` which triggers the
+// `@colyseus/tools` PM2 module. That module **overwrites** `cwd` to the repo
+// root when starting your app.
+//
+// Therefore:
+// - `script` must be a path relative to the repository root.
+// - any preloaded runtime (e.g. `node_args: --import tsx`) must be resolvable
+//   from the repository root `node_modules/`.
 
 module.exports = {
   apps: [
@@ -13,13 +16,10 @@ module.exports = {
       // New app name avoids inheriting stale PM2 scale state from older failed
       // rollouts that accumulated extra instances.
       name: "partyline-server",
-      cwd: path.join(__dirname, "packages/server"),
-      // Run TypeScript directly (tsx loader) from the server package cwd.
-      // This avoids spawning `.bin/tsx` manually and fixes module resolution
-      // in pnpm workspaces on Colyseus Cloud.
-      script: "src/index.ts",
+      // Run TypeScript directly (tsx loader).
+      script: "packages/server/src/index.ts",
       interpreter: "node",
-      interpreterArgs: "--import tsx",
+      node_args: "--import tsx",
       time: true,
       watch: false,
       instances: 1,
@@ -29,7 +29,6 @@ module.exports = {
       // VM this can take 20-40 s. The PM2 default (3 s) is far too short.
       // Give us more headroom for cold starts and rolling restarts.
       listen_timeout: 180000,
-      kill_timeout: 5000,
       env: {
         NODE_ENV: "production",
       },
