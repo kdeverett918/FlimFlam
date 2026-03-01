@@ -4,9 +4,9 @@ import { GameView } from "@/components/game/GameView";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
-import { useRoom } from "@/hooks/useRoom";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRoomContext } from "../RoomProvider";
 
 export default function RoomPage() {
   const router = useRouter();
@@ -24,7 +24,7 @@ export default function RoomPage() {
     connected,
     roomCode,
     ready,
-  } = useRoom();
+  } = useRoomContext();
   const gameState = useGameState({ state, players, gameData });
   const initialized = useRef(false);
   const [showTransition, setShowTransition] = useState(false);
