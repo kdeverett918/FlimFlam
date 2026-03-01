@@ -43,7 +43,17 @@ const gameServer = new Server({
 gameServer.define("party", PartyRoom);
 
 // ─── Start Listening ────────────────────────────────────────────────────
-const port = Number(process.env.PORT) || COLYSEUS_PORT;
+const explicitPort = Number(process.env.PORT);
+const nodeAppInstance = Number(process.env.NODE_APP_INSTANCE);
+const instanceOffset = Number.isFinite(nodeAppInstance) ? nodeAppInstance : 0;
+
+// Colyseus Cloud may run multiple PM2 instances during rolling deploys.
+// If a fixed PORT is not injected, offset by NODE_APP_INSTANCE to avoid
+// EADDRINUSE when multiple processes briefly overlap.
+const port =
+  Number.isFinite(explicitPort) && explicitPort > 0
+    ? explicitPort
+    : COLYSEUS_PORT + instanceOffset;
 
 httpServer.listen(port, () => {
   console.log(`[PartyLine] Server listening on port ${port}`);
