@@ -17,7 +17,8 @@ const DEFAULT_COLYSEUS_HEALTH_URL = "https://us-dfw-baad7ee4.colyseus.cloud/heal
 
 const e2eHostUrl = process.env.PARTYLINE_E2E_HOST_URL ?? DEFAULT_HOST_URL;
 const e2eControllerUrl = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? DEFAULT_CONTROLLER_URL;
-const colyseusHealthUrl = process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? DEFAULT_COLYSEUS_HEALTH_URL;
+const colyseusHealthUrl =
+  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? DEFAULT_COLYSEUS_HEALTH_URL;
 
 // Make URLs visible to test specs (they read process.env at module load).
 process.env.PARTYLINE_E2E_HOST_URL = e2eHostUrl;
@@ -32,7 +33,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries: 1,
-  reporter: [["list"], ["html", { open: "never", outputFolder: "playwright-report-production-remote" }]],
+  reporter: [
+    ["list"],
+    ["html", { open: "never", outputFolder: "playwright-report-production-remote" }],
+  ],
   globalSetup: "./tests/e2e/global-setup-production-remote.ts",
   use: {
     baseURL: e2eHostUrl,
@@ -47,4 +51,3 @@ export default defineConfig({
     },
   ],
 });
-
