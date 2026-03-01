@@ -82,7 +82,13 @@ export type { MotionCardProps } from "./components/motion-card";
 export { AnimatedCounter } from "./components/animated-counter";
 export type { AnimatedCounterProps } from "./components/animated-counter";
 
+// Audio
+export { soundManager, sounds } from "./lib/audio";
+export type { SoundCategory, SoundConfig } from "./lib/audio";
+
 // Hooks
 export { useReducedMotion } from "./hooks/useReducedMotion";
+export { useAudio } from "./hooks/useAudio";
+export type { UseAudioReturn } from "./hooks/useAudio";
 
 // Styles path hint for consumers: import "@flimflam/ui/styles"
