@@ -1,0 +1,23 @@
+# ─── Colyseus Cloud — Environment Variables ───────────────────────────────────
+# Paste these into:
+#   Colyseus Cloud dashboard → your app → Settings → Environment Variables
+#
+# These are SERVER-SIDE runtime vars for the game server process (packages/server).
+# They are NOT for Render or the Next.js apps.
+# ─────────────────────────────────────────────────────────────────────────────
+
+ANTHROPIC_API_KEY=sk-ant-YOUR_KEY_HERE
+
+# ─── Notes ────────────────────────────────────────────────────────────────────
+# ANTHROPIC_API_KEY is the ONLY var you need to set manually.
+#
+# Everything else is either:
+#   - Automatically injected by Colyseus Cloud (COLYSEUS_CLOUD, PORT, NODE_APP_INSTANCE)
+#   - Already set in ecosystem.config.js (NODE_ENV=production, TSX_TSCONFIG_PATH)
+#
+# Without ANTHROPIC_API_KEY, these games degrade or break:
+#   - World Builder   → crashes on game start
+#   - Reality Drift   → crashes on round start
+#   - Bluff Engine    → falls back to one hardcoded question forever
+#   - Hot Take        → degrades (no AI prompts, static content only)
+#   - Quick Draw      → unaffected (no AI)
