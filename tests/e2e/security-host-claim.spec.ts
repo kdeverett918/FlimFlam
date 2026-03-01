@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { Client } from "colyseus.js";
 
 function inferColyseusWsUrl(): string {
@@ -24,4 +24,3 @@ test("host cannot be hijacked without server-issued token", async () => {
 
   hostRoom.leave(true);
 });
-
