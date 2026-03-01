@@ -124,7 +124,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
               onPaste={handleCodePaste}
               onFocus={() => haptics.tap()}
               disabled={disabled || isJoining}
-              className="glass-input h-16 w-16 rounded-xl text-center font-mono text-2xl text-text-primary uppercase transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
+              className="glass-input h-14 w-12 min-[390px]:h-16 min-[390px]:w-16 rounded-xl text-center font-mono text-2xl text-text-primary uppercase transition-all focus:border-primary/50 focus:shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)] disabled:opacity-50"
               aria-label={`Room code character ${index + 1}`}
             />
           ))}
@@ -156,7 +156,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
           }}
           disabled={disabled || isJoining}
           placeholder="Enter your name"
-          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
+          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-primary/50 focus:shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)] disabled:opacity-50"
         />
         <span className="mt-1 block text-right font-mono text-xs text-text-muted">
           {name.length}/{MAX_NAME_LENGTH}
@@ -168,7 +168,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
 
       {/* Error message */}
       {error && (
-        <GlassPanel className="w-full border-accent-6/30 bg-accent-6/10 px-4 py-3 text-center font-body text-sm text-accent-6">
+        <GlassPanel className="w-full border-red-500/30 bg-red-500/10 px-4 py-3 text-center font-body text-sm text-red-400">
           {error}
         </GlassPanel>
       )}
@@ -177,9 +177,9 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
       <button
         type="submit"
         disabled={!canJoin || disabled}
-        className="h-14 w-full rounded-xl bg-accent-1 font-display text-xl text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        className="h-14 w-full rounded-xl bg-primary font-display text-xl text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         style={{
-          boxShadow: canJoin && !disabled ? "0 0 20px oklch(0.7 0.18 265 / 0.3)" : "none",
+          boxShadow: canJoin && !disabled ? "0 0 20px oklch(0.72 0.22 25 / 0.3)" : "none",
         }}
       >
         {isJoining ? (

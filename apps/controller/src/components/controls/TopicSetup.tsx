@@ -81,7 +81,7 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
               }}
               className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.98] ${
                 isSelected
-                  ? "border-accent-6/50 bg-white/[0.08] shadow-[0_0_12px_oklch(0.65_0.25_25_/_0.15)]"
+                  ? "border-primary/50 bg-white/[0.08] shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)]"
                   : "border-white/[0.08] bg-white/[0.04]"
               }`}
               style={{
@@ -90,7 +90,7 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
                 transform: isSelected ? "scale(1.02)" : "scale(1)",
               }}
             >
-              <span className={isSelected ? "text-accent-6" : "text-text-muted"}>
+              <span className={isSelected ? "text-primary" : "text-text-muted"}>
                 {CATEGORY_ICONS[category] ?? <Puzzle className="h-5 w-5" />}
               </span>
               <span className="font-display text-sm capitalize text-text-primary">{category}</span>
@@ -112,16 +112,16 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
             placeholder="Type your topic..."
             maxLength={140}
             rows={2}
-            className="glass-input w-full rounded-xl p-4 font-body text-text-primary placeholder:text-text-dim focus:border-accent-6/50 focus:shadow-[0_0_12px_oklch(0.65_0.25_25_/_0.15)]"
+            className="glass-input w-full rounded-xl p-4 font-body text-text-primary placeholder:text-text-dim focus:border-primary/50 focus:shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)]"
           />
           <span className="text-right font-mono text-xs text-text-muted">{topic.length}/140</span>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!topic.trim()}
-            className="h-14 w-full rounded-xl bg-accent-6 font-display text-lg uppercase tracking-wider text-white transition-all active:scale-95 disabled:opacity-40"
+            className="h-14 w-full rounded-xl bg-primary font-display text-lg uppercase tracking-wider text-white transition-all active:scale-95 disabled:opacity-40"
             style={{
-              boxShadow: topic.trim() ? "0 0 16px oklch(0.65 0.25 25 / 0.25)" : "none",
+              boxShadow: topic.trim() ? "0 0 16px oklch(0.72 0.22 25 / 0.25)" : "none",
             }}
           >
             LOCK IT IN

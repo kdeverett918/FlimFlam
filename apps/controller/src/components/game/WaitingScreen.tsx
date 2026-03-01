@@ -65,27 +65,29 @@ export function WaitingScreen({ phase }: WaitingScreenProps) {
     <div className="flex flex-col items-center justify-center gap-6 px-8 py-16">
       <AnimatedBackground variant="subtle" />
 
-      {/* 3 accent-colored dots with staggered pulse */}
-      <div className="flex items-center gap-3">
+      {/* Larger animated dots with coral/teal */}
+      <div className="flex items-center gap-4">
         <div
-          className="h-3 w-3 rounded-full bg-accent-1 animate-dot-pulse"
-          style={{ animationDelay: "0s" }}
+          className="h-4 w-4 rounded-full animate-dot-pulse"
+          style={{ backgroundColor: "oklch(0.72 0.22 25)", animationDelay: "0s" }}
         />
         <div
-          className="h-3 w-3 rounded-full bg-accent-2 animate-dot-pulse"
-          style={{ animationDelay: "0.2s" }}
+          className="h-4 w-4 rounded-full animate-dot-pulse"
+          style={{ backgroundColor: "oklch(0.70 0.15 185)", animationDelay: "0.2s" }}
         />
         <div
-          className="h-3 w-3 rounded-full bg-accent-4 animate-dot-pulse"
-          style={{ animationDelay: "0.4s" }}
+          className="h-4 w-4 rounded-full animate-dot-pulse"
+          style={{ backgroundColor: "oklch(0.72 0.22 25)", animationDelay: "0.4s" }}
         />
       </div>
 
       {/* Rotating flavor text */}
-      <p className="text-center font-body text-lg text-text-muted">{contextualMessage}</p>
+      <p className="text-center font-body text-xl font-medium text-text-primary">
+        {contextualMessage}
+      </p>
 
       {/* Bottom hint */}
-      <p className="text-center font-body text-xs text-text-dim">Watch the main screen!</p>
+      <p className="text-center font-body text-sm text-text-muted">Watch the main screen!</p>
     </div>
   );
 }

@@ -78,10 +78,10 @@ export function RoleCard({
         </div>
 
         {/* Secret objective -- accent-colored left border */}
-        <div className="rounded-lg border-l-2 border-accent-1/60 bg-accent-1/[0.08] p-3">
+        <div className="rounded-lg border-l-2 border-primary/60 bg-primary/[0.08] p-3">
           <div className="mb-1 flex items-center gap-1.5">
-            <Eye className="h-3.5 w-3.5 text-accent-1" />
-            <span className="font-body text-xs font-medium text-accent-1 uppercase tracking-wider">
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            <span className="font-body text-xs font-medium text-primary uppercase tracking-wider">
               Secret Objective
             </span>
           </div>

@@ -76,9 +76,9 @@ export function AbilityButton({
           <button
             type="button"
             onClick={handleTap}
-            className="h-12 flex-1 rounded-xl bg-accent-3 font-display text-bg-deep transition-all active:scale-95"
+            className="h-12 flex-1 rounded-xl bg-primary font-display text-bg-deep transition-all active:scale-95"
             style={{
-              boxShadow: "0 0 16px oklch(0.75 0.18 85 / 0.25)",
+              boxShadow: "0 0 16px oklch(0.72 0.22 25 / 0.25)",
             }}
           >
             Confirm
@@ -92,13 +92,13 @@ export function AbilityButton({
     <button type="button" onClick={handleTap} className="mx-4 w-[calc(100%-2rem)]">
       <GlassPanel
         glow
-        glowColor="oklch(0.75 0.15 195 / 0.3)"
+        glowColor="oklch(0.72 0.22 25 / 0.3)"
         className="flex flex-col items-center gap-2 p-6 transition-all animate-glow-breathe active:scale-95"
       >
-        <Zap className="h-6 w-6 text-accent-4" />
-        <span className="font-display text-xl text-accent-4">{abilityName}</span>
+        <Zap className="h-6 w-6 text-primary" />
+        <span className="font-display text-xl text-primary">{abilityName}</span>
         <span className="font-body text-sm text-text-muted">{abilityDescription}</span>
-        <span className="mt-2 font-body text-xs font-medium text-accent-4/80 uppercase tracking-wider">
+        <span className="mt-2 font-body text-xs font-medium text-primary/80 uppercase tracking-wider">
           Tap to activate
         </span>
       </GlassPanel>

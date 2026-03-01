@@ -39,13 +39,13 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
   let glowIntensity = 8;
 
   if (fraction > 0.5) {
-    strokeColor = "oklch(0.7 0.2 145)";
+    strokeColor = "oklch(0.70 0.15 210)";
     textColor = "text-accent-5";
   } else if (fraction > 0.25) {
     strokeColor = "oklch(0.75 0.18 85)";
     textColor = "text-accent-3";
   } else {
-    strokeColor = "oklch(0.65 0.25 25)";
+    strokeColor = "oklch(0.68 0.25 20)";
     textColor = "text-accent-6";
     if (remaining < 10000) {
       shouldPulse = true;

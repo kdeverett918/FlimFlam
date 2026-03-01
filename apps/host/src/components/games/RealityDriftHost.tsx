@@ -296,7 +296,7 @@ function DriftResultsView({
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.68 0.25 20), oklch(0.75 0.18 85), oklch(0.70 0.15 210))",
+                "linear-gradient(90deg, oklch(0.68 0.25 20), oklch(0.78 0.18 85), oklch(0.70 0.15 210))",
               boxShadow: "0 0 12px oklch(0.70 0.15 210 / 0.4)",
             }}
           />

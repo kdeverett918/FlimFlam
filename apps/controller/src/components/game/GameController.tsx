@@ -161,13 +161,18 @@ export function GameController({
 
   return (
     <GameThemeProvider defaultTheme={themeKey}>
-      {/* Game-specific header bar */}
-      <div className="flex items-center justify-center gap-2 px-4 py-2">
+      {/* Compact header bar with game info */}
+      <div className="flex items-center justify-center gap-3 px-4 py-2">
         <div
           className={`rounded-full px-3 py-1 font-display text-xs font-bold uppercase tracking-wider ${accentClass}`}
         >
           {gameName}
         </div>
+        {round > 0 && totalRounds > 0 && (
+          <span className="font-mono text-xs text-text-muted">
+            {round}/{totalRounds}
+          </span>
+        )}
       </div>
       {content}
     </GameThemeProvider>
@@ -197,7 +202,7 @@ export function GameController({
                 }}
                 className="h-14 w-full rounded-xl bg-accent-2 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
                 style={{
-                  boxShadow: "0 0 16px oklch(0.7 0.2 330 / 0.25)",
+                  boxShadow: "0 0 16px oklch(0.68 0.20 300 / 0.25)",
                 }}
               >
                 Ready

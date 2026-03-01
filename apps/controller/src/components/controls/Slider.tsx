@@ -179,11 +179,11 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
             style={{ left: `${thumbPosition}%` }}
           >
             <div
-              className="h-[52px] w-[52px] rounded-full border-2 border-white/30 bg-white/[0.08]"
+              className="h-14 w-14 rounded-full border-2 border-white/30 bg-white/[0.08]"
               style={{
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "0 0 16px oklch(0.7 0.18 265 / 0.3), inset 0 0 8px oklch(1 0 0 / 0.05)",
+                boxShadow: "0 0 16px oklch(0.72 0.22 25 / 0.3), inset 0 0 8px oklch(1 0 0 / 0.05)",
               }}
             />
           </div>
@@ -205,9 +205,9 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
       <button
         type="button"
         onClick={handleSubmit}
-        className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
+        className="h-14 w-full rounded-xl bg-primary font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
         style={{
-          boxShadow: "0 0 16px oklch(0.7 0.18 265 / 0.25)",
+          boxShadow: "0 0 16px oklch(0.72 0.22 25 / 0.25)",
         }}
       >
         Submit

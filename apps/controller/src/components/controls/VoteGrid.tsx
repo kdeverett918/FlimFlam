@@ -84,11 +84,11 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
               type="button"
               disabled={isDisabled}
               onClick={() => handleSelect(option.index, option.disabled)}
-              className={`min-h-14 w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${
+              className={`min-h-[60px] w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${
                 isDisabled ? "cursor-not-allowed opacity-40" : "active:scale-[0.98]"
               } ${
                 isSelected
-                  ? "border-accent-1/50 bg-white/[0.08] shadow-[0_0_16px_oklch(0.7_0.18_265_/_0.2)]"
+                  ? "border-primary/50 bg-white/[0.08] shadow-[0_0_16px_oklch(0.72_0.22_25_/_0.2)]"
                   : "border-white/[0.08] bg-white/[0.04]"
               }`}
               style={{
@@ -111,9 +111,9 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
         type="button"
         onClick={handleConfirm}
         disabled={selected === null}
-        className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        className="h-14 w-full rounded-xl bg-primary font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         style={{
-          boxShadow: selected !== null ? "0 0 16px oklch(0.7 0.18 265 / 0.25)" : "none",
+          boxShadow: selected !== null ? "0 0 16px oklch(0.72 0.22 25 / 0.25)" : "none",
         }}
       >
         Confirm Vote

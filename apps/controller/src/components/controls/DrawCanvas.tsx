@@ -312,7 +312,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 setCurrentColor(color);
               }}
               className={`h-12 w-12 rounded-full border-2 transition-all active:scale-90 ${
-                isSelected ? "scale-110 border-accent-4" : "border-white/10"
+                isSelected ? "scale-110 border-primary" : "border-white/10"
               }`}
               style={{
                 backgroundColor: color,
@@ -340,7 +340,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 }}
                 className={`flex h-12 w-12 items-center justify-center rounded-xl border transition-all active:scale-90 ${
                   isSelected
-                    ? "border-accent-4/50 bg-white/[0.08]"
+                    ? "border-primary/50 bg-white/[0.08]"
                     : "border-white/[0.08] bg-white/[0.04]"
                 }`}
                 style={{
@@ -349,7 +349,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 }}
               >
                 <div
-                  className={`rounded-full ${isSelected ? "bg-accent-4" : "bg-text-muted"}`}
+                  className={`rounded-full ${isSelected ? "bg-primary" : "bg-text-muted"}`}
                   style={{ width: brush.dot, height: brush.dot }}
                 />
               </button>

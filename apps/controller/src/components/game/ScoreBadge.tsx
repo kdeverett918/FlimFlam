@@ -76,7 +76,7 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
         />
         {/* Score */}
         <span
-          className={`font-mono text-xl font-bold text-accent-1 ${
+          className={`font-mono text-xl font-bold text-primary ${
             animating ? "animate-score-pop" : ""
           }`}
         >

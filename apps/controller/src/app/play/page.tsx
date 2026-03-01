@@ -47,7 +47,7 @@ export default function PlayPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
         <AnimatedBackground variant="subtle" />
         <GlassPanel className="flex flex-col items-center gap-4 px-8 py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent-1" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-primary" />
           <p className="font-body text-text-muted">Connecting...</p>
           {error && <p className="text-center font-body text-sm text-accent-6">{error}</p>}
         </GlassPanel>
