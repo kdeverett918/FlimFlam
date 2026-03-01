@@ -446,7 +446,12 @@ export function GameController({
 
       case "clue-select":
         if (privateData?.isSelector) {
-          const categories = (privateData?.categories as string[]) ?? [];
+          const board =
+            (privateData?.board as Array<{
+              name: string;
+              clues: Array<{ id: string; value: number; answered: boolean }>;
+            }>) ?? [];
+          const categories = board.map((cat) => cat.name);
           const answeredClues = (privateData?.answeredClues as string[]) ?? [];
           const values = [200, 400, 600, 800, 1000];
           return (

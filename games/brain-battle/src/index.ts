@@ -140,7 +140,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       this._broadcastHost(room, state, {
         message: "Submit your topics!",
         submittedPlayerIds,
-        recentTopics: validation.value,
+        topics: [...this.internal.topics],
       });
 
       if (this.allPlayersSubmitted(state)) {
@@ -603,6 +603,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
 
     this._broadcastHost(room, state, {
       clue: this.internal.currentClue,
+      wrongAnswer: this.internal.currentAppeal?.playerAnswer ?? "",
       appealingPlayerId: sessionId,
       appealingPlayerName: this._getPlayerName(state, sessionId),
       appealsRemaining: appealsLeft,

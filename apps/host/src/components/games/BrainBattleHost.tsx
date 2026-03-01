@@ -393,13 +393,18 @@ function ClueSelectView({
 }) {
   const board = (payload.board as BoardCategory[]) ?? [];
   const answeredClues = (payload.answeredClues as string[]) ?? [];
-  const selectorId = payload.selectorId as string | undefined;
-  const selector = players.find((p) => p.sessionId === selectorId);
+  const selectorSessionId = payload.selectorSessionId as string | undefined;
+  const selectorName = payload.selectorName as string | undefined;
+  const selector = players.find((p) => p.sessionId === selectorSessionId);
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 p-12">
       <AnimatedBackground variant="subtle" />
-      <BoardGrid board={board} answeredClues={answeredClues} selectorName={selector?.name} />
+      <BoardGrid
+        board={board}
+        answeredClues={answeredClues}
+        selectorName={selector?.name ?? selectorName}
+      />
     </div>
   );
 }
@@ -415,9 +420,10 @@ function BuzzingView({
   payload: Record<string, unknown>;
   timerEndTime: number | null;
 }) {
-  const clueText = (payload.clueText as string) ?? "";
+  const clue = payload.clue as { id?: string; answer?: string; value?: number } | undefined;
+  const clueText = (clue?.answer as string) ?? "";
   const categoryName = (payload.categoryName as string) ?? "";
-  const clueValue = (payload.clueValue as number) ?? 0;
+  const clueValue = (clue?.value as number) ?? 0;
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-8 p-12">
@@ -537,7 +543,8 @@ function AnsweringView({
   players: PlayerData[];
   timerEndTime: number | null;
 }) {
-  const clueText = (payload.clueText as string) ?? "";
+  const clue = payload.clue as { answer?: string; question?: string; value?: number } | undefined;
+  const clueText = (clue?.answer as string) ?? "";
   const buzzWinnerId = payload.buzzWinnerId as string | undefined;
   const buzzWinner = players.find((p) => p.sessionId === buzzWinnerId);
   const submittedAnswer = payload.submittedAnswer as string | undefined;
@@ -769,8 +776,8 @@ function AppealResultView({
   payload: Record<string, unknown>;
   players: PlayerData[];
 }) {
-  const granted = (payload.appealGranted as boolean) ?? false;
-  const reasoning = (payload.appealReasoning as string) ?? "";
+  const granted = (payload.granted as boolean) ?? false;
+  const reasoning = (payload.reasoning as string) ?? "";
   const [displayedText, setDisplayedText] = useState("");
 
   // Typewriter effect for reasoning
@@ -852,7 +859,7 @@ function ClueResultView({
   players: PlayerData[];
 }) {
   const correctAnswer = (payload.correctAnswer as string) ?? "";
-  const _wasCorrect = (payload.wasCorrect as boolean) ?? false;
+  const _wasCorrect = (payload.correct as boolean) ?? false;
   const scoreChanges =
     (payload.scoreChanges as Array<{
       sessionId: string;

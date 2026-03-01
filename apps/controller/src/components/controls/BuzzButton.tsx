@@ -26,7 +26,6 @@ export function BuzzButton({
   const handleBuzz = () => {
     if (buzzed || disabled) return;
     haptics.confirm();
-    window.navigator?.vibrate?.(50);
     setLocalBuzzed(true);
     onBuzz();
   };
