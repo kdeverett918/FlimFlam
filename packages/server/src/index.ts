@@ -48,7 +48,8 @@ const port = Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : 
 const listenOptions = {
   host: "0.0.0.0",
   port,
-  reusePort: true,
+  // Colyseus Cloud uses Linux. `SO_REUSEPORT` is not supported on Windows.
+  ...(process.platform === "win32" ? {} : { reusePort: true }),
 } as const;
 
 // Colyseus Cloud ingress expects a stable app port. During rolling restarts,
