@@ -1,7 +1,7 @@
 "use client";
 
 import { getColyseusClient, resolveColyseusHttpUrl } from "@/lib/colyseus-client";
-import type { PlayerData } from "@partyline/shared";
+import { type PlayerData, resolveRoomIdByCode } from "@partyline/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -284,13 +284,38 @@ export function useRoom(): UseRoomReturn {
 
       for (let attempt = 0; attempt < JOIN_MAX_ATTEMPTS; attempt++) {
         try {
-          const resolveRes = await fetch(`${resolveColyseusHttpUrl()}/api/rooms/resolve`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ code: normalizedCode }),
-          });
+          const resolved = await resolveRoomIdByCode(resolveColyseusHttpUrl(), normalizedCode);
 
-          if (resolveRes.status === 404) {
+          if (!resolved.ok) {
+            if (resolved.error === "not_found") {
+              if (attempt < JOIN_MAX_ATTEMPTS - 1) {
+                await new Promise((resolve) =>
+                  setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 1)),
+                );
+                continue;
+              }
+
+              setError("Room not found. Check the code and try again.");
+              return false;
+            }
+
+            if (resolved.error === "rate_limited") {
+              if (attempt < JOIN_MAX_ATTEMPTS - 1) {
+                await new Promise((resolve) =>
+                  setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 3)),
+                );
+                continue;
+              }
+
+              setError("Too many attempts. Please wait a moment and try again.");
+              return false;
+            }
+
+            if (resolved.error === "invalid_code") {
+              setError("Invalid room code. Check the code and try again.");
+              return false;
+            }
+
             if (attempt < JOIN_MAX_ATTEMPTS - 1) {
               await new Promise((resolve) =>
                 setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 1)),
@@ -298,33 +323,10 @@ export function useRoom(): UseRoomReturn {
               continue;
             }
 
-            setError("Room not found. Check the code and try again.");
-            return false;
+            throw new Error("Failed to resolve room. Please try again.");
           }
 
-          if (resolveRes.status === 429) {
-            if (attempt < JOIN_MAX_ATTEMPTS - 1) {
-              await new Promise((resolve) =>
-                setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 3)),
-              );
-              continue;
-            }
-
-            setError("Too many attempts. Please wait a moment and try again.");
-            return false;
-          }
-
-          if (!resolveRes.ok) {
-            throw new Error(`Failed to resolve room (HTTP ${resolveRes.status})`);
-          }
-
-          const resolveData = (await resolveRes.json()) as { roomId?: unknown };
-          const roomId = typeof resolveData.roomId === "string" ? resolveData.roomId : null;
-          if (!roomId) {
-            throw new Error("Failed to resolve room (invalid server response).");
-          }
-
-          const joinedRoom = await client.joinById(roomId, {
+          const joinedRoom = await client.joinById(resolved.roomId, {
             name: trimmedName,
             color,
           });

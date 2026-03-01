@@ -1,7 +1,12 @@
 "use client";
 
 import { getColyseusClient, resolveColyseusHttpUrl } from "@/lib/colyseus-client";
-import type { Complexity, HostViewData, PlayerData } from "@partyline/shared";
+import {
+  type Complexity,
+  type HostViewData,
+  type PlayerData,
+  resolveRoomIdByCode,
+} from "@partyline/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -256,27 +261,26 @@ export function useRoom(): UseRoomReturn {
 
       let roomId: string;
       try {
-        const resolveRes = await fetch(`${resolveColyseusHttpUrl()}/api/rooms/resolve`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ code: normalizedCode }),
-        });
+        const resolved = await resolveRoomIdByCode(resolveColyseusHttpUrl(), normalizedCode);
 
-        if (resolveRes.status === 404) {
-          setError(`Room with code "${normalizedCode}" not found.`);
-          return;
+        if (!resolved.ok) {
+          if (resolved.error === "not_found") {
+            setError(`Room with code "${normalizedCode}" not found.`);
+            return;
+          }
+          if (resolved.error === "rate_limited") {
+            setError("Too many attempts. Please wait a moment and try again.");
+            return;
+          }
+          if (resolved.error === "invalid_code") {
+            setError("Invalid room code. Check the code and try again.");
+            return;
+          }
+
+          throw new Error("Failed to resolve room. Please try again.");
         }
 
-        if (!resolveRes.ok) {
-          throw new Error(`Failed to resolve room (HTTP ${resolveRes.status})`);
-        }
-
-        const resolveData = (await resolveRes.json()) as { roomId?: unknown };
-        if (typeof resolveData.roomId !== "string" || !resolveData.roomId.trim()) {
-          throw new Error("Failed to resolve room (invalid server response).");
-        }
-
-        roomId = resolveData.roomId;
+        roomId = resolved.roomId;
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to resolve room";
         setError(message);

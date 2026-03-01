@@ -11,6 +11,7 @@ playwright-report
 test-results
 .cache/ms-playwright
 playwright-report-production
+playwright-report-production-remote
 
 .tmp
 .playwright-mcp
