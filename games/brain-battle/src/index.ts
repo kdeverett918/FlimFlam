@@ -37,6 +37,11 @@ export class BrainBattlePlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: BrainBattleInternalState;
 
+  // Bonus award tracking
+  private _appealsGranted = new Map<string, number>();
+  private _buzzesWon = new Map<string, number>();
+  private _correctByCategory = new Map<string, Map<string, number>>();
+
   private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
     const s = state as unknown as Record<string, unknown>;
     room.broadcast("game-data", {
@@ -513,6 +518,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     }
 
     this.internal.buzzWinnerId = winnerId;
+    this._buzzesWon.set(winnerId, (this._buzzesWon.get(winnerId) ?? 0) + 1);
     this.resetSubmissions(state);
 
     this.setPhase(state, "answering");
@@ -573,6 +579,19 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     this.addPoints(state, sessionId, value, `Correct! +$${value}`);
     this.internal.lastCorrectAnswerer = sessionId;
     this.internal.selectorSessionId = sessionId;
+
+    // Track correct answers by category for bonus awards
+    if (this.internal.currentClueId && this.internal.board) {
+      const catIndex = Number.parseInt(this.internal.currentClueId.split("_")[0]?.replace("cat", "") ?? "0", 10);
+      const categoryName = this.internal.board.categories[catIndex]?.name ?? "Unknown";
+      if (!this._correctByCategory.has(sessionId)) {
+        this._correctByCategory.set(sessionId, new Map());
+      }
+      const playerCats = this._correctByCategory.get(sessionId);
+      if (playerCats) {
+        playerCats.set(categoryName, (playerCats.get(categoryName) ?? 0) + 1);
+      }
+    }
 
     this._showClueResult(room, state, true, sessionId);
   }
@@ -663,6 +682,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
         );
         this.internal.lastCorrectAnswerer = appeal.playerId;
         this.internal.selectorSessionId = appeal.playerId;
+        this._appealsGranted.set(appeal.playerId, (this._appealsGranted.get(appeal.playerId) ?? 0) + 1);
       }
 
       this._broadcastHost(room, state, {
@@ -742,10 +762,50 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     this._startClueSelect(room, state);
   }
 
+  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
+
+    // Appeal Champion: most successful appeals
+    let maxAppeals = 0;
+    let appealChamp = "";
+    for (const [sid, count] of this._appealsGranted) {
+      if (count > maxAppeals) { maxAppeals = count; appealChamp = sid; }
+    }
+    if (appealChamp) {
+      awards.push({ title: "Appeal Champion", sessionId: appealChamp, playerName: this._getPlayerName(state, appealChamp), reason: `${maxAppeals} successful appeal${maxAppeals !== 1 ? "s" : ""}` });
+    }
+
+    // Buzzer King: most buzzes won
+    let maxBuzzes = 0;
+    let buzzerKing = "";
+    for (const [sid, count] of this._buzzesWon) {
+      if (count > maxBuzzes) { maxBuzzes = count; buzzerKing = sid; }
+    }
+    if (buzzerKing) {
+      awards.push({ title: "Buzzer King", sessionId: buzzerKing, playerName: this._getPlayerName(state, buzzerKing), reason: `Won ${maxBuzzes} buzz${maxBuzzes !== 1 ? "es" : ""}` });
+    }
+
+    // Category Expert: most correct in one category
+    let maxInCat = 0;
+    let catExpert = "";
+    let bestCategory = "";
+    for (const [sid, cats] of this._correctByCategory) {
+      for (const [cat, count] of cats) {
+        if (count > maxInCat) { maxInCat = count; catExpert = sid; bestCategory = cat; }
+      }
+    }
+    if (catExpert && catExpert !== buzzerKing) {
+      awards.push({ title: "Category Expert", sessionId: catExpert, playerName: this._getPlayerName(state, catExpert), reason: `${maxInCat} correct in ${bestCategory}` });
+    }
+
+    return awards;
+  }
+
   private _showFinalScores(room: Room, state: Schema): void {
     this.setPhase(state, "final-scores");
     this._broadcastHost(room, state, {
       leaderboard: this.scoringEngine.getLeaderboard(),
+      bonusAwards: this._computeBonusAwards(state),
     });
   }
 

@@ -4,7 +4,7 @@ export type SoundCategory = "ui" | "game" | "celebration" | "ambient";
 
 export interface SoundConfig {
   src: string;
-  sprite?: Record<string, [number, number, boolean?]>;
+  sprite?: Record<string, [number, number] | [number, number, boolean]>;
   volume?: number;
 }
 

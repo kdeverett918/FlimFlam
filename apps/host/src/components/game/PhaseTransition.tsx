@@ -1,13 +1,20 @@
 "use client";
 
-import { AnimatedBackground } from "@flimflam/ui";
+import { AnimatedBackground, GAME_THEMES, type GameTheme } from "@flimflam/ui";
 import { motion } from "framer-motion";
 
 interface PhaseTransitionProps {
   label: string;
+  gameId?: string;
+  round?: number;
+  totalRounds?: number;
 }
 
-export function PhaseTransition({ label }: PhaseTransitionProps) {
+export function PhaseTransition({ label, gameId, round, totalRounds }: PhaseTransitionProps) {
+  const theme = gameId ? GAME_THEMES[gameId as GameTheme] : undefined;
+  const accentColor = theme?.primaryBlob ?? "oklch(0.72 0.22 25)";
+  const secondColor = theme?.secondaryBlob ?? "oklch(0.70 0.15 185)";
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -16,7 +23,7 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
       transition={{ duration: 0.5 }}
       className="fixed inset-0 z-50 flex items-center justify-center"
     >
-      <AnimatedBackground />
+      <AnimatedBackground gameId={gameId} />
 
       {/* White flash overlay */}
       <motion.div
@@ -34,7 +41,7 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="absolute left-0 right-0 top-[40%] h-[3px]"
         style={{
-          background: "linear-gradient(90deg, transparent, oklch(0.72 0.22 25 / 0.8), transparent)",
+          background: `linear-gradient(90deg, transparent, ${accentColor.replace(")", " / 0.8)")}, transparent)`,
         }}
       />
 
@@ -56,11 +63,21 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         <h1
           className="font-display text-[80px] font-extrabold text-text-primary md:text-[112px]"
           style={{
-            textShadow: "0 0 40px oklch(0.72 0.22 25 / 0.5), 0 0 80px oklch(0.70 0.15 185 / 0.25)",
+            textShadow: `0 0 40px ${accentColor.replace(")", " / 0.5)")}, 0 0 80px ${secondColor.replace(")", " / 0.25)")}`,
           }}
         >
           {label}
         </h1>
+        {round != null && round > 0 && totalRounds != null && totalRounds > 0 && (
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="font-display text-[36px] font-semibold text-text-muted"
+          >
+            Round {round}/{totalRounds}
+          </motion.p>
+        )}
       </motion.div>
 
       {/* Bottom light bar */}
@@ -71,8 +88,7 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="absolute bottom-[40%] left-0 right-0 h-[3px]"
         style={{
-          background:
-            "linear-gradient(90deg, transparent, oklch(0.70 0.15 185 / 0.8), transparent)",
+          background: `linear-gradient(90deg, transparent, ${secondColor.replace(")", " / 0.8)")}, transparent)`,
         }}
       />
     </motion.div>

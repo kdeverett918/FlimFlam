@@ -57,6 +57,9 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "clue-select": 30_000,
 };
 
+export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;
+export const REACTION_COOLDOWN_MS = 2_000;
+
 export const AVATAR_COLORS = [
   "#FF3366", // hot pink
   "#00D4AA", // teal

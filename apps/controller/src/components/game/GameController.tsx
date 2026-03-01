@@ -11,8 +11,9 @@ import { TopicSetup } from "@/components/controls/TopicSetup";
 import { VoteGrid } from "@/components/controls/VoteGrid";
 import { GameThemeProvider, GlassPanel, haptics } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
-import { Check, Monitor } from "lucide-react";
+import { Check, Monitor, Trophy } from "lucide-react";
 import { useCallback } from "react";
+import { ReactionBar } from "./ReactionBar";
 import { RoleCard } from "./RoleCard";
 import { WaitingScreen } from "./WaitingScreen";
 
@@ -126,7 +127,26 @@ export function GameController({
     phase === "appeal-judging";
 
   if (isWaitingPhase) {
-    return <WaitingScreen phase={phase} />;
+    return (
+      <>
+        <WaitingScreen
+          phase={phase}
+          score={typeof privateData?.score === "number" ? privateData.score : undefined}
+          rank={typeof privateData?.rank === "number" ? privateData.rank : undefined}
+          totalPlayers={
+            typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : undefined
+          }
+          submittedCount={
+            typeof privateData?.submittedCount === "number" ? privateData.submittedCount : undefined
+          }
+          totalCount={
+            typeof privateData?.totalCount === "number" ? privateData.totalCount : undefined
+          }
+          gameId={gameId}
+        />
+        <ReactionBar sendMessage={sendMessage} />
+      </>
+    );
   }
 
   const themeKey = GAME_THEME_MAP[gameId] ?? "default";
@@ -175,6 +195,7 @@ export function GameController({
         )}
       </div>
       {content}
+      <ReactionBar sendMessage={sendMessage} />
     </GameThemeProvider>
   );
 
@@ -239,10 +260,11 @@ export function GameController({
       case "narration-display":
         return renderWatchScreen("Watch the story unfold on the main screen...");
       case "reveal":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -302,10 +324,11 @@ export function GameController({
         );
       }
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -359,9 +382,9 @@ export function GameController({
           ? renderSuccessCard("You got it!", "Keep watching the main screen...")
           : renderWatchScreen("Check the main screen for the reveal!");
       case "final-scores":
-        return renderWatchScreen("Check the main screen for the reveal!");
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -402,10 +425,11 @@ export function GameController({
           </div>
         );
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -433,10 +457,11 @@ export function GameController({
           </div>
         );
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -579,11 +604,12 @@ export function GameController({
       case "appeal-judging":
       case "appeal-result":
       case "clue-result":
-      case "final-scores":
         return renderWatchScreen("Check the main screen!");
+      case "final-scores":
+        return renderFinalScoresCard();
 
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -610,6 +636,52 @@ export function GameController({
       );
     }
     return renderWatchScreen("Watch the main screen...");
+  }
+
+  function renderFinalScoresCard() {
+    const playerScore = typeof privateData?.score === "number" ? privateData.score : null;
+    const playerRank = typeof privateData?.rank === "number" ? privateData.rank : null;
+    const total = typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : null;
+
+    const getRankSuffix = (r: number): string => {
+      if (r % 100 >= 11 && r % 100 <= 13) return "th";
+      switch (r % 10) {
+        case 1:
+          return "st";
+        case 2:
+          return "nd";
+        case 3:
+          return "rd";
+        default:
+          return "th";
+      }
+    };
+
+    if (playerRank !== null && playerScore !== null) {
+      return (
+        <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
+          <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
+            <Trophy className="h-8 w-8 text-accent-5" />
+            <p className="font-display text-3xl font-bold text-primary">
+              {playerRank}
+              {getRankSuffix(playerRank)}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-2xl font-bold text-text-primary">{playerScore}</span>
+              <span className="font-body text-sm text-text-dim">pts</span>
+            </div>
+            {total !== null && (
+              <p className="font-body text-sm text-text-muted">out of {total} players</p>
+            )}
+          </GlassPanel>
+          <p className="text-center font-body text-sm text-text-muted">
+            Check the main screen for full results!
+          </p>
+        </div>
+      );
+    }
+
+    return renderWatchScreen("Check the main screen for results!");
   }
 
   function renderWatchScreen(message: string) {

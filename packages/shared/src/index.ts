@@ -40,6 +40,7 @@ export type {
   PrivateDataMessage,
   DrawStrokeBroadcast,
   ErrorMessage,
+  PlayerReactionMessage,
 } from "./types/messages";
 
 export type {
@@ -111,6 +112,8 @@ export {
   COMPLEXITY_TIMER_MULTIPLIERS,
   COMPLEXITY_ROUND_COUNTS,
   DEFAULT_PHASE_TIMERS,
+  REACTION_EMOJIS,
+  REACTION_COOLDOWN_MS,
   AVATAR_COLORS,
   GAME_MANIFESTS,
 } from "./constants";

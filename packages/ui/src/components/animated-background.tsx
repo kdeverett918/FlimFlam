@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { GAME_THEMES, type GameTheme } from "./game-theme-provider";
 
 export interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "subtle";
@@ -9,18 +10,30 @@ export interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivEle
   primaryColor?: string;
   /** Override secondary blob color (defaults to teal) */
   secondaryColor?: string;
+  /** Use per-game blob colors from GAME_THEMES */
+  gameId?: string;
 }
 
 function AnimatedBackground({
   variant = "default",
   primaryColor,
   secondaryColor,
+  gameId,
   className,
   ...props
 }: AnimatedBackgroundProps) {
   const filterId = React.useId();
-  const coral = primaryColor ?? "oklch(0.72 0.22 25)";
-  const teal = secondaryColor ?? "oklch(0.70 0.15 185)";
+
+  let coral = primaryColor ?? "oklch(0.72 0.22 25)";
+  let teal = secondaryColor ?? "oklch(0.70 0.15 185)";
+
+  if (gameId && !primaryColor && !secondaryColor) {
+    const theme = GAME_THEMES[gameId as GameTheme];
+    if (theme) {
+      coral = theme.primaryBlob;
+      teal = theme.secondaryBlob;
+    }
+  }
 
   return (
     <div

@@ -1,8 +1,8 @@
 "use client";
 
-import { Scoreboard } from "@/components/game/Scoreboard";
+import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { Timer } from "@/components/game/Timer";
-import type { PlayerData, ScoreEntry } from "@flimflam/shared";
+import type { PlayerData } from "@flimflam/shared";
 import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
@@ -25,6 +25,7 @@ export function HotTakeHost({
   players,
   payload,
   timerEndTime,
+  room,
 }: HotTakeHostProps) {
   switch (phase) {
     case "topic-setup":
@@ -45,7 +46,13 @@ export function HotTakeHost({
     case "results":
       return <HotTakeResultsView payload={payload} players={players} />;
     case "final-scores":
-      return <HotTakeFinalScoresView players={players} />;
+      return (
+        <FinalScoresLayout
+          scores={buildScores(players)}
+          accentColorClass="text-accent-6"
+          room={room}
+        />
+      );
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
@@ -507,27 +514,3 @@ function HotTakeResultsView({
   );
 }
 
-function HotTakeFinalScoresView({ players }: { players: PlayerData[] }) {
-  const scores: ScoreEntry[] = players
-    .map((p) => ({
-      sessionId: p.sessionId,
-      name: p.name,
-      score: p.score,
-      rank: 0,
-      breakdown: [],
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
-
-  return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <AnimatedBackground variant="subtle" />
-      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-6">
-        FINAL SCORES
-      </h1>
-      <div className="relative z-10 w-full max-w-4xl">
-        <Scoreboard scores={scores} />
-      </div>
-    </div>
-  );
-}

@@ -45,6 +45,10 @@ export class HotTakePlugin extends BaseGamePlugin {
   private internal!: HotTakeInternalState;
   private prePickedPrompts: { prompt: string; index: number }[] = [];
 
+  // Bonus award tracking
+  private _majorityMatchCount = new Map<string, number>();
+  private _loneWolfWinCount = new Map<string, number>();
+
   private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
     const s = state as unknown as Record<string, unknown>;
     room.broadcast("game-data", {
@@ -486,10 +490,16 @@ export class HotTakePlugin extends BaseGamePlugin {
 
     for (const [sessionId, scoreInfo] of scores) {
       if (this.internal.currentRoundType === "lone-wolf") {
-        if (scoreInfo.points === SCORING.LONE_WOLF_MOST_UNIQUE) loneWolfIds.push(sessionId);
+        if (scoreInfo.points === SCORING.LONE_WOLF_MOST_UNIQUE) {
+          loneWolfIds.push(sessionId);
+          this._loneWolfWinCount.set(sessionId, (this._loneWolfWinCount.get(sessionId) ?? 0) + 1);
+        }
         if (scoreInfo.points === SCORING.LONE_WOLF_SECOND) secondUniqueIds.push(sessionId);
       } else {
-        if (scoreInfo.points === SCORING.MAJORITY_EXACT) matchedMajorityIds.push(sessionId);
+        if (scoreInfo.points === SCORING.MAJORITY_EXACT) {
+          matchedMajorityIds.push(sessionId);
+          this._majorityMatchCount.set(sessionId, (this._majorityMatchCount.get(sessionId) ?? 0) + 1);
+        }
       }
     }
 
@@ -521,10 +531,38 @@ export class HotTakePlugin extends BaseGamePlugin {
     });
   }
 
+  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
+    const getName = (sid: string) => ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+
+    // Crowd Pleaser: voted with majority most often
+    let maxMajority = 0;
+    let crowdPleaser = "";
+    for (const [sid, count] of this._majorityMatchCount) {
+      if (count > maxMajority) { maxMajority = count; crowdPleaser = sid; }
+    }
+    if (crowdPleaser) {
+      awards.push({ title: "Crowd Pleaser", sessionId: crowdPleaser, playerName: getName(crowdPleaser), reason: `Matched majority ${maxMajority} time${maxMajority !== 1 ? "s" : ""}` });
+    }
+
+    // Hot Take Royalty: most lone wolf wins
+    let maxLoneWolf = 0;
+    let hotTakeRoyalty = "";
+    for (const [sid, count] of this._loneWolfWinCount) {
+      if (count > maxLoneWolf) { maxLoneWolf = count; hotTakeRoyalty = sid; }
+    }
+    if (hotTakeRoyalty) {
+      awards.push({ title: "Hot Take Royalty", sessionId: hotTakeRoyalty, playerName: getName(hotTakeRoyalty), reason: `${maxLoneWolf} lone wolf win${maxLoneWolf !== 1 ? "s" : ""}` });
+    }
+
+    return awards;
+  }
+
   private async _advanceAfterResults(room: Room, state: Schema): Promise<void> {
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
-      this._broadcastHost(room, state, {});
+      this._broadcastHost(room, state, { bonusAwards: this._computeBonusAwards(state) });
       return;
     }
 

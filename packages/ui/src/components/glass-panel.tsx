@@ -29,10 +29,12 @@ export interface GlassPanelProps
     VariantProps<typeof glassPanelVariants> {
   glow?: boolean;
   glowColor?: string;
+  /** Optional accent border color (applied with low opacity) */
+  accentColor?: string;
 }
 
 const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
-  ({ className, variant, rounded, glow = false, glowColor, style, ...props }, ref) => {
+  ({ className, variant, rounded, glow = false, glowColor, accentColor, style, ...props }, ref) => {
     return (
       <div
         ref={ref}
@@ -41,6 +43,13 @@ const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
           ...(glow
             ? {
                 boxShadow: `0 0 24px ${glowColor ?? "oklch(0.72 0.22 25 / 0.3)"}`,
+              }
+            : {}),
+          ...(accentColor
+            ? {
+                borderColor: accentColor.includes("/")
+                  ? accentColor
+                  : `${accentColor.replace(")", " / 0.25)")}`,
               }
             : {}),
           ...style,

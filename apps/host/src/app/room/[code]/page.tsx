@@ -2,6 +2,8 @@
 
 import { GameView } from "@/components/game/GameView";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
+import { ReactionOverlay } from "@/components/game/ReactionOverlay";
+import { VolumeControl } from "@/components/game/VolumeControl";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
 import { useParams, useRouter } from "next/navigation";
@@ -106,7 +108,20 @@ export default function RoomPage() {
   return (
     <main className="relative min-h-screen bg-bg-dark">
       {/* Phase transition overlay */}
-      {showTransition && <PhaseTransition label={transitionLabel} />}
+      {showTransition && (
+        <PhaseTransition
+          label={transitionLabel}
+          gameId={gameState.selectedGameId}
+          round={gameState.round}
+          totalRounds={gameState.totalRounds}
+        />
+      )}
+
+      {/* Reaction overlay */}
+      <ReactionOverlay room={room} />
+
+      {/* Volume control */}
+      <VolumeControl />
 
       {/* Main content based on game phase */}
       {gameState.screenView === "lobby" && (
