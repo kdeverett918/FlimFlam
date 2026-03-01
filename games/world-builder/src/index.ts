@@ -185,8 +185,10 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     // Move to role reveal phase
     this.setPhase(state, "role-reveal");
 
-    // Send private data to each player with their role + secret objective
+    // Send private data to each player with their role + secret objective (skip host)
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const [sessionId, roleData] of this.internal.playerRoles) {
+      if (sessionId === hostId) continue;
       const client = room.clients.find((c: { sessionId: string }) => c.sessionId === sessionId);
       if (client) {
         room.send(client, "private-data", {
@@ -325,6 +327,26 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
         this.setPhase(state, "final-scores");
         this._showFinalScores(room, state);
       }
+    }
+  }
+
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    const s = state as unknown as Record<string, unknown>;
+    const phase = s.gamePhase as string;
+
+    if (phase === "role-reveal" || phase === "action-input") {
+      const roleData = this.internal?.playerRoles.get(client.sessionId);
+      if (!roleData) return;
+      const players = s.players as MapSchema;
+      const player = players.get(client.sessionId);
+      room.send(client, "private-data", {
+        role: roleData.roleName,
+        publicIdentity: (player as Record<string, unknown> | undefined)?.publicInfo,
+        secretObjective: roleData.secretObjective,
+        specialAbility: roleData.specialAbility,
+        abilityId: "special",
+        scoringCriteria: roleData.scoringCriteria,
+      });
     }
   }
 

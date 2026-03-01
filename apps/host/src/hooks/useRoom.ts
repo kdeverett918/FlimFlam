@@ -31,6 +31,7 @@ interface UseRoomReturn {
 
 const RECONNECT_TOKEN_KEY = "partyline_host_reconnect_token";
 const ROOM_CODE_KEY = "partyline_host_room_code";
+const HOST_TOKEN_KEY = "partyline_host_token";
 const ROOM_CODE_TIMEOUT_MS = 5000;
 
 export function useRoom(): UseRoomReturn {
@@ -48,6 +49,13 @@ export function useRoom(): UseRoomReturn {
     setRoom(joinedRoom);
     setConnected(true);
     setError(null);
+
+    joinedRoom.onMessage("host-token", (data: { token?: unknown }) => {
+      if (typeof window === "undefined") return;
+      if (data && typeof data.token === "string" && data.token.trim()) {
+        sessionStorage.setItem(HOST_TOKEN_KEY, data.token);
+      }
+    });
 
     // Save session info for reconnection
     if (typeof window !== "undefined") {
@@ -188,6 +196,8 @@ export function useRoom(): UseRoomReturn {
       joinedRoom = await client.create("party", {
         isHost: true,
         name: "Host",
+        hostToken:
+          typeof window !== "undefined" ? sessionStorage.getItem(HOST_TOKEN_KEY) : undefined,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create room";
@@ -267,6 +277,7 @@ export function useRoom(): UseRoomReturn {
         joinedRoom = await client.joinById(target.roomId, {
           isHost: true,
           name: "Host",
+          hostToken: sessionStorage.getItem(HOST_TOKEN_KEY) ?? undefined,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to join room";
@@ -328,6 +339,7 @@ export function useRoom(): UseRoomReturn {
       .catch(() => {
         sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
         sessionStorage.removeItem(ROOM_CODE_KEY);
+        sessionStorage.removeItem(HOST_TOKEN_KEY);
       })
       .finally(() => {
         setReady(true);

@@ -1,0 +1,7 @@
+# Ensure consistent line endings across OSes (Biome formatting, CI stability).
+* text=auto eol=lf
+
+# Windows command scripts should remain CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+

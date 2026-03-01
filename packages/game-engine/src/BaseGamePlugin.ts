@@ -217,4 +217,12 @@ export abstract class BaseGamePlugin implements GamePlugin {
   onTick(_room: Room, _state: Schema, _deltaTime: number): void {
     // No-op by default
   }
+
+  /**
+   * Default onPlayerReconnect: no-op. Override to re-send private data
+   * to a player who reconnected mid-game (e.g. via name-based reconnect).
+   */
+  onPlayerReconnect(_room: Room, _state: Schema, _client: Client): void {
+    // No-op by default
+  }
 }

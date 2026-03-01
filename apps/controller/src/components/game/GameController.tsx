@@ -87,6 +87,14 @@ export function GameController({
     [sendMessage],
   );
 
+  const handleDrawUndo = useCallback(() => {
+    sendMessage("player:draw-undo");
+  }, [sendMessage]);
+
+  const handleDrawClear = useCallback(() => {
+    sendMessage("player:draw-clear");
+  }, [sendMessage]);
+
   const handleSliderSubmit = useCallback(
     (value: number) => {
       sendMessage("player:vote", { value });
@@ -307,7 +315,11 @@ export function GameController({
           <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
             Draw the word -- be quick!
           </p>
-          <DrawCanvas onStrokeSend={handleDrawStroke} />
+          <DrawCanvas
+            onStrokeSend={handleDrawStroke}
+            onUndoSend={handleDrawUndo}
+            onClearSend={handleDrawClear}
+          />
         </div>
       );
     }
@@ -357,15 +369,8 @@ export function GameController({
             </div>
           );
         }
-        return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            <TextInput
-              prompt={`Round ${round}/${totalRounds} -- What's your answer?`}
-              placeholder="Type your answer..."
-              onSubmit={handleTextSubmit}
-            />
-          </div>
-        );
+        // Options not yet received (e.g. reconnecting mid-round) — show waiting state.
+        return <WaitingScreen phase="answering" />;
       }
       case "drift-check":
         return (

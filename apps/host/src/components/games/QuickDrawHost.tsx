@@ -344,9 +344,23 @@ function CanvasMirror({ room }: { room: Room | null }) {
     };
     const unsubscribeClear = room.onMessage("clear-canvas", clearHandler);
 
+    const drawClearHandler = () => {
+      strokesRef.current = [];
+      redrawAll();
+    };
+    const unsubscribeDrawClear = room.onMessage("draw-clear", drawClearHandler);
+
+    const undoHandler = () => {
+      strokesRef.current = strokesRef.current.slice(0, -1);
+      redrawAll();
+    };
+    const unsubscribeUndo = room.onMessage("draw-undo", undoHandler);
+
     return () => {
       unsubscribeStroke();
       unsubscribeClear();
+      unsubscribeDrawClear();
+      unsubscribeUndo();
     };
   }, [room, drawStroke, redrawAll]);
 

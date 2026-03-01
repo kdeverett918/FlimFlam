@@ -4,9 +4,9 @@ import { GameView } from "@/components/game/GameView";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
-import { useRoom } from "@/hooks/useRoom";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRoomContext } from "../RoomProvider";
 
 export default function RoomPage() {
   const router = useRouter();
@@ -24,37 +24,54 @@ export default function RoomPage() {
     connected,
     roomCode,
     ready,
-  } = useRoom();
+  } = useRoomContext();
   const gameState = useGameState({ state, players, gameData });
   const initialized = useRef(false);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("");
   const prevPhase = useRef(gameState.phase);
 
-  // Connect to room on mount
+  // Connect to room on mount.
+  //
+  // Bug fix: the previous version called router.replace() inside the
+  // createRoom().then() callback. In Next.js App Router, router.replace() called
+  // from inside an async callback racing against state-triggered re-renders can
+  // silently drop the navigation. Instead we:
+  //   1. Call createRoom() and let it store roomCode in its own state.
+  //   2. Watch roomCode via a separate useEffect and navigate there.
+  //   3. Never call router.replace() from inside an async callback.
   useEffect(() => {
-    if (!ready || initialized.current || !routeCode) return;
+    if (!ready || initialized.current) return;
     if (connected && room) return;
-    initialized.current = true;
 
-    const isCreateRoute = routeCode.length !== 4;
+    const isCreateRoute = routeCode === "NEW" || routeCode.length !== 4;
 
     if (isCreateRoute) {
-      createRoom()
-        .then((createdCode) => {
-          router.replace(`/room/${createdCode}`);
-        })
-        .catch((err) => {
-          console.error("Failed to create room:", err);
-        });
+      initialized.current = true;
+      createRoom().catch((err) => {
+        console.error("Failed to create room:", err);
+        initialized.current = false; // allow retry on error
+      });
       return;
     }
 
-    // Join existing room by code
+    if (!routeCode) return;
+    initialized.current = true;
+
     joinRoom(routeCode).catch((err) => {
       console.error("Failed to join room:", err);
+      initialized.current = false; // allow retry on error
     });
-  }, [ready, routeCode, connected, room, joinRoom, createRoom, router]);
+  }, [ready, routeCode, connected, room, joinRoom, createRoom]);
+
+  // Navigate to the real room URL once we have the room code.
+  // Separating this from the createRoom() call prevents the router.replace()
+  // from racing with pending React state flushes.
+  useEffect(() => {
+    if (!roomCode) return;
+    if (roomCode === routeCode) return; // already on the right URL
+    router.replace(`/room/${roomCode}`);
+  }, [roomCode, routeCode, router]);
 
   // Phase transition effect
   useEffect(() => {
@@ -76,7 +93,9 @@ export default function RoomPage() {
         <div className="flex flex-col items-center gap-6">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-accent-1/30 border-t-accent-1" />
           <p className="font-display text-[36px] text-text-muted">
-            {routeCode.length === 4 ? `Connecting to room ${routeCode}...` : "Creating room..."}
+            {routeCode === "NEW" || routeCode.length !== 4
+              ? "Creating room..."
+              : `Connecting to room ${routeCode}...`}
           </p>
           {error && <p className="text-[24px] text-accent-6">{error}</p>}
         </div>

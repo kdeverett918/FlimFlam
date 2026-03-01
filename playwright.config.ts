@@ -34,6 +34,7 @@ export default defineConfig({
     env: {
       ...process.env,
       NODE_ENV: "production",
+      PARTYLINE_E2E: "1",
       NEXT_PUBLIC_COLYSEUS_URL: process.env.NEXT_PUBLIC_COLYSEUS_URL ?? "ws://localhost:2567",
       NEXT_PUBLIC_HOST_URL: process.env.NEXT_PUBLIC_HOST_URL ?? e2eHostUrl,
       NEXT_PUBLIC_CONTROLLER_URL: process.env.NEXT_PUBLIC_CONTROLLER_URL ?? e2eControllerUrl,
