@@ -59,7 +59,8 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="absolute bottom-[40%] left-0 right-0 h-[2px]"
         style={{
-          background: "linear-gradient(90deg, transparent, oklch(0.70 0.15 185 / 0.8), transparent)",
+          background:
+            "linear-gradient(90deg, transparent, oklch(0.70 0.15 185 / 0.8), transparent)",
         }}
       />
     </motion.div>

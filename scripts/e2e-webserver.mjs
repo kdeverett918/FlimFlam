@@ -63,15 +63,7 @@ if (skipServer) {
   children.push(spawnService("server", ["--filter", "@flimflam/server", "start:e2e"]));
 }
 children.push(
-  spawnService("host", [
-    "--filter",
-    "@flimflam/host",
-    "exec",
-    "next",
-    "start",
-    "--port",
-    hostPort,
-  ]),
+  spawnService("host", ["--filter", "@flimflam/host", "exec", "next", "start", "--port", hostPort]),
 );
 children.push(
   spawnService("controller", [
