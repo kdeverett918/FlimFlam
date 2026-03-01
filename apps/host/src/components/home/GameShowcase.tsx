@@ -1,7 +1,7 @@
 "use client";
 
 import { GAME_MANIFESTS } from "@flimflam/shared";
-import { GlassPanel, MotionCard } from "@flimflam/ui";
+import { MotionCard } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { Bot, Users } from "lucide-react";
 

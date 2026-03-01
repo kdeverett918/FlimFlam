@@ -513,4 +513,3 @@ function HotTakeResultsView({
     </div>
   );
 }
-

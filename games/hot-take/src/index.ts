@@ -498,7 +498,10 @@ export class HotTakePlugin extends BaseGamePlugin {
       } else {
         if (scoreInfo.points === SCORING.MAJORITY_EXACT) {
           matchedMajorityIds.push(sessionId);
-          this._majorityMatchCount.set(sessionId, (this._majorityMatchCount.get(sessionId) ?? 0) + 1);
+          this._majorityMatchCount.set(
+            sessionId,
+            (this._majorityMatchCount.get(sessionId) ?? 0) + 1,
+          );
         }
       }
     }
@@ -531,29 +534,49 @@ export class HotTakePlugin extends BaseGamePlugin {
     });
   }
 
-  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
-    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
-    const getName = (sid: string) => ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
 
     // Crowd Pleaser: voted with majority most often
     let maxMajority = 0;
     let crowdPleaser = "";
     for (const [sid, count] of this._majorityMatchCount) {
-      if (count > maxMajority) { maxMajority = count; crowdPleaser = sid; }
+      if (count > maxMajority) {
+        maxMajority = count;
+        crowdPleaser = sid;
+      }
     }
     if (crowdPleaser) {
-      awards.push({ title: "Crowd Pleaser", sessionId: crowdPleaser, playerName: getName(crowdPleaser), reason: `Matched majority ${maxMajority} time${maxMajority !== 1 ? "s" : ""}` });
+      awards.push({
+        title: "Crowd Pleaser",
+        sessionId: crowdPleaser,
+        playerName: getName(crowdPleaser),
+        reason: `Matched majority ${maxMajority} time${maxMajority !== 1 ? "s" : ""}`,
+      });
     }
 
     // Hot Take Royalty: most lone wolf wins
     let maxLoneWolf = 0;
     let hotTakeRoyalty = "";
     for (const [sid, count] of this._loneWolfWinCount) {
-      if (count > maxLoneWolf) { maxLoneWolf = count; hotTakeRoyalty = sid; }
+      if (count > maxLoneWolf) {
+        maxLoneWolf = count;
+        hotTakeRoyalty = sid;
+      }
     }
     if (hotTakeRoyalty) {
-      awards.push({ title: "Hot Take Royalty", sessionId: hotTakeRoyalty, playerName: getName(hotTakeRoyalty), reason: `${maxLoneWolf} lone wolf win${maxLoneWolf !== 1 ? "s" : ""}` });
+      awards.push({
+        title: "Hot Take Royalty",
+        sessionId: hotTakeRoyalty,
+        playerName: getName(hotTakeRoyalty),
+        reason: `${maxLoneWolf} lone wolf win${maxLoneWolf !== 1 ? "s" : ""}`,
+      });
     }
 
     return awards;

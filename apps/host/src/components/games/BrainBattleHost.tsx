@@ -935,4 +935,3 @@ function ClueResultView({
     </div>
   );
 }
-

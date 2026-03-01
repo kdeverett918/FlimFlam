@@ -209,10 +209,19 @@ export class QuickDrawPlugin extends BaseGamePlugin {
         this.addPoints(state, client.sessionId, points, `Guessed #${position + 1}`);
 
         // Track for bonus awards
-        this._guesserCorrectCount.set(client.sessionId, (this._guesserCorrectCount.get(client.sessionId) ?? 0) + 1);
+        this._guesserCorrectCount.set(
+          client.sessionId,
+          (this._guesserCorrectCount.get(client.sessionId) ?? 0) + 1,
+        );
         const guessTime = Date.now() - this.internal.roundStartTime;
-        this._guesserTotalTime.set(client.sessionId, (this._guesserTotalTime.get(client.sessionId) ?? 0) + guessTime);
-        this._guesserTimedGuesses.set(client.sessionId, (this._guesserTimedGuesses.get(client.sessionId) ?? 0) + 1);
+        this._guesserTotalTime.set(
+          client.sessionId,
+          (this._guesserTotalTime.get(client.sessionId) ?? 0) + guessTime,
+        );
+        this._guesserTimedGuesses.set(
+          client.sessionId,
+          (this._guesserTimedGuesses.get(client.sessionId) ?? 0) + 1,
+        );
 
         const player = players.get(client.sessionId);
         if (player) {
@@ -557,7 +566,8 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     // Track drawer success for bonus awards
     this._drawerGuessedCount.set(
       this.internal.currentDrawerSessionId,
-      (this._drawerGuessedCount.get(this.internal.currentDrawerSessionId) ?? 0) + this.internal.guessedPlayers.size,
+      (this._drawerGuessedCount.get(this.internal.currentDrawerSessionId) ?? 0) +
+        this.internal.guessedPlayers.size,
     );
 
     // Award drawer points
@@ -584,10 +594,14 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     });
   }
 
-  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
-    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
-    const getName = (sid: string) => ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
 
     // Speed Demon: fastest average guess time
     let fastestAvg = Number.POSITIVE_INFINITY;
@@ -595,30 +609,54 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     for (const [sid, count] of this._guesserTimedGuesses) {
       if (count === 0) continue;
       const avg = (this._guesserTotalTime.get(sid) ?? 0) / count;
-      if (avg < fastestAvg) { fastestAvg = avg; speedDemon = sid; }
+      if (avg < fastestAvg) {
+        fastestAvg = avg;
+        speedDemon = sid;
+      }
     }
     if (speedDemon) {
-      awards.push({ title: "Speed Demon", sessionId: speedDemon, playerName: getName(speedDemon), reason: `Avg guess time: ${(fastestAvg / 1000).toFixed(1)}s` });
+      awards.push({
+        title: "Speed Demon",
+        sessionId: speedDemon,
+        playerName: getName(speedDemon),
+        reason: `Avg guess time: ${(fastestAvg / 1000).toFixed(1)}s`,
+      });
     }
 
     // Artiste: drawer whose word got most guesses
     let mostGuessed = 0;
     let artiste = "";
     for (const [sid, count] of this._drawerGuessedCount) {
-      if (count > mostGuessed) { mostGuessed = count; artiste = sid; }
+      if (count > mostGuessed) {
+        mostGuessed = count;
+        artiste = sid;
+      }
     }
     if (artiste) {
-      awards.push({ title: "Artiste", sessionId: artiste, playerName: getName(artiste), reason: `Drawings guessed ${mostGuessed} time${mostGuessed !== 1 ? "s" : ""}` });
+      awards.push({
+        title: "Artiste",
+        sessionId: artiste,
+        playerName: getName(artiste),
+        reason: `Drawings guessed ${mostGuessed} time${mostGuessed !== 1 ? "s" : ""}`,
+      });
     }
 
     // Lucky Guesser: most correct guesses total
     let mostCorrect = 0;
     let luckyGuesser = "";
     for (const [sid, count] of this._guesserCorrectCount) {
-      if (count > mostCorrect) { mostCorrect = count; luckyGuesser = sid; }
+      if (count > mostCorrect) {
+        mostCorrect = count;
+        luckyGuesser = sid;
+      }
     }
     if (luckyGuesser && luckyGuesser !== speedDemon) {
-      awards.push({ title: "Lucky Guesser", sessionId: luckyGuesser, playerName: getName(luckyGuesser), reason: `${mostCorrect} correct guess${mostCorrect !== 1 ? "es" : ""}` });
+      awards.push({
+        title: "Lucky Guesser",
+        sessionId: luckyGuesser,
+        playerName: getName(luckyGuesser),
+        reason: `${mostCorrect} correct guess${mostCorrect !== 1 ? "es" : ""}`,
+      });
     }
 
     return awards;

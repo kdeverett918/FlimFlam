@@ -395,29 +395,49 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     }
   }
 
-  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
-    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
-    const getName = (sid: string) => ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
 
     // Reality Anchor: most correct real/fake classifications
     let maxCorrect = 0;
     let anchor = "";
     for (const [sid, count] of this._correctClassifications) {
-      if (count > maxCorrect) { maxCorrect = count; anchor = sid; }
+      if (count > maxCorrect) {
+        maxCorrect = count;
+        anchor = sid;
+      }
     }
     if (anchor) {
-      awards.push({ title: "Reality Anchor", sessionId: anchor, playerName: getName(anchor), reason: `${maxCorrect} correct classification${maxCorrect !== 1 ? "s" : ""}` });
+      awards.push({
+        title: "Reality Anchor",
+        sessionId: anchor,
+        playerName: getName(anchor),
+        reason: `${maxCorrect} correct classification${maxCorrect !== 1 ? "s" : ""}`,
+      });
     }
 
     // Drift Master: caught most fakes
     let maxDrifts = 0;
     let driftMaster = "";
     for (const [sid, count] of this._caughtDrifts) {
-      if (count > maxDrifts) { maxDrifts = count; driftMaster = sid; }
+      if (count > maxDrifts) {
+        maxDrifts = count;
+        driftMaster = sid;
+      }
     }
     if (driftMaster && driftMaster !== anchor) {
-      awards.push({ title: "Drift Master", sessionId: driftMaster, playerName: getName(driftMaster), reason: `Caught ${maxDrifts} fake${maxDrifts !== 1 ? "s" : ""}` });
+      awards.push({
+        title: "Drift Master",
+        sessionId: driftMaster,
+        playerName: getName(driftMaster),
+        reason: `Caught ${maxDrifts} fake${maxDrifts !== 1 ? "s" : ""}`,
+      });
     }
 
     return awards;

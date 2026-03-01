@@ -507,19 +507,31 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     });
   }
 
-  private _computeBonusAwards(state: Schema): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
-    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> = [];
-    const getName = (sid: string) => ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
 
     // Master Bluffer: most players fooled total
     let maxFooled = 0;
     let masterBluffer = "";
     for (const [sid, count] of this._totalFooled) {
-      if (count > maxFooled) { maxFooled = count; masterBluffer = sid; }
+      if (count > maxFooled) {
+        maxFooled = count;
+        masterBluffer = sid;
+      }
     }
     if (masterBluffer) {
-      awards.push({ title: "Master Bluffer", sessionId: masterBluffer, playerName: getName(masterBluffer), reason: `Fooled ${maxFooled} player${maxFooled !== 1 ? "s" : ""} total` });
+      awards.push({
+        title: "Master Bluffer",
+        sessionId: masterBluffer,
+        playerName: getName(masterBluffer),
+        reason: `Fooled ${maxFooled} player${maxFooled !== 1 ? "s" : ""} total`,
+      });
     }
 
     // Truth Seeker: highest correct vote %
@@ -529,10 +541,18 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       if (total === 0) continue;
       const correct = this._correctVotes.get(sid) ?? 0;
       const pct = correct / total;
-      if (pct > bestPct) { bestPct = pct; truthSeeker = sid; }
+      if (pct > bestPct) {
+        bestPct = pct;
+        truthSeeker = sid;
+      }
     }
     if (truthSeeker && truthSeeker !== masterBluffer) {
-      awards.push({ title: "Truth Seeker", sessionId: truthSeeker, playerName: getName(truthSeeker), reason: `${Math.round(bestPct * 100)}% correct vote rate` });
+      awards.push({
+        title: "Truth Seeker",
+        sessionId: truthSeeker,
+        playerName: getName(truthSeeker),
+        reason: `${Math.round(bestPct * 100)}% correct vote rate`,
+      });
     }
 
     // Best Lie: single answer that fooled the most
@@ -543,7 +563,12 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       }
     }
     if (bestLie && bestLie.sessionId !== masterBluffer) {
-      awards.push({ title: "Best Lie", sessionId: bestLie.sessionId, playerName: getName(bestLie.sessionId), reason: `"${bestLie.text}" fooled ${bestLie.fooledCount}` });
+      awards.push({
+        title: "Best Lie",
+        sessionId: bestLie.sessionId,
+        playerName: getName(bestLie.sessionId),
+        reason: `"${bestLie.text}" fooled ${bestLie.fooledCount}`,
+      });
     }
 
     return awards;
