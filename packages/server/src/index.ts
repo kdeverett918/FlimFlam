@@ -44,25 +44,43 @@ gameServer.define("party", PartyRoom);
 
 // ─── Start Listening ────────────────────────────────────────────────────
 const explicitPort = Number(process.env.PORT);
-const nodeAppInstance = Number(process.env.NODE_APP_INSTANCE);
-const instanceOffset = Number.isFinite(nodeAppInstance) ? nodeAppInstance : 0;
+const port = Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : COLYSEUS_PORT;
 
-// Colyseus Cloud may run multiple PM2 instances during rolling deploys.
-// If a fixed PORT is not injected, offset by NODE_APP_INSTANCE to avoid
-// EADDRINUSE when multiple processes briefly overlap.
-const port =
-  Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : COLYSEUS_PORT + instanceOffset;
+// Colyseus Cloud ingress expects a stable app port. During rolling restarts,
+// we may briefly hit EADDRINUSE, so retry binding on the same port.
+const EADDRINUSE_RETRY_MS = 750;
+const MAX_EADDRINUSE_RETRIES = 40;
 
-httpServer.listen(port, () => {
-  console.log(`[PartyLine] Server listening on port ${port}`);
-  console.log(`[PartyLine] Health: http://localhost:${port}/health`);
-  if (process.env.NODE_ENV !== "production") {
-    console.log(`[PartyLine] Monitor: http://localhost:${port}/colyseus`);
-  }
+function startListening(attempt = 0) {
+  httpServer.once("error", (error: NodeJS.ErrnoException) => {
+    if (error.code === "EADDRINUSE" && attempt < MAX_EADDRINUSE_RETRIES) {
+      const nextAttempt = attempt + 1;
+      console.warn(
+        `[PartyLine] Port ${port} in use (attempt ${nextAttempt}/${MAX_EADDRINUSE_RETRIES}). Retrying in ${EADDRINUSE_RETRY_MS}ms...`,
+      );
+      setTimeout(() => {
+        startListening(nextAttempt);
+      }, EADDRINUSE_RETRY_MS);
+      return;
+    }
 
-  // PM2 "wait_ready" integration (used by Colyseus Cloud).
-  // See: ecosystem.config.js (wait_ready: true)
-  if (typeof process.send === "function") {
-    process.send("ready");
-  }
-});
+    console.error(`[PartyLine] Failed to start server on port ${port}`, error);
+    process.exit(1);
+  });
+
+  httpServer.listen(port, () => {
+    console.log(`[PartyLine] Server listening on port ${port}`);
+    console.log(`[PartyLine] Health: http://localhost:${port}/health`);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[PartyLine] Monitor: http://localhost:${port}/colyseus`);
+    }
+
+    // PM2 "wait_ready" integration (used by Colyseus Cloud).
+    // See: ecosystem.config.js (wait_ready: true)
+    if (typeof process.send === "function") {
+      process.send("ready");
+    }
+  });
+}
+
+startListening();
