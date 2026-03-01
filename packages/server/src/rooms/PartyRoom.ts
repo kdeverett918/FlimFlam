@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { clearRoomQueue, costTracker } from "@partyline/ai";
 import type { GamePlugin } from "@partyline/game-engine";
@@ -25,6 +26,30 @@ export class PartyRoom extends Room<RoomState> {
   private _currentPlugin: GamePlugin | null = null;
   private _roomCode = "";
   private _idleTimeout: Delayed | null = null;
+  private _hostToken: string | null = null;
+
+  private _getOrCreateHostToken(): string {
+    if (!this._hostToken) {
+      // 256-bit token, kept server-side only (never in shared room state).
+      this._hostToken = randomBytes(32).toString("hex");
+    }
+    return this._hostToken;
+  }
+
+  async onAuth(
+    _client: Client,
+    options: { isHost?: boolean; hostToken?: unknown },
+  ): Promise<boolean> {
+    if (!options?.isHost) return true;
+
+    const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
+    if (this._hostToken && providedToken !== this._hostToken) {
+      // Reject host takeover attempts at the handshake level (before onJoin).
+      throw new Error("Host already assigned for this room");
+    }
+
+    return true;
+  }
 
   onCreate(_options: Record<string, unknown>): void {
     const state = new RoomState();
@@ -256,12 +281,27 @@ export class PartyRoom extends Room<RoomState> {
     });
   }
 
-  onJoin(client: Client, options: { name?: string; isHost?: boolean; color?: string }): void {
+  onJoin(
+    client: Client,
+    options: { name?: string; isHost?: boolean; hostToken?: unknown; color?: string },
+  ): void {
     this._resetIdleTimeout();
 
     if (options.isHost) {
+      const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
+
+      // If a host was ever established for this room, require the server-issued token
+      // for any future host joins. This prevents any client from claiming host by
+      // sending `{ isHost: true }`.
+      if (this._hostToken && providedToken !== this._hostToken) {
+        this.send(client, "error", { message: "Host already assigned for this room" });
+        client.leave(1000);
+        return;
+      }
+
       // Host connects as a non-playing client. Players join from their own devices.
       this.state.hostSessionId = client.sessionId;
+      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
       this.setMetadata({
         code: this._roomCode,
         gameName: this.state.selectedGameId || "lobby",

@@ -56,12 +56,12 @@ function LobbyContent({
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const { setTheme } = useGameTheme();
 
+  const controllerUrlFromEnv =
+    typeof window !== "undefined" ? process.env.NEXT_PUBLIC_CONTROLLER_URL : undefined;
   const controllerUrl =
-    typeof window !== "undefined"
-      ? (process.env.NEXT_PUBLIC_CONTROLLER_URL ?? "http://localhost:3001")
-      : "http://localhost:3001";
+    controllerUrlFromEnv ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:3001");
 
-  const joinUrl = `${controllerUrl}?code=${roomCode}`;
+  const joinUrl = controllerUrl ? `${controllerUrl}?code=${roomCode}` : "";
   const canStart = playerCount >= MIN_PLAYERS && selectedGameId !== "";
   const showHotTakeToggle = selectedGameId === "hot-take";
   const effectiveHotTakePlayerInputEnabled =
@@ -74,6 +74,7 @@ function LobbyContent({
   }, [selectedGameId, setTheme]);
 
   useEffect(() => {
+    if (!joinUrl) return;
     let cancelled = false;
     QRCode.toDataURL(joinUrl, {
       color: {
@@ -102,7 +103,9 @@ function LobbyContent({
         <div className="flex flex-col gap-3">
           <p className="font-body text-[24px] tracking-widest text-text-muted">
             JOIN AT{" "}
-            <span className="text-accent-4">{controllerUrl.replace(/^https?:\/\//, "")}</span>
+            <span className="text-accent-4">
+              {controllerUrl ? controllerUrl.replace(/^https?:\/\//, "") : "(missing URL)"}
+            </span>
           </p>
           <GlassPanel
             glow

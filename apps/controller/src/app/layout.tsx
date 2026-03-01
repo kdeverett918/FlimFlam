@@ -56,7 +56,9 @@ export default function RootLayout({
         <Script id="sw-register" strategy="afterInteractive">
           {`
             if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.register('/sw.js').catch(() => {});
+              const buildId =
+                (window.__NEXT_DATA__ && window.__NEXT_DATA__.buildId) ? window.__NEXT_DATA__.buildId : 'dev';
+              navigator.serviceWorker.register('/sw.js?v=' + encodeURIComponent(buildId)).catch(() => {});
             }
           `}
         </Script>

@@ -15,12 +15,22 @@ const require = createRequire(import.meta.url);
 const { Server } = require("colyseus") as typeof import("colyseus");
 
 const app = express();
+app.disable("x-powered-by");
 app.use(cors());
 app.use(express.json());
 
 // ─── Health Endpoint ─────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: Date.now() });
+});
+
+let isReady = false;
+app.get("/ready", (_req, res) => {
+  if (!isReady) {
+    res.status(503).json({ status: "starting" });
+    return;
+  }
+  res.json({ status: "ready" });
 });
 
 // ─── Game Manifests Endpoint ─────────────────────────────────────────────
@@ -101,6 +111,7 @@ function startListening(attempt = 0) {
   const onListening = (
     where: { kind: "port"; value: number } | { kind: "socket"; value: string },
   ) => {
+    isReady = true;
     if (where.kind === "socket") {
       console.log(`[PartyLine] Server listening on unix socket ${where.value}`);
       console.log(
@@ -165,3 +176,41 @@ function startListening(attempt = 0) {
 }
 
 startListening();
+
+let shuttingDown = false;
+async function shutdown(signal: "SIGINT" | "SIGTERM") {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  isReady = false;
+
+  console.log(`[PartyLine] Received ${signal}. Shutting down...`);
+
+  // If something hangs (open keep-alive sockets, stuck plugin, etc.), avoid an infinite drain.
+  const forcedExit = setTimeout(() => {
+    console.error("[PartyLine] Forced shutdown after timeout.");
+    process.exit(1);
+  }, 15_000);
+  forcedExit.unref?.();
+
+  try {
+    // Stop accepting new connections.
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  } catch (error) {
+    console.error("[PartyLine] Error closing HTTP server", error);
+  }
+
+  try {
+    const maybeGraceful = (gameServer as unknown as { gracefullyShutdown?: () => Promise<void> })
+      .gracefullyShutdown;
+    if (typeof maybeGraceful === "function") {
+      await maybeGraceful.call(gameServer);
+    }
+  } catch (error) {
+    console.error("[PartyLine] Error during Colyseus graceful shutdown", error);
+  }
+
+  process.exit(0);
+}
+
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

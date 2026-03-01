@@ -26,6 +26,8 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      - key: PARTYLINE_STRICT_ENV
+        value: "1"
     buildFilter:
       paths:
         - apps/controller/**
@@ -52,6 +54,8 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
+      - key: PARTYLINE_STRICT_ENV
+        value: "1"
     buildFilter:
       paths:
         - apps/host/**
