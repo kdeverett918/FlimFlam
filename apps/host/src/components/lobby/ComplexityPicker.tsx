@@ -19,7 +19,7 @@ const OPTIONS: {
     value: "kids",
     label: "KIDS",
     color: "text-accent-5",
-    glowColor: "oklch(0.7 0.2 145 / 0.3)",
+    glowColor: "oklch(0.70 0.15 210 / 0.3)",
     description: "Ages 8+ / Silly & fun",
   },
   {
@@ -33,7 +33,7 @@ const OPTIONS: {
     value: "advanced",
     label: "ADVANCED",
     color: "text-accent-6",
-    glowColor: "oklch(0.65 0.25 25 / 0.3)",
+    glowColor: "oklch(0.68 0.25 20 / 0.3)",
     description: "Ages 16+ / Strategic",
   },
 ];

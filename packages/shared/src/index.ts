@@ -16,6 +16,7 @@ export type {
   QuickDrawPhase,
   RealityDriftPhase,
   HotTakePhase,
+  BrainBattlePhase,
   GamePhase,
   TimerConfig,
   HostViewData,
@@ -57,6 +58,11 @@ export type {
   HotTakePlayerProfile,
   HotTakeRoundHistory,
   GeneratedHotTakePrompt,
+  BrainBattleClue,
+  BrainBattleCategory,
+  GeneratedBoard,
+  AnswerJudgeResult,
+  AppealResult,
 } from "./types/ai";
 
 // Schemas
@@ -69,6 +75,9 @@ export {
   TriviaBatchSchema,
   HotTakePromptSchema,
   HotTakeBatchSchema,
+  GeneratedBoardSchema,
+  AnswerJudgeSchema,
+  AppealResultSchema,
 } from "./schemas/ai-responses";
 
 export type {
@@ -80,6 +89,9 @@ export type {
   TriviaBatchRaw,
   HotTakePromptRaw,
   HotTakeBatchRaw,
+  GeneratedBoardRaw,
+  AnswerJudgeRaw,
+  AppealResultRaw,
 } from "./schemas/ai-responses";
 
 // Constants

@@ -109,7 +109,7 @@ function LobbyContent({
           </p>
           <GlassPanel
             glow
-            glowColor="oklch(0.75 0.15 195 / 0.2)"
+            glowColor="oklch(0.72 0.22 25 / 0.2)"
             rounded="2xl"
             className="px-10 py-4"
           >
@@ -255,7 +255,7 @@ function LobbyContent({
           type="button"
           onClick={onStartGame}
           disabled={!canStart}
-          className="w-full max-w-2xl rounded-2xl border border-accent-1/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-accent-1 transition-all duration-300 hover:border-accent-1 hover:shadow-[0_0_40px_oklch(0.7_0.18_265/0.3)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-accent-1/50 disabled:hover:shadow-none"
+          className="w-full max-w-2xl rounded-2xl border border-primary/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none"
           style={{
             backdropFilter: "blur(16px)",
           }}

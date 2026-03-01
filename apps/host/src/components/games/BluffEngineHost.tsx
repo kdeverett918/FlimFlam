@@ -69,7 +69,7 @@ function GeneratingPromptView() {
       </motion.div>
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.75 0.18 85 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.78 0.18 85 / 0.4)" }}
       >
         COOKING UP A QUESTION...
       </h2>
@@ -119,7 +119,7 @@ function AnswerInputView({
 
       <GlassPanel
         glow
-        glowColor="oklch(0.75 0.18 85 / 0.15)"
+        glowColor="oklch(0.78 0.18 85 / 0.15)"
         rounded="2xl"
         className="relative z-10 mb-12 p-8"
       >
@@ -267,7 +267,7 @@ function ResultsView({
               >
                 <GlassPanel
                   glow={revealed && answer.isReal}
-                  glowColor="oklch(0.75 0.18 85 / 0.3)"
+                  glowColor="oklch(0.78 0.18 85 / 0.3)"
                   rounded="2xl"
                   className={`p-6 ${revealed && answer.isReal ? "border-accent-3" : ""}`}
                 >

@@ -134,7 +134,7 @@ function AIGeneratingView() {
       </motion.div>
       <h2
         className="relative z-10 font-display text-[54px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.65 0.25 25 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.68 0.25 20 / 0.4)" }}
       >
         COOKING UP YOUR HOT TAKES...
       </h2>
@@ -188,7 +188,7 @@ function ShowingPromptView({
       >
         <GlassPanel
           glow
-          glowColor="oklch(0.65 0.25 25 / 0.2)"
+          glowColor="oklch(0.68 0.25 20 / 0.2)"
           rounded="2xl"
           className="max-w-5xl p-10 text-center"
         >
@@ -256,7 +256,7 @@ function HotTakeVotingView({
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.65 0.25 25), oklch(0.75 0.18 85), oklch(0.7 0.2 145), oklch(0.75 0.15 195))",
+                "linear-gradient(90deg, oklch(0.68 0.25 20), oklch(0.78 0.18 85), oklch(0.70 0.15 210), oklch(0.72 0.18 160))",
             }}
           />
         </div>
@@ -366,7 +366,7 @@ function HotTakeResultsView({
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.65 0.25 25), oklch(0.75 0.18 85), oklch(0.7 0.2 145), oklch(0.75 0.15 195))",
+                "linear-gradient(90deg, oklch(0.68 0.25 20), oklch(0.78 0.18 85), oklch(0.70 0.15 210), oklch(0.72 0.18 160))",
             }}
           />
         </div>
@@ -451,7 +451,7 @@ function HotTakeResultsView({
           >
             <GlassPanel
               glow
-              glowColor="oklch(0.65 0.25 25 / 0.3)"
+              glowColor="oklch(0.68 0.25 20 / 0.3)"
               rounded="2xl"
               className="flex flex-col items-center gap-3 p-6"
             >
@@ -480,7 +480,7 @@ function HotTakeResultsView({
           >
             <GlassPanel
               glow
-              glowColor="oklch(0.7 0.2 145 / 0.3)"
+              glowColor="oklch(0.70 0.15 210 / 0.3)"
               rounded="2xl"
               className="flex flex-col items-center gap-3 p-6"
             >

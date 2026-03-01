@@ -26,7 +26,7 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="absolute left-0 right-0 top-[40%] h-[2px]"
         style={{
-          background: "linear-gradient(90deg, transparent, oklch(0.7 0.18 265 / 0.8), transparent)",
+          background: "linear-gradient(90deg, transparent, oklch(0.72 0.22 25 / 0.8), transparent)",
         }}
       />
 
@@ -42,9 +42,9 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         className="relative z-10 flex flex-col items-center gap-6"
       >
         <h1
-          className="font-display text-[72px] font-extrabold text-text-primary md:text-[96px]"
+          className="font-display text-[80px] font-extrabold text-text-primary md:text-[112px]"
           style={{
-            textShadow: "0 0 40px oklch(0.7 0.18 265 / 0.5), 0 0 80px oklch(0.7 0.2 330 / 0.25)",
+            textShadow: "0 0 40px oklch(0.72 0.22 25 / 0.5), 0 0 80px oklch(0.70 0.15 185 / 0.25)",
           }}
         >
           {label}
@@ -59,7 +59,7 @@ export function PhaseTransition({ label }: PhaseTransitionProps) {
         transition={{ duration: 0.5, ease: "easeInOut" }}
         className="absolute bottom-[40%] left-0 right-0 h-[2px]"
         style={{
-          background: "linear-gradient(90deg, transparent, oklch(0.7 0.2 330 / 0.8), transparent)",
+          background: "linear-gradient(90deg, transparent, oklch(0.70 0.15 185 / 0.8), transparent)",
         }}
       />
     </motion.div>

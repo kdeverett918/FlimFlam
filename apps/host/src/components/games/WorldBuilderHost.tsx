@@ -72,19 +72,19 @@ function GeneratingView() {
           animate={{ rotate: 360 }}
           transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-0 rounded-full border-2 border-accent-2/40"
-          style={{ boxShadow: "0 0 20px oklch(0.7 0.2 330 / 0.2)" }}
+          style={{ boxShadow: "0 0 20px oklch(0.68 0.20 300 / 0.2)" }}
         />
         <motion.div
           animate={{ rotate: -360 }}
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-4 rounded-full border-2 border-accent-2/60"
-          style={{ boxShadow: "0 0 16px oklch(0.7 0.2 330 / 0.3)" }}
+          style={{ boxShadow: "0 0 16px oklch(0.68 0.20 300 / 0.3)" }}
         />
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-8 rounded-full border-2 border-accent-2/80"
-          style={{ boxShadow: "0 0 12px oklch(0.7 0.2 330 / 0.4)" }}
+          style={{ boxShadow: "0 0 12px oklch(0.68 0.20 300 / 0.4)" }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <Globe className="h-16 w-16 text-accent-2" />
@@ -93,7 +93,7 @@ function GeneratingView() {
 
       <h2
         className="font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.7 0.2 330 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.68 0.20 300 / 0.4)" }}
       >
         BUILDING YOUR WORLD
       </h2>
@@ -131,7 +131,7 @@ function RoleRevealView({
       >
         <GlassPanel
           glow
-          glowColor="oklch(0.7 0.2 330 / 0.25)"
+          glowColor="oklch(0.68 0.20 300 / 0.25)"
           rounded="2xl"
           className="max-w-4xl p-10 text-center"
         >
@@ -314,9 +314,9 @@ function AINarratingView({ round, totalRounds }: { round: number; totalRounds: n
         <motion.div
           animate={{
             boxShadow: [
-              "0 0 20px oklch(0.7 0.2 330 / 0.3)",
-              "0 0 60px oklch(0.7 0.2 330 / 0.5)",
-              "0 0 20px oklch(0.7 0.2 330 / 0.3)",
+              "0 0 20px oklch(0.68 0.20 300 / 0.3)",
+              "0 0 60px oklch(0.68 0.20 300 / 0.5)",
+              "0 0 20px oklch(0.68 0.20 300 / 0.3)",
             ],
           }}
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
@@ -328,7 +328,7 @@ function AINarratingView({ round, totalRounds }: { round: number; totalRounds: n
 
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.7 0.2 330 / 0.3)" }}
+        style={{ textShadow: "0 0 30px oklch(0.68 0.20 300 / 0.3)" }}
       >
         THE AI NARRATES
       </h2>
@@ -347,7 +347,7 @@ function NarrationDisplayView({ payload }: { payload: Record<string, unknown> })
       <AnimatedBackground variant="subtle" />
       <GlassPanel
         glow
-        glowColor="oklch(0.7 0.2 330 / 0.15)"
+        glowColor="oklch(0.68 0.20 300 / 0.15)"
         rounded="2xl"
         className="relative z-10 max-w-5xl p-12"
       >

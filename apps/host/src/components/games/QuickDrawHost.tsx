@@ -81,7 +81,7 @@ function PickingDrawerView({
       </motion.div>
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.75 0.15 195 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.72 0.18 160 / 0.4)" }}
       >
         PICKING THE ARTIST...
       </h2>
@@ -176,7 +176,7 @@ function ActiveRoundView({
                   >
                     <GlassPanel
                       glow={guess.correct}
-                      glowColor="oklch(0.75 0.15 195 / 0.3)"
+                      glowColor="oklch(0.72 0.18 160 / 0.3)"
                       rounded="lg"
                       className="p-3"
                     >
@@ -399,7 +399,7 @@ function WordRevealView({
       >
         <GlassPanel
           glow
-          glowColor="oklch(0.75 0.15 195 / 0.4)"
+          glowColor="oklch(0.72 0.18 160 / 0.4)"
           rounded="2xl"
           className="px-12 py-6"
         >
