@@ -32,8 +32,6 @@ module.exports = {
       kill_timeout: 5000,
       env: {
         NODE_ENV: "production",
-        // Resolve relative to `cwd` above.
-        TSX_TSCONFIG_PATH: "tsconfig.json",
       },
     },
   ],
