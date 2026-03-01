@@ -23,7 +23,12 @@ function NoiseOverlay({
       style={{ contain: "strict" }}
       {...props}
     >
-      <svg className="absolute inset-0 h-full w-full" role="img" aria-hidden="true" style={{ opacity }}>
+      <svg
+        className="absolute inset-0 h-full w-full"
+        role="img"
+        aria-hidden="true"
+        style={{ opacity }}
+      >
         <filter id={filterId}>
           <feTurbulence
             type="fractalNoise"

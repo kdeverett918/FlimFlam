@@ -62,10 +62,7 @@ function AnimatedCounter({
   }, [value, duration]);
 
   return (
-    <span
-      className={cn("font-mono tabular-nums", className)}
-      {...props}
-    >
+    <span className={cn("font-mono tabular-nums", className)} {...props}>
       {formatFn(displayed)}
     </span>
   );
