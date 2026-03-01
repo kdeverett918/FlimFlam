@@ -1,35 +1,46 @@
+import { type VariantProps, cva } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "../lib/utils";
 
-interface GlassPanelProps extends React.HTMLAttributes<HTMLDivElement> {
+const glassPanelVariants = cva("text-text-primary transition-all duration-200", {
+  variants: {
+    variant: {
+      glass: "bg-white/[0.06] border border-white/[0.08] backdrop-blur-xl backdrop-saturate-[1.2]",
+      solid: "bg-bg-elevated border border-border",
+      outlined: "bg-transparent border-2 border-white/[0.12]",
+      gradient:
+        "border border-white/[0.08] backdrop-blur-xl backdrop-saturate-[1.2] bg-gradient-to-br from-primary/10 via-transparent to-secondary/10",
+    },
+    rounded: {
+      md: "rounded-md",
+      lg: "rounded-lg",
+      xl: "rounded-xl",
+      "2xl": "rounded-2xl",
+    },
+  },
+  defaultVariants: {
+    variant: "glass",
+    rounded: "xl",
+  },
+});
+
+export interface GlassPanelProps
+  extends React.HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof glassPanelVariants> {
   glow?: boolean;
   glowColor?: string;
-  rounded?: "md" | "lg" | "xl" | "2xl";
 }
 
-const roundedMap = {
-  md: "rounded-md",
-  lg: "rounded-lg",
-  xl: "rounded-xl",
-  "2xl": "rounded-2xl",
-} as const;
-
 const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
-  ({ className, glow = false, glowColor, rounded = "xl", style, ...props }, ref) => {
+  ({ className, variant, rounded, glow = false, glowColor, style, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn(
-          "bg-white/[0.06] border border-white/[0.08] text-text-primary",
-          roundedMap[rounded],
-          className,
-        )}
+        className={cn(glassPanelVariants({ variant, rounded }), className)}
         style={{
-          backdropFilter: "blur(16px) saturate(1.2)",
-          WebkitBackdropFilter: "blur(16px) saturate(1.2)",
           ...(glow
             ? {
-                boxShadow: `0 0 24px ${glowColor ?? "var(--game-glow, oklch(0.7 0.18 265 / 0.3))"}`,
+                boxShadow: `0 0 24px ${glowColor ?? "oklch(0.72 0.22 25 / 0.3)"}`,
               }
             : {}),
           ...style,
@@ -41,5 +52,4 @@ const GlassPanel = React.forwardRef<HTMLDivElement, GlassPanelProps>(
 );
 GlassPanel.displayName = "GlassPanel";
 
-export { GlassPanel };
-export type { GlassPanelProps };
+export { GlassPanel, glassPanelVariants };

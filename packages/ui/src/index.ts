@@ -41,17 +41,17 @@ export type { ProgressProps } from "./components/progress";
 export { Slider } from "./components/slider";
 export type { SliderProps } from "./components/slider";
 
-export { Avatar, AvatarImage, AvatarFallback } from "./components/avatar";
+export { Avatar, AvatarImage, AvatarFallback, AvatarGroup } from "./components/avatar";
 export type { AvatarProps } from "./components/avatar";
 
 export { ScoreDisplay } from "./components/score-display";
 export type { ScoreDisplayProps } from "./components/score-display";
 
-// New Neon Arena components
+// FlimFlam design system components
 export { AnimatedBackground } from "./components/animated-background";
 export type { AnimatedBackgroundProps } from "./components/animated-background";
 
-export { GlassPanel } from "./components/glass-panel";
+export { GlassPanel, glassPanelVariants } from "./components/glass-panel";
 export type { GlassPanelProps } from "./components/glass-panel";
 
 export { ConfettiBurst } from "./components/confetti-burst";
@@ -66,6 +66,21 @@ export type {
   GameThemeContextValue,
   GameThemeProviderProps,
 } from "./components/game-theme-provider";
+
+export { GradientText } from "./components/gradient-text";
+export type { GradientTextProps } from "./components/gradient-text";
+
+export { NoiseOverlay } from "./components/noise-overlay";
+export type { NoiseOverlayProps } from "./components/noise-overlay";
+
+export { SectionContainer, sectionContainerVariants } from "./components/section-container";
+export type { SectionContainerProps } from "./components/section-container";
+
+export { MotionCard } from "./components/motion-card";
+export type { MotionCardProps } from "./components/motion-card";
+
+export { AnimatedCounter } from "./components/animated-counter";
+export type { AnimatedCounterProps } from "./components/animated-counter";
 
 // Hooks
 export { useReducedMotion } from "./hooks/useReducedMotion";

@@ -19,28 +19,28 @@ interface GameThemeContextValue {
 
 const GAME_THEMES: Record<GameTheme, { accent: string; glow: string }> = {
   default: {
-    accent: "var(--color-accent-1)",
-    glow: "oklch(0.7 0.18 265 / 0.3)",
+    accent: "var(--color-primary)",
+    glow: "oklch(0.72 0.22 25 / 0.3)",
   },
   "world-builder": {
     accent: "var(--color-accent-2)",
-    glow: "oklch(0.7 0.2 330 / 0.3)",
+    glow: "oklch(0.68 0.2 300 / 0.3)",
   },
   "bluff-engine": {
     accent: "var(--color-accent-3)",
-    glow: "oklch(0.75 0.18 85 / 0.3)",
+    glow: "oklch(0.78 0.18 85 / 0.3)",
   },
   "quick-draw": {
     accent: "var(--color-accent-4)",
-    glow: "oklch(0.75 0.15 195 / 0.3)",
+    glow: "oklch(0.72 0.18 160 / 0.3)",
   },
   "reality-drift": {
     accent: "var(--color-accent-5)",
-    glow: "oklch(0.7 0.2 145 / 0.3)",
+    glow: "oklch(0.7 0.15 210 / 0.3)",
   },
   "hot-take": {
     accent: "var(--color-accent-6)",
-    glow: "oklch(0.65 0.25 25 / 0.3)",
+    glow: "oklch(0.68 0.25 20 / 0.3)",
   },
 };
 

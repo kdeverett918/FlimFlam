@@ -33,10 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}
-    >
+    <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-screen bg-bg-deep font-body text-text-primary antialiased">
         {children}
       </body>

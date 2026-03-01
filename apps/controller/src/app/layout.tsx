@@ -49,10 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}
-    >
+    <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-dvh bg-bg-deep font-body text-text-primary antialiased">
         {children}
         <Script id="sw-register" strategy="afterInteractive">
