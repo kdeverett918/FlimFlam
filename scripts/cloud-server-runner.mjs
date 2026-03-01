@@ -1,13 +1,29 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-const tsxBinary =
-  process.platform === "win32"
-    ? resolve("packages/server/node_modules/.bin/tsx.cmd")
-    : resolve("packages/server/node_modules/.bin/tsx");
+// Prefer tsx in the server's own node_modules; fall back to the workspace root.
+function findTsx() {
+  const candidates =
+    process.platform === "win32"
+      ? [resolve("packages/server/node_modules/.bin/tsx.cmd"), resolve("node_modules/.bin/tsx.cmd")]
+      : [resolve("packages/server/node_modules/.bin/tsx"), resolve("node_modules/.bin/tsx")];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+
+  const checked = candidates.join(", ");
+  console.error(`[PartyLine] ERROR: tsx binary not found. Checked: ${checked}`);
+  process.exit(1);
+}
+
+const tsxBinary = findTsx();
+console.log(`[PartyLine] Using tsx: ${tsxBinary}`);
 
 const serverEntry = resolve("packages/server/src/index.ts");
 const tsconfigPath = resolve("packages/server/tsconfig.json");
+console.log(`[PartyLine] Server entry: ${serverEntry}`);
 
 const child = spawn(tsxBinary, [serverEntry], {
   env: {
