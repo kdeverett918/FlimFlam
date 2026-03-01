@@ -4,15 +4,15 @@ import {
   buildHotTakeAdaptivePrompt,
   buildHotTakeInitialPrompt,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type Complexity,
   GAME_MANIFESTS,
   type HotTakeBatchRaw,
   HotTakeBatchSchema,
   type HotTakePromptRaw,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { pickRandomPrompts } from "./prompts";
 import { SCORING, calculateRoundScores, computeMedianVoteValue } from "./scoring";

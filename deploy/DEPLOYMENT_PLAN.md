@@ -1,4 +1,4 @@
-# PARTYLINE — Production Deployment Plan (Render + Colyseus Cloud)
+# FLIMFLAM — Production Deployment Plan (Render + Colyseus Cloud)
 
 ## Architecture
 
@@ -6,7 +6,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │  Render                                                      │
 │  ┌─────────────────────┐  ┌─────────────────────────────┐  │
-│  │  partyline-host     │  │  partyline-controller       │  │
+│  │  flimflam-host     │  │  flimflam-controller       │  │
 │  │  (TV screen)        │  │  (phone PWA)                │  │
 │  │  apps/host          │  │  apps/controller            │  │
 │  │  Node 22 (Starter)  │  │  Node 22 (Starter)          │  │
@@ -24,8 +24,8 @@
 
 ## Production URLs (Stable If Service Names Match)
 
-- Controller: `https://partyline-controller.onrender.com`
-- Host: `https://partyline-host.onrender.com`
+- Controller: `https://flimflam-controller.onrender.com`
+- Host: `https://flimflam-host.onrender.com`
 - Colyseus (WS): `wss://us-dfw-baad7ee4.colyseus.cloud`
 - Colyseus (health): `https://us-dfw-baad7ee4.colyseus.cloud/health`
 
@@ -33,7 +33,7 @@
 
 - [`render.yaml`](../render.yaml) at repo root: Render Blueprint definition for both services.
 - `apps/host/.env.production` and `apps/controller/.env.production`: baked `NEXT_PUBLIC_*` runtime config.
-- `apps/*/next.config.ts`: production env validation (warn by default; fail with `PARTYLINE_STRICT_ENV=1`).
+- `apps/*/next.config.ts`: production env validation (warn by default; fail with `FLIMFLAM_STRICT_ENV=1`).
 - `apps/controller/public/icon.svg` plus generated `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`.
 - Playwright production configs:
   - `playwright.production.config.ts`: local host/controller talking to prod Colyseus (backend-only validation).
@@ -46,10 +46,10 @@
 Render services are not created automatically just because `render.yaml` exists in git. You must create them once.
 
 1. Render Dashboard: New → Blueprint.
-1. Connect GitHub repo `kdeverett918/partyline`, branch `main`.
+1. Connect GitHub repo `kdeverett918/flimflam`, branch `main`.
 1. Ensure the service names are exactly:
-   - `partyline-controller`
-   - `partyline-host`
+   - `flimflam-controller`
+   - `flimflam-host`
 
 Those names lock in the stable `*.onrender.com` URLs used by the host QR code.
 
@@ -77,8 +77,8 @@ Without this, World Builder and Reality Drift will not function correctly.
 curl https://us-dfw-baad7ee4.colyseus.cloud/health
 
 # Frontends
-curl https://partyline-controller.onrender.com/
-curl https://partyline-host.onrender.com/
+curl https://flimflam-controller.onrender.com/
+curl https://flimflam-host.onrender.com/
 
 # Full production E2E (Render host/controller → production Colyseus)
 npx playwright test --config playwright.production.remote.config.ts

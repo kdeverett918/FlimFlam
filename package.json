@@ -1,12 +1,12 @@
 {
-  "name": "partyline",
+  "name": "flimflam",
   "private": true,
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "turbo dev",
     "build": "node scripts/cloud-build.mjs",
     "build:all": "turbo build",
-    "start": "pnpm --filter @partyline/server start",
+    "start": "pnpm --filter @flimflam/server start",
     "test": "turbo test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",

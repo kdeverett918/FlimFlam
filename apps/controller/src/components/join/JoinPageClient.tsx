@@ -1,7 +1,7 @@
 "use client";
 
 import { useRoom } from "@/hooks/useRoom";
-import { AnimatedBackground } from "@partyline/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { JoinForm } from "./JoinForm";
@@ -50,7 +50,7 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
             textShadow: "0 0 32px oklch(0.7 0.18 265 / 0.4), 0 0 64px oklch(0.7 0.18 265 / 0.15)",
           }}
         >
-          PARTYLINE
+          FLIMFLAM
         </h1>
         <p className="font-body text-sm text-text-muted">Join the party from your phone</p>
       </div>

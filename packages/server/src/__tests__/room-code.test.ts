@@ -1,4 +1,4 @@
-import { ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@partyline/shared";
+import { ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@flimflam/shared";
 import { generateRoomCode } from "../rooms/room-code";
 
 describe("server/room-code", () => {

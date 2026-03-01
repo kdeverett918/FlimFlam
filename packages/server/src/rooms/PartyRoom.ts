@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { clearRoomQueue, costTracker } from "@partyline/ai";
-import type { GamePlugin } from "@partyline/game-engine";
-import { GameRegistry } from "@partyline/game-engine";
+import { clearRoomQueue, costTracker } from "@flimflam/ai";
+import type { GamePlugin } from "@flimflam/game-engine";
+import { GameRegistry } from "@flimflam/game-engine";
 import {
   AVATAR_COLORS,
   type Complexity,
@@ -11,7 +11,7 @@ import {
   MIN_PLAYERS,
   RECONNECTION_TIMEOUT_MS,
   ROOM_IDLE_TIMEOUT_MS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Delayed } from "colyseus";
 import { GamePlayerSchema, RoomState } from "./LobbyState";
 import { generateRoomCode } from "./room-code";

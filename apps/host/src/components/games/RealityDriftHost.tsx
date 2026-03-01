@@ -2,8 +2,8 @@
 
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
-import type { PlayerData, ScoreEntry } from "@partyline/shared";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import type { PlayerData, ScoreEntry } from "@flimflam/shared";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";

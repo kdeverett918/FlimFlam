@@ -3,8 +3,8 @@
 import { Scoreboard } from "@/components/game/Scoreboard";
 import { Timer } from "@/components/game/Timer";
 import { TypewriterText } from "@/components/game/TypewriterText";
-import type { PlayerData, ScoreEntry, WorldState } from "@partyline/shared";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import type { PlayerData, ScoreEntry, WorldState } from "@flimflam/shared";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
 import { Award, Globe, Loader2, Star, Zap } from "lucide-react";

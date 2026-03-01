@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { useEffect, useRef, useState } from "react";
 
 interface TimerBarProps {

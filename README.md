@@ -1,4 +1,4 @@
-# PARTYLINE
+# FLIMFLAM
 
 Jackbox-style multiplayer party game platform.
 
@@ -96,9 +96,9 @@ Controller -> server:
 
 ## Timer Scaling (Dev/E2E)
 
-Set `PARTYLINE_TIMER_SCALE` (default `1`) to speed up timers:
+Set `FLIMFLAM_TIMER_SCALE` (default `1`) to speed up timers:
 
 ```bash
-set PARTYLINE_TIMER_SCALE=0.05
+set FLIMFLAM_TIMER_SCALE=0.05
 pnpm dev
 ```

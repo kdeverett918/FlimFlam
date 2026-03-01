@@ -1,4 +1,4 @@
-import type { BluffPrompt, GeneratedScenario, TriviaQuestion } from "@partyline/shared";
+import type { BluffPrompt, GeneratedScenario, TriviaQuestion } from "@flimflam/shared";
 
 // ─── Fallback Scenarios (one per complexity) ─────────────────────────────
 

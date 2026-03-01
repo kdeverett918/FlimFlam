@@ -1,6 +1,6 @@
 "use client";
 
-import { GlassPanel, haptics } from "@partyline/ui";
+import { GlassPanel, haptics } from "@flimflam/ui";
 import { Zap } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 

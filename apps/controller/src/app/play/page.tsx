@@ -5,7 +5,7 @@ import { ScoreBadge } from "@/components/game/ScoreBadge";
 import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

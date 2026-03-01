@@ -4,14 +4,14 @@ import {
   aiRequest,
   buildBluffPromptGeneration,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type BluffPromptRaw,
   BluffPromptSchema,
   type Complexity,
   GAME_MANIFESTS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
 import {

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatedBackground } from "@partyline/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { useEffect, useState } from "react";
 
 const MESSAGES = [

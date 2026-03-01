@@ -4,15 +4,15 @@ import {
   aiRequest,
   buildTriviaBatchPrompt,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type Complexity,
   GAME_MANIFESTS,
   TriviaBatchSchema,
   type TriviaQuestion,
   type TriviaQuestionRaw,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
 import {

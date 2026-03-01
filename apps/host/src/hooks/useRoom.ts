@@ -1,7 +1,7 @@
 "use client";
 
 import { getColyseusClient } from "@/lib/colyseus-client";
-import type { Complexity, HostViewData, PlayerData } from "@partyline/shared";
+import type { Complexity, HostViewData, PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -29,9 +29,9 @@ interface UseRoomReturn {
   ready: boolean;
 }
 
-const RECONNECT_TOKEN_KEY = "partyline_host_reconnect_token";
-const ROOM_CODE_KEY = "partyline_host_room_code";
-const HOST_TOKEN_KEY = "partyline_host_token";
+const RECONNECT_TOKEN_KEY = "flimflam_host_reconnect_token";
+const ROOM_CODE_KEY = "flimflam_host_room_code";
+const HOST_TOKEN_KEY = "flimflam_host_token";
 const ROOM_CODE_TIMEOUT_MS = 5000;
 
 export function useRoom(): UseRoomReturn {

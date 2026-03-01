@@ -1,7 +1,7 @@
 "use client";
 
-import type { Complexity } from "@partyline/shared";
-import { GlassPanel } from "@partyline/ui";
+import type { Complexity } from "@flimflam/shared";
+import { GlassPanel } from "@flimflam/ui";
 
 interface ComplexityPickerProps {
   complexity: Complexity;

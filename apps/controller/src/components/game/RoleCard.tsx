@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { ChevronDown, ChevronUp, Eye, User, Zap } from "lucide-react";
 import { useCallback, useState } from "react";
 

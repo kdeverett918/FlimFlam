@@ -1,4 +1,4 @@
-import type { ScoreEntry } from "@partyline/shared";
+import type { ScoreEntry } from "@flimflam/shared";
 
 interface RoundScore {
   round: number;

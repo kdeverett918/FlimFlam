@@ -1,8 +1,8 @@
 "use client";
 
-import type { ScoreEntry } from "@partyline/shared";
-import { AVATAR_COLORS } from "@partyline/shared";
-import { ConfettiBurst, GlassPanel, ScoreReveal } from "@partyline/ui";
+import type { ScoreEntry } from "@flimflam/shared";
+import { AVATAR_COLORS } from "@flimflam/shared";
+import { ConfettiBurst, GlassPanel, ScoreReveal } from "@flimflam/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";

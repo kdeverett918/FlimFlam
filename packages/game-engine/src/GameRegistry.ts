@@ -1,4 +1,4 @@
-import type { GameManifest } from "@partyline/shared";
+import type { GameManifest } from "@flimflam/shared";
 import type { GamePlugin } from "./GamePlugin";
 
 type GameFactory = () => GamePlugin;

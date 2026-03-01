@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_CHARS = 80;

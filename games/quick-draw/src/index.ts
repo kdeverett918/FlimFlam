@@ -1,6 +1,6 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
-import { type Complexity, GAME_MANIFESTS } from "@partyline/shared";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
+import { type Complexity, GAME_MANIFESTS } from "@flimflam/shared";
 import type { Client, Delayed, Room } from "colyseus";
 import {
   type QuickDrawInternalState,

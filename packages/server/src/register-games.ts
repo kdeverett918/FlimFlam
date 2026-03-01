@@ -1,9 +1,9 @@
-import { createBluffEnginePlugin } from "@partyline/bluff-engine";
-import { GameRegistry } from "@partyline/game-engine";
-import { createHotTakePlugin } from "@partyline/hot-take";
-import { createQuickDrawPlugin } from "@partyline/quick-draw";
-import { createRealityDriftPlugin } from "@partyline/reality-drift";
-import { createWorldBuilderPlugin } from "@partyline/world-builder";
+import { createBluffEnginePlugin } from "@flimflam/bluff-engine";
+import { GameRegistry } from "@flimflam/game-engine";
+import { createHotTakePlugin } from "@flimflam/hot-take";
+import { createQuickDrawPlugin } from "@flimflam/quick-draw";
+import { createRealityDriftPlugin } from "@flimflam/reality-drift";
+import { createWorldBuilderPlugin } from "@flimflam/world-builder";
 
 GameRegistry.registerGame("world-builder", createWorldBuilderPlugin);
 GameRegistry.registerGame("bluff-engine", createBluffEnginePlugin);

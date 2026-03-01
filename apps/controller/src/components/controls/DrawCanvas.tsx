@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 

@@ -3,7 +3,7 @@ import {
   COMPLEXITY_TIMER_MULTIPLIERS,
   type Complexity,
   DEFAULT_PHASE_TIMERS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 
 /**
  * Compute the duration of a given phase, adjusted for complexity.
@@ -13,7 +13,7 @@ export function computePhaseDuration(phase: string, complexity: Complexity): num
   const baseMs = DEFAULT_PHASE_TIMERS[phase] ?? 30_000;
   const multiplier = COMPLEXITY_TIMER_MULTIPLIERS[complexity];
 
-  const rawScale = process.env.PARTYLINE_TIMER_SCALE;
+  const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
   const scale = rawScale ? Number(rawScale) : 1;
   const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatedBackground } from "@partyline/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ export default function HomePage() {
               textShadow: "0 0 40px oklch(0.7 0.18 265 / 0.4), 0 0 80px oklch(0.7 0.2 330 / 0.2)",
             }}
           >
-            PARTYLINE
+            FLIMFLAM
           </h1>
         </motion.div>
 

@@ -5,7 +5,7 @@ import { HotTakeHost } from "@/components/games/HotTakeHost";
 import { QuickDrawHost } from "@/components/games/QuickDrawHost";
 import { RealityDriftHost } from "@/components/games/RealityDriftHost";
 import { WorldBuilderHost } from "@/components/games/WorldBuilderHost";
-import type { PlayerData } from "@partyline/shared";
+import type { PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 
 interface GameViewProps {

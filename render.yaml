@@ -1,9 +1,9 @@
-# Render Infrastructure — PARTYLINE Frontend Services
+# Render Infrastructure — FLIMFLAM Frontend Services
 # Colyseus game server lives on Colyseus Cloud (not here).
 #
 # Service URLs (set by chosen service names):
-#   Controller: https://partyline-controller.onrender.com
-#   Host:       https://partyline-host.onrender.com
+#   Controller: https://flimflam-controller.onrender.com
+#   Host:       https://flimflam-host.onrender.com
 #
 # NEXT_PUBLIC_* env vars are baked in at build time via apps/*/.env.production
 # files committed to the repo — no manual env config needed in Render dashboard.
@@ -11,14 +11,14 @@
 services:
   # ── Controller (phone PWA) — deploy first ──────────────────────────────────
   - type: web
-    name: partyline-controller
+    name: flimflam-controller
     runtime: node
     region: oregon
     plan: starter
     buildCommand: >-
       corepack enable &&
       pnpm install --frozen-lockfile &&
-      pnpm turbo build --filter=@partyline/controller...
+      pnpm turbo build --filter=@flimflam/controller...
     startCommand: cd apps/controller && npx next start
     healthCheckPath: /
     envVars:
@@ -26,7 +26,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      - key: PARTYLINE_STRICT_ENV
+      - key: FLIMFLAM_STRICT_ENV
         value: "1"
     buildFilter:
       paths:
@@ -39,14 +39,14 @@ services:
 
   # ── Host (TV / shared screen) ───────────────────────────────────────────────
   - type: web
-    name: partyline-host
+    name: flimflam-host
     runtime: node
     region: oregon
     plan: starter
     buildCommand: >-
       corepack enable &&
       pnpm install --frozen-lockfile &&
-      pnpm turbo build --filter=@partyline/host...
+      pnpm turbo build --filter=@flimflam/host...
     startCommand: cd apps/host && npx next start
     healthCheckPath: /
     envVars:
@@ -54,7 +54,7 @@ services:
         value: "22"
       - key: NODE_ENV
         value: production
-      - key: PARTYLINE_STRICT_ENV
+      - key: FLIMFLAM_STRICT_ENV
         value: "1"
     buildFilter:
       paths:

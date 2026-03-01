@@ -1,7 +1,7 @@
 "use client";
 
-import { GAME_MANIFESTS } from "@partyline/shared";
-import { GlassPanel } from "@partyline/ui";
+import { GAME_MANIFESTS } from "@flimflam/shared";
+import { GlassPanel } from "@flimflam/ui";
 import { Cpu, Flame, Paintbrush, Sparkles, Zap } from "lucide-react";
 import { useRef } from "react";
 

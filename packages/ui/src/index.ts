@@ -67,4 +67,4 @@ export type {
   GameThemeProviderProps,
 } from "./components/game-theme-provider";
 
-// Styles path hint for consumers: import "@partyline/ui/styles"
+// Styles path hint for consumers: import "@flimflam/ui/styles"

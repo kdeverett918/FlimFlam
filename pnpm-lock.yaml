@@ -39,10 +39,10 @@ importers:
 
   apps/controller:
     dependencies:
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@partyline/ui':
+      '@flimflam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/postcss':
@@ -85,10 +85,10 @@ importers:
 
   apps/host:
     dependencies:
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@partyline/ui':
+      '@flimflam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/postcss':
@@ -140,13 +140,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -158,13 +158,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -176,10 +176,10 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -191,13 +191,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -209,13 +209,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -227,7 +227,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
       zod:
@@ -239,7 +239,7 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
       colyseus:
@@ -254,28 +254,28 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../ai
-      '@partyline/bluff-engine':
+      '@flimflam/bluff-engine':
         specifier: workspace:*
         version: link:../../games/bluff-engine
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../game-engine
-      '@partyline/hot-take':
+      '@flimflam/hot-take':
         specifier: workspace:*
         version: link:../../games/hot-take
-      '@partyline/quick-draw':
+      '@flimflam/quick-draw':
         specifier: workspace:*
         version: link:../../games/quick-draw
-      '@partyline/reality-drift':
+      '@flimflam/reality-drift':
         specifier: workspace:*
         version: link:../../games/reality-drift
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
-      '@partyline/world-builder':
+      '@flimflam/world-builder':
         specifier: workspace:*
         version: link:../../games/world-builder
       colyseus:

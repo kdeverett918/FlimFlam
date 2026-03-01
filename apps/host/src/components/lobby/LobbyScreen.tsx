@@ -1,9 +1,9 @@
 "use client";
 
-import type { Complexity, PlayerData } from "@partyline/shared";
-import { MIN_PLAYERS } from "@partyline/shared";
-import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@partyline/ui";
-import type { GameTheme } from "@partyline/ui";
+import type { Complexity, PlayerData } from "@flimflam/shared";
+import { MIN_PLAYERS } from "@flimflam/shared";
+import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@flimflam/ui";
+import type { GameTheme } from "@flimflam/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";

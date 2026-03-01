@@ -1,5 +1,5 @@
 const version = new URL(self.location.href).searchParams.get("v") || "dev";
-const CACHE_VERSION = `partyline-${version}`;
+const CACHE_VERSION = `flimflam-${version}`;
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 

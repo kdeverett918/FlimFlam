@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PARTYLINE - Host Display",
+  title: "FLIMFLAM - Host Display",
   description: "AI-powered party games for your next gathering. Display on a shared screen.",
 };
 

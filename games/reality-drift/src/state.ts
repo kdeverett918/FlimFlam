@@ -1,4 +1,4 @@
-import type { Complexity, TriviaQuestion } from "@partyline/shared";
+import type { Complexity, TriviaQuestion } from "@flimflam/shared";
 
 // ─── In-Memory Game State ───────────────────────────────────────────────
 

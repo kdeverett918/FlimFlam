@@ -28,12 +28,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "PARTYLINE",
+  title: "FLIMFLAM",
   description: "AI-powered party games — join from your phone!",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PARTYLINE",
+    title: "FLIMFLAM",
   },
   icons: {
     apple: "/apple-touch-icon.png",

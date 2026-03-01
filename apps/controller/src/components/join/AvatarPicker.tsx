@@ -1,7 +1,7 @@
 "use client";
 
-import { AVATAR_COLORS } from "@partyline/shared";
-import { haptics } from "@partyline/ui";
+import { AVATAR_COLORS } from "@flimflam/shared";
+import { haptics } from "@flimflam/ui";
 import { Check } from "lucide-react";
 
 const COLOR_NAMES: Record<string, string> = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatedBackground } from "@partyline/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { motion } from "framer-motion";
 
 interface PhaseTransitionProps {

@@ -1,7 +1,7 @@
 "use client";
 
-import { AVATAR_COLORS, MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "@partyline/shared";
-import { GlassPanel, haptics } from "@partyline/ui";
+import { AVATAR_COLORS, MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "@flimflam/shared";
+import { GlassPanel, haptics } from "@flimflam/ui";
 import { useCallback, useRef, useState } from "react";
 import { AvatarPicker } from "./AvatarPicker";
 
