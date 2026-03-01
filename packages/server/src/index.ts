@@ -3,21 +3,74 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
-import { COLYSEUS_PORT, GAME_MANIFESTS } from "@flimflam/shared";
+import {
+  COLYSEUS_PORT,
+  GAME_MANIFESTS,
+  ROOM_CODE_CHARS,
+  ROOM_CODE_LENGTH,
+} from "@flimflam/shared";
 import cors from "cors";
 import express from "express";
 import { PartyRoom } from "./rooms/PartyRoom";
+import { getRoomIdByCode } from "./rooms/room-registry";
 
 // Register all games (this triggers the side-effect of loading game factories into the registry)
 import "./register-games";
 
 const require = createRequire(import.meta.url);
-const { Server } = require("colyseus") as typeof import("colyseus");
+const { Server, matchMaker } = require("colyseus") as typeof import("colyseus");
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use(cors());
 app.use(express.json());
+
+const CODE_REGEX = new RegExp(`^[${ROOM_CODE_CHARS}]{${ROOM_CODE_LENGTH}}$`);
+
+function normalizeRoomCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const code = value.trim().toUpperCase();
+  if (!CODE_REGEX.test(code)) return null;
+  return code;
+}
+
+type FixedWindowCounter = { count: number; resetAt: number };
+const resolveRateByIp = new Map<string, FixedWindowCounter>();
+
+function rateLimitResolveByIp(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+
+  // Opportunistic cleanup to avoid unbounded growth.
+  if (resolveRateByIp.size > 10_000) {
+    for (const [key, counter] of resolveRateByIp) {
+      if (counter.resetAt <= now) resolveRateByIp.delete(key);
+    }
+  }
+
+  const windowMs = 60_000;
+  const maxRequests = 240; // generous for parties behind NAT + E2E, blocks brute-force.
+
+  const existing = resolveRateByIp.get(ip);
+  if (!existing || existing.resetAt <= now) {
+    resolveRateByIp.set(ip, { count: 1, resetAt: now + windowMs });
+    next();
+    return;
+  }
+
+  existing.count++;
+  if (existing.count > maxRequests) {
+    res.status(429).json({ error: "Too many requests" });
+    return;
+  }
+
+  next();
+}
 
 // ─── Health Endpoint ─────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
@@ -36,6 +89,39 @@ app.get("/ready", (_req, res) => {
 // ─── Game Manifests Endpoint ─────────────────────────────────────────────
 app.get("/api/games", (_req, res) => {
   res.json(GAME_MANIFESTS);
+});
+
+// ─── Room Resolve Endpoint ────────────────────────────────────────────────
+// Resolve a 4-char room code to a Colyseus roomId.
+//
+// Rooms are marked private, so clients can no longer enumerate via
+// `client.getAvailableRooms("party")`.
+app.post("/api/rooms/resolve", rateLimitResolveByIp, async (req, res) => {
+  const code = normalizeRoomCode((req.body as { code?: unknown } | undefined)?.code);
+  if (!code) {
+    res.status(400).json({ error: "Invalid room code" });
+    return;
+  }
+
+  let roomId = getRoomIdByCode(code);
+
+  // Fallback for edge cases where the in-memory index is out of sync (e.g. hot reload).
+  if (!roomId) {
+    try {
+      const rooms = await matchMaker.query({ name: "party" });
+      const match = rooms.find((r) => (r.metadata as { code?: string } | undefined)?.code === code);
+      roomId = match?.roomId ?? null;
+    } catch (error) {
+      console.error("[PartyLine] Failed to resolve room code via matchMaker.query()", error);
+    }
+  }
+
+  if (!roomId) {
+    res.status(404).json({ error: "Room not found" });
+    return;
+  }
+
+  res.json({ roomId });
 });
 
 // ─── Colyseus Monitor (dev only) ────────────────────────────────────────

@@ -29,6 +29,8 @@ module.exports = {
       // VM this can take 20-40 s. The PM2 default (3 s) is far too short.
       // Give us more headroom for cold starts and rolling restarts.
       listen_timeout: 180000,
+      // Align with server shutdown timeout (packages/server/src/index.ts forces exit after 15s).
+      kill_timeout: 20000,
       env: {
         NODE_ENV: "production",
         // When running through `node --import tsx` from the repo root, tsx

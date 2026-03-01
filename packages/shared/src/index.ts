@@ -117,3 +117,14 @@ export {
   AVATAR_COLORS,
   GAME_MANIFESTS,
 } from "./constants";
+
+// Utilities (browser-safe helpers)
+export {
+  resolveColyseusWsUrlFromEnv,
+  resolveNextPublicColyseusWsUrl,
+  resolveNextPublicColyseusHttpUrl,
+  wsUrlToHttpUrl,
+  resolveRoomIdByCode,
+} from "./utils/colyseus";
+
+export type { ResolveRoomIdResult } from "./utils/colyseus";

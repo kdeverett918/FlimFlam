@@ -1,7 +1,12 @@
 "use client";
 
-import { getColyseusClient } from "@/lib/colyseus-client";
-import type { Complexity, HostViewData, PlayerData } from "@flimflam/shared";
+import { getColyseusClient, resolveColyseusHttpUrl } from "@/lib/colyseus-client";
+import {
+  type Complexity,
+  type HostViewData,
+  type PlayerData,
+  resolveRoomIdByCode,
+} from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -252,29 +257,39 @@ export function useRoom(): UseRoomReturn {
     async (code: string): Promise<void> => {
       setError(null);
       const client = getColyseusClient();
+      const normalizedCode = code.toUpperCase().trim();
 
-      let rooms: Array<{ roomId: string; metadata?: unknown }>;
+      let roomId: string;
       try {
-        rooms = await client.getAvailableRooms("party");
+        const resolved = await resolveRoomIdByCode(resolveColyseusHttpUrl(), normalizedCode);
+
+        if (!resolved.ok) {
+          if (resolved.error === "not_found") {
+            setError(`Room with code "${normalizedCode}" not found.`);
+            return;
+          }
+          if (resolved.error === "rate_limited") {
+            setError("Too many attempts. Please wait a moment and try again.");
+            return;
+          }
+          if (resolved.error === "invalid_code") {
+            setError("Invalid room code. Check the code and try again.");
+            return;
+          }
+
+          throw new Error("Failed to resolve room. Please try again.");
+        }
+
+        roomId = resolved.roomId;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to fetch rooms";
+        const message = err instanceof Error ? err.message : "Failed to resolve room";
         setError(message);
         throw err;
       }
 
-      const target = rooms.find((r) => {
-        if (!r.metadata || typeof r.metadata !== "object") return false;
-        return (r.metadata as Record<string, unknown>).code === code.toUpperCase();
-      });
-
-      if (!target) {
-        setError(`Room with code "${code}" not found.`);
-        return;
-      }
-
       let joinedRoom: Room;
       try {
-        joinedRoom = await client.joinById(target.roomId, {
+        joinedRoom = await client.joinById(roomId, {
           isHost: true,
           name: "Host",
           hostToken: sessionStorage.getItem(HOST_TOKEN_KEY) ?? undefined,
