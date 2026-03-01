@@ -51,9 +51,7 @@ const instanceOffset = Number.isFinite(nodeAppInstance) ? nodeAppInstance : 0;
 // If a fixed PORT is not injected, offset by NODE_APP_INSTANCE to avoid
 // EADDRINUSE when multiple processes briefly overlap.
 const port =
-  Number.isFinite(explicitPort) && explicitPort > 0
-    ? explicitPort
-    : COLYSEUS_PORT + instanceOffset;
+  Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : COLYSEUS_PORT + instanceOffset;
 
 httpServer.listen(port, () => {
   console.log(`[PartyLine] Server listening on port ${port}`);
