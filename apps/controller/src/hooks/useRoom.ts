@@ -7,6 +7,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const RECONNECT_TOKEN_KEY = "partyline_reconnect_token";
 const ROOM_ID_KEY = "partyline_room_id";
+const JOIN_MAX_ATTEMPTS = 6;
+const JOIN_RETRY_BASE_DELAY_MS = 250;
 
 interface RoomState {
   phase: string;
@@ -276,33 +278,59 @@ export function useRoom(): UseRoomReturn {
   const joinRoom = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
       setError(null);
-      try {
-        const client = getColyseusClient();
-        const normalizedCode = code.toUpperCase().trim();
+      const client = getColyseusClient();
+      const normalizedCode = code.toUpperCase().trim();
+      const trimmedName = name.trim();
 
-        // Find room by code
-        const rooms = await client.getAvailableRooms("party");
-        const targetRoom = rooms.find(
-          (r) => (r.metadata as { code?: string })?.code === normalizedCode,
-        );
+      for (let attempt = 0; attempt < JOIN_MAX_ATTEMPTS; attempt++) {
+        try {
+          const rooms = await client.getAvailableRooms("party");
+          const targetRoom = rooms.find(
+            (r) => (r.metadata as { code?: string })?.code === normalizedCode,
+          );
 
-        if (!targetRoom) {
-          setError("Room not found. Check the code and try again.");
+          if (!targetRoom) {
+            if (attempt < JOIN_MAX_ATTEMPTS - 1) {
+              await new Promise((resolve) =>
+                setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 1)),
+              );
+              continue;
+            }
+
+            setError("Room not found. Check the code and try again.");
+            return false;
+          }
+
+          const joinedRoom = await client.joinById(targetRoom.roomId, {
+            name: trimmedName,
+            color,
+          });
+
+          setupRoomListeners(joinedRoom);
+          return true;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to join room";
+          const normalizedMessage = message.toLowerCase();
+          const isRetryable =
+            normalizedMessage.includes("seat reservation expired") ||
+            normalizedMessage.includes("not found") ||
+            normalizedMessage.includes("timeout") ||
+            normalizedMessage.includes("network");
+
+          if (isRetryable && attempt < JOIN_MAX_ATTEMPTS - 1) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, JOIN_RETRY_BASE_DELAY_MS * (attempt + 1)),
+            );
+            continue;
+          }
+
+          setError(message);
           return false;
         }
-
-        const joinedRoom = await client.joinById(targetRoom.roomId, {
-          name,
-          color,
-        });
-
-        setupRoomListeners(joinedRoom);
-        return true;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to join room";
-        setError(message);
-        return false;
       }
+
+      setError("Unable to join room. Please try again.");
+      return false;
     },
     [setupRoomListeners],
   );
