@@ -4,7 +4,7 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "turbo dev",
-    "build": "turbo build",
+    "build": "turbo build --concurrency=1",
     "start": "pnpm --filter @partyline/server start",
     "test": "turbo test",
     "lint": "biome check .",
