@@ -1,6 +1,6 @@
+import fs from "node:fs";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
-import fs from "node:fs";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
 import { COLYSEUS_PORT, GAME_MANIFESTS } from "@partyline/shared";
@@ -73,7 +73,9 @@ function checkInactiveSocketFile(sockFilePath: string) {
       .createConnection({ path: sockFilePath })
       .on("connect", () => {
         client.end();
-        const err = new Error(`EADDRINUSE: Already listening on '${sockFilePath}'`) as NodeJS.ErrnoException;
+        const err = new Error(
+          `EADDRINUSE: Already listening on '${sockFilePath}'`,
+        ) as NodeJS.ErrnoException;
         err.code = "EADDRINUSE";
         reject(err);
       })
@@ -96,10 +98,14 @@ const EADDRINUSE_RETRY_MS = 750;
 const MAX_EADDRINUSE_RETRIES = 40;
 
 function startListening(attempt = 0) {
-  const onListening = (where: { kind: "port"; value: number } | { kind: "socket"; value: string }) => {
+  const onListening = (
+    where: { kind: "port"; value: number } | { kind: "socket"; value: string },
+  ) => {
     if (where.kind === "socket") {
       console.log(`[PartyLine] Server listening on unix socket ${where.value}`);
-      console.log(`[PartyLine] Health (via unix socket): curl --unix-socket ${where.value} http://localhost/health`);
+      console.log(
+        `[PartyLine] Health (via unix socket): curl --unix-socket ${where.value} http://localhost/health`,
+      );
     } else {
       console.log(`[PartyLine] Server listening on port ${where.value}`);
       console.log(`[PartyLine] Health: http://localhost:${where.value}/health`);
