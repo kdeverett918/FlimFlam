@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const COLYSEUS_HEALTH_URL =
+  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
 
 test("controller reconnects after refresh", async ({ page, browser }) => {
   await page.goto("/");
@@ -10,7 +12,7 @@ test("controller reconnects after refresh", async ({ page, browser }) => {
     .poll(
       async () => {
         try {
-          const res = await page.request.get("http://127.0.0.1:2567/health");
+          const res = await page.request.get(COLYSEUS_HEALTH_URL);
           return res.status();
         } catch {
           return 0;

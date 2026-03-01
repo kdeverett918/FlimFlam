@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const COLYSEUS_HEALTH_URL =
+  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
 
 test.describe("Neon Arena Design System", () => {
   test("host home page has dark theme and correct visual elements", async ({ page }) => {
@@ -75,7 +77,7 @@ test.describe("Neon Arena Design System", () => {
       .poll(
         async () => {
           try {
-            const res = await page.request.get("http://127.0.0.1:2567/health");
+            const res = await page.request.get(COLYSEUS_HEALTH_URL);
             return res.status();
           } catch {
             return 0;
@@ -117,7 +119,7 @@ test.describe("Neon Arena Design System", () => {
       .poll(
         async () => {
           try {
-            const res = await page.request.get("http://127.0.0.1:2567/health");
+            const res = await page.request.get(COLYSEUS_HEALTH_URL);
             return res.status();
           } catch {
             return 0;

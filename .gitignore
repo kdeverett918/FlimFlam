@@ -10,6 +10,11 @@ coverage
 playwright-report
 test-results
 .cache/ms-playwright
+playwright-report-production
+
+.tmp
+.playwright-mcp
+.claude
 
 .colyseus-cloud.json
 
