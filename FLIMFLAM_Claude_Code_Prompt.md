@@ -239,8 +239,8 @@ All games read a `complexity` setting: `"kids" | "standard" | "advanced"`
 ```
 ANTHROPIC_API_KEY=sk-ant-...        # Required for AI games
 NEXT_PUBLIC_COLYSEUS_URL=ws://localhost:2567
-NEXT_PUBLIC_HOST_URL=http://localhost:3000
-NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001
+NEXT_PUBLIC_HOST_URL=http://localhost:3000          # Production: https://flimflam.gg
+NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001    # Production: https://play.flimflam.gg
 NODE_ENV=development
 ```
 

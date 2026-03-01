@@ -1,9 +1,9 @@
 # Render Infrastructure — FLIMFLAM Frontend Services
 # Colyseus game server lives on Colyseus Cloud (not here).
 #
-# Service URLs (set by chosen service names):
-#   Controller: https://flimflam-controller.onrender.com
-#   Host:       https://flimflam-host.onrender.com
+# Service URLs:
+#   Controller: https://play.flimflam.gg  (custom domain → flimflam-controller.onrender.com)
+#   Host:       https://flimflam.gg       (custom domain → flimflam-host.onrender.com)
 #
 # NEXT_PUBLIC_* env vars are baked in at build time via apps/*/.env.production
 # files committed to the repo — no manual env config needed in Render dashboard.

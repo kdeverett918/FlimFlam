@@ -22,10 +22,10 @@
               └──────────────────────────┘
 ```
 
-## Production URLs (Stable If Service Names Match)
+## Production URLs
 
-- Controller: `https://flimflam-controller.onrender.com`
-- Host: `https://flimflam-host.onrender.com`
+- Host: `https://flimflam.gg` (custom domain → flimflam-host.onrender.com)
+- Controller: `https://play.flimflam.gg` (custom domain → flimflam-controller.onrender.com)
 - Colyseus (WS): `wss://us-dfw-baad7ee4.colyseus.cloud`
 - Colyseus (health): `https://us-dfw-baad7ee4.colyseus.cloud/health`
 
@@ -51,7 +51,7 @@ Render services are not created automatically just because `render.yaml` exists 
    - `flimflam-controller`
    - `flimflam-host`
 
-Those names lock in the stable `*.onrender.com` URLs used by the host QR code.
+Those names lock in the Render service names. Custom domains `flimflam.gg` and `play.flimflam.gg` point to these services.
 
 ### 2. Set `ANTHROPIC_API_KEY` in Colyseus Cloud
 
@@ -77,8 +77,8 @@ Without this, World Builder and Reality Drift will not function correctly.
 curl https://us-dfw-baad7ee4.colyseus.cloud/health
 
 # Frontends
-curl https://flimflam-controller.onrender.com/
-curl https://flimflam-host.onrender.com/
+curl https://play.flimflam.gg/
+curl https://flimflam.gg/
 
 # Full production E2E (Render host/controller → production Colyseus)
 npx playwright test --config playwright.production.remote.config.ts
@@ -86,6 +86,8 @@ npx playwright test --config playwright.production.remote.config.ts
 
 ## Notes
 
-- If you change Render service names or use custom domains, update:
-  - `apps/host/.env.production` (`NEXT_PUBLIC_CONTROLLER_URL`)
+- Custom domains are configured in Render Dashboard → Settings → Custom Domains:
+  - `flimflam.gg` and `www.flimflam.gg` → flimflam-host service
+  - `play.flimflam.gg` → flimflam-controller service
+- If you change custom domains, update `apps/host/.env.production` (`NEXT_PUBLIC_CONTROLLER_URL`)
 - Render CLI v2.7+ can validate `render.yaml`, but Blueprint creation is done via the dashboard.

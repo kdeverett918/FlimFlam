@@ -59,7 +59,7 @@ function LobbyContent({
   const controllerUrlFromEnv =
     typeof window !== "undefined" ? process.env.NEXT_PUBLIC_CONTROLLER_URL : undefined;
   const controllerUrl =
-    controllerUrlFromEnv ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:3001");
+    controllerUrlFromEnv ?? (process.env.NODE_ENV === "production" ? "https://play.flimflam.gg" : "http://localhost:3001");
 
   const joinUrl = controllerUrl ? `${controllerUrl}?code=${roomCode}` : "";
   const canStart = playerCount >= MIN_PLAYERS && selectedGameId !== "";

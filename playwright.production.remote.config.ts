@@ -11,8 +11,8 @@
  */
 import { defineConfig, devices } from "@playwright/test";
 
-const DEFAULT_HOST_URL = "https://flimflam-host.onrender.com";
-const DEFAULT_CONTROLLER_URL = "https://flimflam-controller.onrender.com";
+const DEFAULT_HOST_URL = "https://flimflam.gg";
+const DEFAULT_CONTROLLER_URL = "https://play.flimflam.gg";
 const DEFAULT_COLYSEUS_HEALTH_URL = "https://us-dfw-baad7ee4.colyseus.cloud/health";
 
 const e2eHostUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? DEFAULT_HOST_URL;
