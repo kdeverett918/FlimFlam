@@ -18,6 +18,7 @@ export default defineConfig({
   },
   fullyParallel: false,
   workers: 1,
+  retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: e2eHostUrl,
@@ -26,7 +27,7 @@ export default defineConfig({
     video: "retain-on-failure",
   },
   webServer: {
-    command: "pnpm build && node scripts/e2e-webserver.mjs",
+    command: "pnpm build:all && node scripts/e2e-webserver.mjs",
     url: e2eHostUrl,
     timeout: 360_000,
     reuseExistingServer: false,
