@@ -2,7 +2,7 @@ import { Client } from "colyseus.js";
 
 let clientInstance: Client | null = null;
 
-function resolveColyseusUrl(): string {
+export function resolveColyseusWsUrl(): string {
   const url = typeof window !== "undefined" ? process.env.NEXT_PUBLIC_COLYSEUS_URL : undefined;
   const isLocalBrowserOrigin =
     typeof window !== "undefined" &&
@@ -22,11 +22,22 @@ function resolveColyseusUrl(): string {
   return url ?? "ws://localhost:2567";
 }
 
+export function resolveColyseusHttpUrl(): string {
+  const wsUrl = resolveColyseusWsUrl();
+
+  if (wsUrl.startsWith("wss://")) return `https://${wsUrl.slice("wss://".length)}`;
+  if (wsUrl.startsWith("ws://")) return `http://${wsUrl.slice("ws://".length)}`;
+  if (wsUrl.startsWith("https://") || wsUrl.startsWith("http://")) return wsUrl;
+
+  // Unexpected format; best effort.
+  return wsUrl;
+}
+
 export function getColyseusClient(): Client {
   if (clientInstance) {
     return clientInstance;
   }
 
-  clientInstance = new Client(resolveColyseusUrl());
+  clientInstance = new Client(resolveColyseusWsUrl());
   return clientInstance;
 }
