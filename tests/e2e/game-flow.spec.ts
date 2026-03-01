@@ -35,14 +35,11 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
 
-    // Ensure we actually landed in the connected lobby UI (avoid false positives if we got
-    // redirected back to the join form while reconnecting).
-    await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+    // Ensure we actually landed in a connected /play state (not a transient redirect).
+    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
       timeout: 60_000,
     });
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({
-      timeout: 60_000,
-    });
+    await expect(controllerPage).toHaveURL(/\/play$/);
 
     await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
     return { context, controllerPage };

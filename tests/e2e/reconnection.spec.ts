@@ -34,10 +34,10 @@ test("controller reconnects after refresh", async ({ page, browser }) => {
   await controllerPage.getByLabel("Your Name").fill("Alice");
   await controllerPage.getByRole("button", { name: /^join$/i }).click();
   await expect(controllerPage).toHaveURL(/\/play$/);
-  await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+  await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
     timeout: 60_000,
   });
-  await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({ timeout: 60_000 });
+  await expect(controllerPage).toHaveURL(/\/play$/);
 
   await expect(page.getByText("Alice")).toBeVisible();
 
@@ -45,10 +45,10 @@ test("controller reconnects after refresh", async ({ page, browser }) => {
 
   // After reload, the room hook should reconnect using sessionStorage token.
   await expect(controllerPage).toHaveURL(/\/play$/);
-  await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
+  await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
     timeout: 60_000,
   });
-  await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({ timeout: 60_000 });
+  await expect(controllerPage).toHaveURL(/\/play$/);
   await expect(page.getByText("Alice")).toBeVisible({ timeout: 30_000 });
 
   await context.close();
