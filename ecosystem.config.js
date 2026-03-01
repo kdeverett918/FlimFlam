@@ -31,6 +31,11 @@ module.exports = {
       listen_timeout: 180000,
       env: {
         NODE_ENV: "production",
+        // When running through `node --import tsx` from the repo root, tsx
+        // won't automatically find the package tsconfig. Without it, decorators
+        // are compiled using the new proposal semantics and Colyseus schema
+        // decorators (`@type()`) crash at runtime.
+        TSX_TSCONFIG_PATH: "packages/server/tsconfig.json",
       },
     },
   ],
