@@ -236,6 +236,18 @@ export class QuickDrawPlugin extends BaseGamePlugin {
           recentGuesses: this.internal.recentGuesses,
         });
       }
+    } else if (
+      type === "player:draw-undo" &&
+      (gamePhase === "drawing" || gamePhase === "guessing")
+    ) {
+      if (client.sessionId !== this.internal.currentDrawerSessionId) return;
+      room.broadcast("draw-undo", {}, { except: client });
+    } else if (
+      type === "player:draw-clear" &&
+      (gamePhase === "drawing" || gamePhase === "guessing")
+    ) {
+      if (client.sessionId !== this.internal.currentDrawerSessionId) return;
+      room.broadcast("draw-clear", {}, { except: client });
     } else if (type === "host:skip" || type === "host-skip") {
       if (gamePhase === "picking-drawer" || gamePhase === "drawing" || gamePhase === "guessing") {
         this._clearDelayed();
@@ -245,6 +257,29 @@ export class QuickDrawPlugin extends BaseGamePlugin {
         this._clearDelayed();
         this.clearTimer();
         this._advanceAfterReveal(room, state);
+      }
+    }
+  }
+
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    const s = state as unknown as Record<string, unknown>;
+    const phase = s.gamePhase as string;
+
+    if (phase === "picking-drawer" || phase === "drawing" || phase === "guessing") {
+      const isDrawer = client.sessionId === this.internal?.currentDrawerSessionId;
+      if (isDrawer) {
+        room.send(client, "private-data", {
+          word: this.internal.currentWord,
+          isDrawer: true,
+          qdCorrect: false,
+        });
+      } else {
+        const alreadyGuessed = this.internal?.guessedPlayers.has(client.sessionId) ?? false;
+        room.send(client, "private-data", {
+          isDrawer: false,
+          word: undefined,
+          qdCorrect: alreadyGuessed,
+        });
       }
     }
   }
@@ -365,7 +400,9 @@ export class QuickDrawPlugin extends BaseGamePlugin {
       });
     }
 
+    const hostIdRepick = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const client of room.clients) {
+      if (client.sessionId === hostIdRepick) continue;
       if (client.sessionId !== this.internal.currentDrawerSessionId) {
         room.send(client, "private-data", { isDrawer: false, word: undefined, qdCorrect: false });
       }
@@ -436,7 +473,9 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     }
 
     // Tell everyone else they are guessing (clears stale private state on reconnect)
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const client of room.clients) {
+      if (client.sessionId === hostId) continue;
       if (client.sessionId !== this.internal.currentDrawerSessionId) {
         room.send(client, "private-data", { isDrawer: false, word: undefined, qdCorrect: false });
       }

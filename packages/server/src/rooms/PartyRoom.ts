@@ -28,6 +28,12 @@ export class PartyRoom extends Room<RoomState> {
   private _idleTimeout: Delayed | null = null;
   private _hostToken: string | null = null;
 
+  // Maps the current Colyseus sessionId to the canonical player entry key in
+  // state.players. We need this because on a name-based reconnect we re-use
+  // the *old* key (and the player's stored name/color/score) while the client
+  // arrives with a *new* sessionId.
+  private _sessionToPlayerKey = new Map<string, string>();
+
   private _getOrCreateHostToken(): string {
     if (!this._hostToken) {
       // 256-bit token, kept server-side only (never in shared room state).
@@ -212,7 +218,8 @@ export class PartyRoom extends Room<RoomState> {
     };
 
     const handlePlayerReady = (client: Client) => {
-      const player = this.state.players.get(client.sessionId);
+      const playerKey = this._sessionToPlayerKey.get(client.sessionId) ?? client.sessionId;
+      const player = this.state.players.get(playerKey);
       if (player) {
         player.ready = true;
       }
@@ -320,13 +327,69 @@ export class PartyRoom extends Room<RoomState> {
 
     const name = (options.name ?? "Player").slice(0, MAX_NAME_LENGTH).trim() || "Player";
 
-    // Check for duplicate names
+    // ── Name-based reconnect ──────────────────────────────────────────────────
+    // When a player's WebSocket drops and they rejoin (e.g. page refresh, brief
+    // network blip), they arrive with a new Colyseus sessionId but the same
+    // display name. Colyseus's token-based reconnect only works when the
+    // *client* explicitly calls client.reconnect(token). If the player instead
+    // navigates back to the join page and re-enters their name, we detect them
+    // here by matching the name against disconnected players and restore their
+    // slot. This eliminates the "Bob2" duplicate bug.
+    let ghostKey: string | null = null;
+    let ghostPlayer: GamePlayerSchema | null = null;
+    this.state.players.forEach((p, key) => {
+      if (!p.connected && p.name === name && ghostKey === null) {
+        ghostKey = key;
+        ghostPlayer = p;
+      }
+    });
+
+    if (ghostKey !== null && ghostPlayer !== null) {
+      // Re-use the existing player entry. Move it to the new sessionId key so
+      // all downstream code (including plugins) can look it up by sessionId.
+      const restoredPlayer = ghostPlayer as GamePlayerSchema;
+
+      // Remove the old key and re-insert under the new sessionId.
+      this.state.players.delete(ghostKey);
+      restoredPlayer.sessionId = client.sessionId;
+      restoredPlayer.connected = true;
+      this.state.players.set(client.sessionId, restoredPlayer);
+
+      // Update the session→key mapping for message routing.
+      this._sessionToPlayerKey.delete(ghostKey);
+      this._sessionToPlayerKey.set(client.sessionId, client.sessionId);
+
+      this.setMetadata({
+        code: this._roomCode,
+        gameName: this.state.selectedGameId || "lobby",
+        complexity: this.state.complexity as Complexity,
+        playerCount: this.state.players.size,
+        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
+      });
+
+      // Re-send current private data so the player can resume gameplay.
+      if (this._currentPlugin && this.state.lobbyPhase === "in-game") {
+        try {
+          this._currentPlugin.onPlayerReconnect?.(this, this.state, client);
+        } catch (error) {
+          console.error("[PartyLine] Error in onPlayerReconnect:", error);
+        }
+      }
+      return;
+    }
+    // ── End name-based reconnect ──────────────────────────────────────────────
+
+    // Check for duplicate names among still-connected (or in-reconnection) players.
+    // We only suffix-disambiguate if the name collision is with a player who is
+    // genuinely online — disconnected players were handled above.
     let finalName = name;
     let suffix = 2;
     const existingNames = new Set<string>();
     // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
     this.state.players.forEach((p) => {
-      existingNames.add(p.name);
+      if (p.connected) {
+        existingNames.add(p.name);
+      }
     });
     while (existingNames.has(finalName)) {
       finalName = `${name}${suffix}`;
@@ -349,6 +412,7 @@ export class PartyRoom extends Room<RoomState> {
 
     player.connected = true;
     this.state.players.set(client.sessionId, player);
+    this._sessionToPlayerKey.set(client.sessionId, client.sessionId);
 
     // Update metadata
     this.setMetadata({
@@ -362,7 +426,12 @@ export class PartyRoom extends Room<RoomState> {
 
   async onLeave(client: Client, consented: boolean): Promise<void> {
     const isHostClient = client.sessionId === this.state.hostSessionId;
-    const player = this.state.players.get(client.sessionId);
+
+    // Resolve the canonical player key (same as sessionId unless a name-based
+    // reconnect re-keyed the entry).
+    const playerKey = this._sessionToPlayerKey.get(client.sessionId) ?? client.sessionId;
+    const player = this.state.players.get(playerKey);
+
     if (player) {
       player.connected = false;
     }
@@ -374,17 +443,24 @@ export class PartyRoom extends Room<RoomState> {
 
     try {
       if (!consented) {
-        // Wait for reconnection
+        // Wait for reconnection (token-based). The reconnection window is also
+        // used as a grace period for the name-based reconnect path: if the
+        // player re-enters their name within RECONNECTION_TIMEOUT_MS seconds,
+        // onJoin will find the ghost entry and restore it before this timeout
+        // fires and permanently removes the player.
         await this.allowReconnection(client, RECONNECTION_TIMEOUT_MS / 1000);
-        // Player reconnected
+        // Player reconnected via token — mark them connected again.
         if (player) {
           player.connected = true;
         }
         return;
       }
     } catch {
-      // Reconnection timed out or was rejected
+      // Reconnection timed out or was rejected. Fall through to removal.
     }
+
+    // Clean up session mapping.
+    this._sessionToPlayerKey.delete(client.sessionId);
 
     if (isHostClient) {
       this.state.hostSessionId = "";
@@ -406,10 +482,10 @@ export class PartyRoom extends Room<RoomState> {
     // Fully remove if consent or reconnection failed.
     // This keeps player counts and host assignment accurate.
     const wasHost = player?.isHost ?? false;
-    this.state.players.delete(client.sessionId);
+    this.state.players.delete(playerKey);
 
     if (wasHost) {
-      this._transferHost(client.sessionId);
+      this._transferHost(playerKey);
     }
 
     if (this.state.lobbyPhase !== "in-game") {

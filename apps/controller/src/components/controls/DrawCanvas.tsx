@@ -26,13 +26,15 @@ interface Stroke {
 
 interface DrawCanvasProps {
   onStrokeSend: (stroke: { points: Point[]; color: string; size: number }) => void;
+  onUndoSend?: () => void;
+  onClearSend?: () => void;
 }
 
 function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
-export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
+export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [currentColor, setCurrentColor] = useState<string>(PRESET_COLORS[0] ?? "#FFFFFF");
@@ -264,12 +266,14 @@ export function DrawCanvas({ onStrokeSend }: DrawCanvasProps) {
   const handleUndo = useCallback(() => {
     haptics.tap();
     setStrokes((prev) => prev.slice(0, -1));
-  }, []);
+    onUndoSend?.();
+  }, [onUndoSend]);
 
   const handleClear = useCallback(() => {
     haptics.tap();
     setStrokes([]);
-  }, []);
+    onClearSend?.();
+  }, [onClearSend]);
 
   return (
     <div className="flex w-full flex-col gap-3 px-4">

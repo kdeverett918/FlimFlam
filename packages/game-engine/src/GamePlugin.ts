@@ -20,6 +20,7 @@ export interface GamePlugin {
   ): void | Promise<void>;
   onTick?(room: Room, state: Schema, deltaTime: number): void;
   onPlayerLeave?(room: Room, state: Schema, sessionId: string, consented: boolean): void;
+  onPlayerReconnect?(room: Room, state: Schema, client: Client): void;
   isGameOver(state: Schema): boolean;
   getScores(state: Schema): Map<string, number>;
 }

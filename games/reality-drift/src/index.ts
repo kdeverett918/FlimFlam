@@ -208,6 +208,20 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     }
   }
 
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    const s = state as unknown as Record<string, unknown>;
+    const phase = s.gamePhase as string;
+
+    if (phase === "answering" && this.internal?.currentQuestion) {
+      room.send(client, "private-data", {
+        answerOptions: this.internal.currentQuestion.options.map((opt, index) => ({
+          index,
+          label: opt,
+        })),
+      });
+    }
+  }
+
   isGameOver(state: Schema): boolean {
     return (state as unknown as Record<string, unknown>).gamePhase === "final-scores";
   }
@@ -250,8 +264,10 @@ export class RealityDriftPlugin extends BaseGamePlugin {
       answeredPlayerIds: [],
     });
 
-    // Send answer options to controllers
+    // Send answer options to controllers (skip host)
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const client of room.clients) {
+      if (client.sessionId === hostId) continue;
       room.send(client, "private-data", {
         answerOptions: this.internal.currentQuestion.options.map((opt, index) => ({
           index,

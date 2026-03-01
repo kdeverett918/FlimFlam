@@ -186,6 +186,35 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     }
   }
 
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    const s = state as unknown as Record<string, unknown>;
+    const phase = s.gamePhase as string;
+
+    if (phase === "answer-input") {
+      const prompt = this.internal?.currentPrompt;
+      if (prompt) {
+        room.send(client, "private-data", {
+          question: prompt.question,
+          category: prompt.category,
+        });
+      }
+    } else if (phase === "voting") {
+      const voteOptions = this.internal?.answerOptions.map((o, index) => ({
+        index,
+        label: o.text,
+      }));
+      if (voteOptions) {
+        const disallowedVoteIndex = this.internal.answerOptions.findIndex(
+          (o) => o.authorSessionId === client.sessionId,
+        );
+        room.send(client, "private-data", {
+          voteOptions,
+          disallowedVoteIndex: disallowedVoteIndex >= 0 ? disallowedVoteIndex : null,
+        });
+      }
+    }
+  }
+
   isGameOver(state: Schema): boolean {
     return (state as unknown as Record<string, unknown>).gamePhase === "final-scores";
   }
@@ -284,7 +313,9 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       submittedPlayerIds: [],
     });
 
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const client of room.clients) {
+      if (client.sessionId === hostId) continue;
       room.send(client, "private-data", {
         question: prompt.question,
         category: prompt.category,
@@ -346,9 +377,11 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       votedPlayerIds: [],
     });
 
-    // Send voting options to controllers
+    // Send voting options to controllers (skip host)
     const voteOptions = options.map((o, index) => ({ index, label: o.text }));
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     for (const client of room.clients) {
+      if (client.sessionId === hostId) continue;
       const disallowedVoteIndex = options.findIndex((o) => o.authorSessionId === client.sessionId);
       room.send(client, "private-data", {
         voteOptions,

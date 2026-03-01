@@ -241,6 +241,19 @@ export class HotTakePlugin extends BaseGamePlugin {
     }
   }
 
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    const s = state as unknown as Record<string, unknown>;
+    const phase = s.gamePhase as string;
+
+    if (phase === "topic-setup") {
+      room.send(client, "private-data", {
+        inputType: "topic-setup",
+        prompt: "What topic should the hot takes be about?",
+        categories: TOPIC_CATEGORIES,
+      });
+    }
+  }
+
   isGameOver(state: Schema): boolean {
     return (state as unknown as Record<string, unknown>).gamePhase === "final-scores";
   }
@@ -268,8 +281,10 @@ export class HotTakePlugin extends BaseGamePlugin {
     });
 
     const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     players.forEach((player: Record<string, unknown>, key: string) => {
       if (!player.connected) return;
+      if (key === hostId) return;
       const target = room.clients.find((c) => c.sessionId === key);
       if (!target) return;
       room.send(target, "private-data", {
