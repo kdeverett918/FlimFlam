@@ -67,4 +67,7 @@ export type {
   GameThemeProviderProps,
 } from "./components/game-theme-provider";
 
+// Hooks
+export { useReducedMotion } from "./hooks/useReducedMotion";
+
 // Styles path hint for consumers: import "@flimflam/ui/styles"

@@ -30,8 +30,7 @@ export default async function globalSetup() {
   const controllerUrl =
     process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "https://flimflam-controller.onrender.com";
   const colyseusHealthUrl =
-    process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ??
-    "https://us-dfw-baad7ee4.colyseus.cloud/health";
+    process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "https://us-dfw-baad7ee4.colyseus.cloud/health";
 
   // Keep this conservative: Render cold starts + DNS propagation can be slow.
   const timeoutMs = 5 * 60_000;

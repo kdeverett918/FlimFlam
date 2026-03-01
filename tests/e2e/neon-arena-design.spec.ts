@@ -19,7 +19,7 @@ test.describe("Neon Arena Design System", () => {
     const logo = page.locator("h1");
     await expect(logo).toHaveText("FLIMFLAM");
     const fontFamily = await logo.evaluate((el) => window.getComputedStyle(el).fontFamily);
-    expect(fontFamily.toLowerCase()).toMatch(/space[ _-]?grotesk/);
+    expect(fontFamily.toLowerCase()).toMatch(/bricolage[ _-]?grotesque/);
 
     // Verify tagline is present
     await expect(page.getByText("Party games. Reimagined.")).toBeVisible();
