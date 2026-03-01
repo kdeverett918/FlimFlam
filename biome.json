@@ -30,6 +30,8 @@
   },
   "files": {
     "ignore": [
+      ".claude",
+      ".tmp",
       "node_modules",
       "dist",
       ".next",
