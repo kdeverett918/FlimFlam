@@ -1,19 +1,18 @@
 // Colyseus Cloud runs your app under PM2 and expects an ecosystem file at the
 // repository root.
 //
-// Important: Colyseus forces `wait_ready: true` during post-deploy.
-// Running via `interpreter: tsx` can break PM2 IPC readiness in some setups.
-// Using `node --import tsx` keeps TypeScript support and preserves PM2 ready
-// signaling from `process.send("ready")` in `packages/server/src/index.ts`.
+// We run a small Node bootstrap script that launches the TypeScript server via
+// `tsx` and emits PM2 `ready` only after the server reports it is listening.
+// This avoids tsx/cwd edge cases under Colyseus Cloud post-deploy.
 
 module.exports = {
   apps: [
     {
-      name: "partyline",
-      cwd: "packages/server",
-      script: "src/index.ts",
+      // New app name avoids inheriting stale PM2 scale state from older failed
+      // rollouts that accumulated extra instances.
+      name: "partyline-server",
+      script: "scripts/cloud-server-runner.mjs",
       interpreter: "node",
-      node_args: ["--import", "tsx"],
       time: true,
       watch: false,
       instances: 1,
@@ -21,6 +20,7 @@ module.exports = {
       wait_ready: true,
       env: {
         NODE_ENV: "production",
+        TSX_TSCONFIG_PATH: "packages/server/tsconfig.json",
       },
     },
   ],
