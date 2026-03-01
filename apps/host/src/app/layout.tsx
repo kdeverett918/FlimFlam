@@ -23,6 +23,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://flimflam.gg"),
   title: "FLIMFLAM - Host Display",
   description: "AI-powered party games for your next gathering. Display on a shared screen.",
 };

@@ -31,6 +31,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://play.flimflam.gg"),
   title: "FLIMFLAM",
   description: "AI-powered party games — join from your phone!",
   appleWebApp: {
