@@ -144,7 +144,9 @@ test.describe("Neon Arena Design System", () => {
     await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
       timeout: 60_000,
     });
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({ timeout: 60_000 });
+    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({
+      timeout: 60_000,
+    });
 
     // Verify the player name appears on the host
     await expect(page.getByText("TestPlayer")).toBeVisible();

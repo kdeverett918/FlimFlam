@@ -38,7 +38,9 @@ test("host creates room and players join", async ({ page, browser }) => {
     await expect(controllerPage.getByRole("heading", { name: /you're in!/i })).toBeVisible({
       timeout: 60_000,
     });
-    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({ timeout: 60_000 });
+    await expect(controllerPage.getByText(/waiting for the host/i)).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
 
     return { context, controllerPage };
