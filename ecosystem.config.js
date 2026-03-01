@@ -1,21 +1,16 @@
 // Colyseus Cloud runs your app under PM2 and expects an ecosystem file at the
 // repository root.
 //
-// Important: Colyseus post-deploy runs PM2 from `/home/deploy/source` and the
-// runtime app `cwd` is effectively root. When using `tsx` from root in this
-// monorepo, we must pin the server tsconfig path or decorators may fail at
-// runtime.
-//
-// PM2/Colyseus uses `wait_ready: true`, and the server emits `ready` from
-// `packages/server/src/index.ts` after binding the HTTP port.
-const isWindows = process.platform === "win32";
+// We run a small Node bootstrap script that launches the TypeScript server via
+// `tsx` and emits PM2 `ready` only after the server reports it is listening.
+// This avoids tsx/cwd edge cases under Colyseus Cloud post-deploy.
 
 module.exports = {
   apps: [
     {
       name: "partyline",
-      script: "packages/server/src/index.ts",
-      interpreter: isWindows ? "node_modules/.bin/tsx.cmd" : "node_modules/.bin/tsx",
+      script: "scripts/cloud-server-runner.mjs",
+      interpreter: "node",
       time: true,
       watch: false,
       instances: 1,
