@@ -23,9 +23,16 @@ export { buildTriviaBatchPrompt } from "./prompts/reality-drift";
 export { buildHotTakeInitialPrompt, buildHotTakeAdaptivePrompt } from "./prompts/hot-take";
 
 export {
+  buildBoardGenerationPrompt,
+  buildAnswerJudgePrompt,
+  buildAppealPrompt,
+} from "./prompts/brain-battle";
+
+export {
   FALLBACK_SCENARIOS,
   FALLBACK_BLUFF_PROMPTS,
   FALLBACK_TRIVIA_QUESTIONS,
+  FALLBACK_BOARDS,
 } from "./fallbacks";
 
 export { CostTracker, costTracker } from "./cost-tracker";

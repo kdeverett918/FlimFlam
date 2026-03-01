@@ -1,6 +1,7 @@
 "use client";
 
 import { BluffEngineHost } from "@/components/games/BluffEngineHost";
+import { BrainBattleHost } from "@/components/games/BrainBattleHost";
 import { HotTakeHost } from "@/components/games/HotTakeHost";
 import { QuickDrawHost } from "@/components/games/QuickDrawHost";
 import { RealityDriftHost } from "@/components/games/RealityDriftHost";
@@ -50,6 +51,8 @@ export function GameView({
       return <RealityDriftHost {...commonProps} />;
     case "hot-take":
       return <HotTakeHost {...commonProps} />;
+    case "brain-battle":
+      return <BrainBattleHost {...commonProps} />;
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">

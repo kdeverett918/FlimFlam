@@ -46,6 +46,16 @@ export function WaitingScreen({ phase }: WaitingScreenProps) {
         return "Picking the artist";
       case "drawing":
         return "Watch the artist draw";
+      case "board-generating":
+        return "The AI is building your custom quiz board...";
+      case "board-reveal":
+        return "Check out the board on the main screen!";
+      case "appeal-judging":
+        return "The AI judge is deliberating...";
+      case "appeal-result":
+        return "The verdict is in! Check the main screen!";
+      case "clue-result":
+        return "See the results on the main screen!";
       default:
         return MESSAGES[messageIndex];
     }

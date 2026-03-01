@@ -1,4 +1,5 @@
 import { createBluffEnginePlugin } from "@partyline/bluff-engine";
+import { createBrainBattlePlugin } from "@partyline/brain-battle";
 import { GameRegistry } from "@partyline/game-engine";
 import { createHotTakePlugin } from "@partyline/hot-take";
 import { createQuickDrawPlugin } from "@partyline/quick-draw";
@@ -10,3 +11,4 @@ GameRegistry.registerGame("bluff-engine", createBluffEnginePlugin);
 GameRegistry.registerGame("quick-draw", createQuickDrawPlugin);
 GameRegistry.registerGame("reality-drift", createRealityDriftPlugin);
 GameRegistry.registerGame("hot-take", createHotTakePlugin);
+GameRegistry.registerGame("brain-battle", createBrainBattlePlugin);

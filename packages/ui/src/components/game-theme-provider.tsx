@@ -8,7 +8,8 @@ type GameTheme =
   | "bluff-engine"
   | "quick-draw"
   | "reality-drift"
-  | "hot-take";
+  | "hot-take"
+  | "brain-battle";
 
 interface GameThemeContextValue {
   theme: GameTheme;
@@ -41,6 +42,10 @@ const GAME_THEMES: Record<GameTheme, { accent: string; glow: string }> = {
   "hot-take": {
     accent: "var(--color-accent-6)",
     glow: "oklch(0.65 0.25 25 / 0.3)",
+  },
+  "brain-battle": {
+    accent: "var(--color-accent-7)",
+    glow: "oklch(0.65 0.22 260 / 0.3)",
   },
 };
 

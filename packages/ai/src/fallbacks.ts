@@ -1,4 +1,9 @@
-import type { BluffPrompt, GeneratedScenario, TriviaQuestion } from "@partyline/shared";
+import type {
+  BluffPrompt,
+  GeneratedBoard,
+  GeneratedScenario,
+  TriviaQuestion,
+} from "@partyline/shared";
 
 // ─── Fallback Scenarios (one per complexity) ─────────────────────────────
 
@@ -448,5 +453,574 @@ export const FALLBACK_TRIVIA_QUESTIONS: TriviaQuestion[] = [
     options: ["smile", "banana", "gravity", "lawn"],
     isDrift: true,
     category: "Social Trend",
+  },
+];
+
+// ─── Fallback Brain Battle Boards ────────────────────────────────────────
+
+export const FALLBACK_BOARDS: GeneratedBoard[] = [
+  {
+    categories: [
+      {
+        name: "Animals in Space",
+        clues: [
+          {
+            id: "fb1-1-1",
+            answer: "This fruit fly became the first animal launched into space in 1947",
+            question: "What is a fruit fly?",
+            value: 200,
+          },
+          {
+            id: "fb1-1-2",
+            answer: "This Soviet dog became the first animal to orbit Earth in 1957",
+            question: "Who is Laika?",
+            value: 400,
+          },
+          {
+            id: "fb1-1-3",
+            answer: "These two monkeys named Able and Miss Baker survived spaceflight in 1959",
+            question: "What are rhesus and squirrel monkeys?",
+            value: 600,
+          },
+          {
+            id: "fb1-1-4",
+            answer: "In 2007, these micro-animals survived exposure to the vacuum of space",
+            question: "What are tardigrades?",
+            value: 800,
+          },
+          {
+            id: "fb1-1-5",
+            answer: "This French cat named Felicette was launched to space in 1963",
+            question: "What is a cat?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Famous Last Words",
+        clues: [
+          {
+            id: "fb1-2-1",
+            answer: "'I have a dream' was the famous refrain of this civil rights leader",
+            question: "Who is Martin Luther King Jr.?",
+            value: 200,
+          },
+          {
+            id: "fb1-2-2",
+            answer: "This Apple co-founder's last words were reportedly 'Oh wow. Oh wow. Oh wow.'",
+            question: "Who is Steve Jobs?",
+            value: 400,
+          },
+          {
+            id: "fb1-2-3",
+            answer: "This playwright said 'I am dying beyond my means' on his deathbed",
+            question: "Who is Oscar Wilde?",
+            value: 600,
+          },
+          {
+            id: "fb1-2-4",
+            answer: "This composer reportedly said 'I shall hear in heaven' as his final words",
+            question: "Who is Beethoven?",
+            value: 800,
+          },
+          {
+            id: "fb1-2-5",
+            answer: "This outlaw's last words before being shot were allegedly 'Who's there?'",
+            question: "Who is Billy the Kid?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Taylor Swift & Physics",
+        clues: [
+          {
+            id: "fb1-3-1",
+            answer:
+              "Taylor's 'Love Story' and this Newton law both describe equal and opposite reactions",
+            question: "What is Newton's Third Law?",
+            value: 200,
+          },
+          {
+            id: "fb1-3-2",
+            answer: "Like entropy, this Taylor album showed things only move in one direction",
+            question: "What is 1989?",
+            value: 400,
+          },
+          {
+            id: "fb1-3-3",
+            answer:
+              "This force keeps Swift's concert crowds on the ground, measured at 9.8 m/s squared",
+            question: "What is gravity?",
+            value: 600,
+          },
+          {
+            id: "fb1-3-4",
+            answer:
+              "Taylor's 'Eras Tour' and this physics concept both involve moving through distinct periods",
+            question: "What is a phase transition?",
+            value: 800,
+          },
+          {
+            id: "fb1-3-5",
+            answer:
+              "In quantum mechanics, this principle says you can't know a particle's position and momentum simultaneously, much like predicting Taylor's next album genre",
+            question: "What is the Heisenberg Uncertainty Principle?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Before & After",
+        clues: [
+          {
+            id: "fb1-4-1",
+            answer: "A tropical fruit that's also a tech company's headquarters city",
+            question: "What is Apple Park?",
+            value: 200,
+          },
+          {
+            id: "fb1-4-2",
+            answer: "The Disney princess who shares her name with a sleep state in computers",
+            question: "Who is Aurora?",
+            value: 400,
+          },
+          {
+            id: "fb1-4-3",
+            answer: "The card game that shares its name with a region destroyed by a volcano",
+            question: "What is Pompeii Poker? (Pompeii)",
+            value: 600,
+          },
+          {
+            id: "fb1-4-4",
+            answer: "A Beatles song that is also a type of heavy construction equipment",
+            question: "What is Yellow Submarine?",
+            value: 800,
+          },
+          {
+            id: "fb1-4-5",
+            answer: "A Shakespeare play whose title character shares a name with a Roman month",
+            question: "What is Julius Caesar?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Things That Are Red",
+        clues: [
+          {
+            id: "fb1-5-1",
+            answer: "This planet is known as the Red Planet",
+            question: "What is Mars?",
+            value: 200,
+          },
+          {
+            id: "fb1-5-2",
+            answer: "This gemstone is the birthstone for July",
+            question: "What is a ruby?",
+            value: 400,
+          },
+          {
+            id: "fb1-5-3",
+            answer: "This famous canyon in Arizona gets its red color from iron oxide",
+            question: "What is the Grand Canyon?",
+            value: 600,
+          },
+          {
+            id: "fb1-5-4",
+            answer: "This giant star in the constellation Orion has a distinctly reddish hue",
+            question: "What is Betelgeuse?",
+            value: 800,
+          },
+          {
+            id: "fb1-5-5",
+            answer:
+              "This sea between Africa and the Arabian Peninsula gets its name from seasonal algae blooms",
+            question: "What is the Red Sea?",
+            value: 1000,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    categories: [
+      {
+        name: "Video Games",
+        clues: [
+          {
+            id: "fb2-1-1",
+            answer: "This plumber has been rescuing Princess Peach since 1985",
+            question: "Who is Mario?",
+            value: 200,
+          },
+          {
+            id: "fb2-1-2",
+            answer:
+              "This block-building survival game became the best-selling video game of all time",
+            question: "What is Minecraft?",
+            value: 400,
+          },
+          {
+            id: "fb2-1-3",
+            answer:
+              "This battle royale game introduced building mechanics and took over pop culture in 2018",
+            question: "What is Fortnite?",
+            value: 600,
+          },
+          {
+            id: "fb2-1-4",
+            answer:
+              "This 2017 Nintendo game lets you cook apples, tame horses, and fight Guardians in Hyrule",
+            question: "What is The Legend of Zelda: Breath of the Wild?",
+            value: 800,
+          },
+          {
+            id: "fb2-1-5",
+            answer:
+              "This FromSoftware game won Game of the Year 2022 and was co-created with George R.R. Martin",
+            question: "What is Elden Ring?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Cooking & Chemistry",
+        clues: [
+          {
+            id: "fb2-2-1",
+            answer: "Adding this NaHCO3 compound to batter makes cakes rise",
+            question: "What is baking soda?",
+            value: 200,
+          },
+          {
+            id: "fb2-2-2",
+            answer: "This reaction between amino acids and sugars gives browned food its flavor",
+            question: "What is the Maillard reaction?",
+            value: 400,
+          },
+          {
+            id: "fb2-2-3",
+            answer:
+              "Chefs use this process of heating and cooling chocolate to give it a glossy finish and snap",
+            question: "What is tempering?",
+            value: 600,
+          },
+          {
+            id: "fb2-2-4",
+            answer: "This protein in eggs denatures when heated, causing them to solidify",
+            question: "What is albumin?",
+            value: 800,
+          },
+          {
+            id: "fb2-2-5",
+            answer: "This gas, produced by yeast fermentation, is what makes bread dough rise",
+            question: "What is carbon dioxide?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "World Capitals",
+        clues: [
+          {
+            id: "fb2-3-1",
+            answer: "This city with the Eiffel Tower is the capital of France",
+            question: "What is Paris?",
+            value: 200,
+          },
+          {
+            id: "fb2-3-2",
+            answer: "This capital city sits on the Potomac River in a district that is not a state",
+            question: "What is Washington, D.C.?",
+            value: 400,
+          },
+          {
+            id: "fb2-3-3",
+            answer: "This capital of Australia is often confused with Sydney or Melbourne",
+            question: "What is Canberra?",
+            value: 600,
+          },
+          {
+            id: "fb2-3-4",
+            answer: "This capital of Mongolia shares its name with a famous conqueror",
+            question: "What is Ulaanbaatar?",
+            value: 800,
+          },
+          {
+            id: "fb2-3-5",
+            answer: "This South American capital sits at over 11,000 feet elevation in the Andes",
+            question: "What is La Paz?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Movies & Mathematics",
+        clues: [
+          {
+            id: "fb2-4-1",
+            answer: "The number of Dalmatians in the classic Disney film",
+            question: "What is 101?",
+            value: 200,
+          },
+          {
+            id: "fb2-4-2",
+            answer: "This 2001 Russell Crowe film shares its name with a type of math competition",
+            question: "What is A Beautiful Mind?",
+            value: 400,
+          },
+          {
+            id: "fb2-4-3",
+            answer:
+              "In The Matrix, Neo's world is a simulation based on this branch of math involving arrays of numbers",
+            question: "What is linear algebra (matrices)?",
+            value: 600,
+          },
+          {
+            id: "fb2-4-4",
+            answer:
+              "This number, approximately 3.14159, appears in the title of a Darren Aronofsky film",
+            question: "What is pi?",
+            value: 800,
+          },
+          {
+            id: "fb2-4-5",
+            answer:
+              "The film 'Hidden Figures' features mathematicians calculating this type of path for orbiting spacecraft",
+            question: "What is a trajectory?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Before & After",
+        clues: [
+          {
+            id: "fb2-5-1",
+            answer:
+              "A board game about real estate that's also a term for controlling a whole market",
+            question: "What is Monopoly?",
+            value: 200,
+          },
+          {
+            id: "fb2-5-2",
+            answer: "The social media platform where you 'tweet' that's also a sound birds make",
+            question: "What is Twitter?",
+            value: 400,
+          },
+          {
+            id: "fb2-5-3",
+            answer: "A Queen song and a type of rhyming two-line poem",
+            question: "What is Bohemian Rhapsody (rhyming couplet)?",
+            value: 600,
+          },
+          {
+            id: "fb2-5-4",
+            answer: "A horror author whose last name is also what medieval royalty sat on",
+            question: "Who is Stephen King?",
+            value: 800,
+          },
+          {
+            id: "fb2-5-5",
+            answer: "The Greek god of the sea whose name is also a planet and a trident brand",
+            question: "What is Neptune?",
+            value: 1000,
+          },
+        ],
+      },
+    ],
+  },
+  {
+    categories: [
+      {
+        name: "90s Nostalgia",
+        clues: [
+          {
+            id: "fb3-1-1",
+            answer: "This virtual pet on a keychain demanded constant feeding and attention",
+            question: "What is a Tamagotchi?",
+            value: 200,
+          },
+          {
+            id: "fb3-1-2",
+            answer: "This Nickelodeon game show involved a giant nose called the Aggro Crag",
+            question: "What is GUTS?",
+            value: 400,
+          },
+          {
+            id: "fb3-1-3",
+            answer:
+              "This toy let you see colorful geometric patterns by looking through a tube and rotating the end",
+            question: "What is a kaleidoscope?",
+            value: 600,
+          },
+          {
+            id: "fb3-1-4",
+            answer:
+              "This 1996 electronic toy repeated color-and-sound sequences that players had to memorize",
+            question: "What is Bop It?",
+            value: 800,
+          },
+          {
+            id: "fb3-1-5",
+            answer:
+              "This programming language, created in 1995, was originally called Mocha and then LiveScript",
+            question: "What is JavaScript?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Pizza & World History",
+        clues: [
+          {
+            id: "fb3-2-1",
+            answer: "The Margherita pizza was named after this Italian queen in 1889",
+            question: "Who is Queen Margherita of Savoy?",
+            value: 200,
+          },
+          {
+            id: "fb3-2-2",
+            answer: "Pizza originated in this Italian city, also home to Mount Vesuvius",
+            question: "What is Naples?",
+            value: 400,
+          },
+          {
+            id: "fb3-2-3",
+            answer:
+              "During this 1960s-era space race, astronauts ate freeze-dried food but never this popular dish in orbit",
+            question: "What is pizza?",
+            value: 600,
+          },
+          {
+            id: "fb3-2-4",
+            answer:
+              "In 2001, Pizza Hut paid $1 million to deliver a pizza to this orbiting location",
+            question: "What is the International Space Station?",
+            value: 800,
+          },
+          {
+            id: "fb3-2-5",
+            answer:
+              "The ancient Romans ate a flatbread called 'panis focacius' that evolved into this modern Italian bread",
+            question: "What is focaccia?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Ocean Life",
+        clues: [
+          {
+            id: "fb3-3-1",
+            answer:
+              "This eight-armed sea creature is known for its intelligence and ability to change color",
+            question: "What is an octopus?",
+            value: 200,
+          },
+          {
+            id: "fb3-3-2",
+            answer: "This 'clown' fish became famous after a 2003 Pixar movie",
+            question: "What is a clownfish?",
+            value: 400,
+          },
+          {
+            id: "fb3-3-3",
+            answer:
+              "This bioluminescent creature is responsible for making parts of the ocean glow at night",
+            question: "What is dinoflagellate plankton?",
+            value: 600,
+          },
+          {
+            id: "fb3-3-4",
+            answer: "This giant squid rival can grow over 40 feet and lives in the deep ocean",
+            question: "What is a colossal squid?",
+            value: 800,
+          },
+          {
+            id: "fb3-3-5",
+            answer:
+              "This immortal jellyfish can revert to its polyp stage, theoretically living forever",
+            question: "What is Turritopsis dohrnii?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Music & Sports Mashup",
+        clues: [
+          {
+            id: "fb3-4-1",
+            answer: "Freddie Mercury and this sport both involve a 'Queen' and a checkered flag",
+            question: "What is Formula 1 racing?",
+            value: 200,
+          },
+          {
+            id: "fb3-4-2",
+            answer:
+              "This instrument and a baseball position share the name 'pitcher'... just kidding, but this one shares 'bass'",
+            question: "What is a bass guitar?",
+            value: 400,
+          },
+          {
+            id: "fb3-4-3",
+            answer:
+              "The Super Bowl halftime show and this musical term both refer to a performance break",
+            question: "What is an intermission?",
+            value: 600,
+          },
+          {
+            id: "fb3-4-4",
+            answer:
+              "In both cricket and music, this word means a series of connected performances or matches",
+            question: "What is a tour?",
+            value: 800,
+          },
+          {
+            id: "fb3-4-5",
+            answer:
+              "Quarterback 'audibles' at the line share their name with this range of human hearing",
+            question: "What is the audible frequency range?",
+            value: 1000,
+          },
+        ],
+      },
+      {
+        name: "Before & After",
+        clues: [
+          {
+            id: "fb3-5-1",
+            answer: "A fruit that shares its name with a color",
+            question: "What is orange?",
+            value: 200,
+          },
+          {
+            id: "fb3-5-2",
+            answer: "A planet that shares its name with a Roman god of war and a chocolate bar",
+            question: "What is Mars?",
+            value: 400,
+          },
+          {
+            id: "fb3-5-3",
+            answer: "This word means a baby cat and also a brand of candy bar",
+            question: "What is Kit Kat?",
+            value: 600,
+          },
+          {
+            id: "fb3-5-4",
+            answer: "A chess piece that shares its name with a fortified structure",
+            question: "What is a rook (castle)?",
+            value: 800,
+          },
+          {
+            id: "fb3-5-5",
+            answer: "This word means a musical note duration and also a monetary unit in the UK",
+            question: "What is a pound?",
+            value: 1000,
+          },
+        ],
+      },
+    ],
   },
 ];

@@ -1,6 +1,8 @@
 "use client";
 
 import { AbilityButton } from "@/components/controls/AbilityButton";
+import { BrainBattleTopicSubmit } from "@/components/controls/BrainBattleTopicSubmit";
+import { BuzzButton } from "@/components/controls/BuzzButton";
 import { DrawCanvas } from "@/components/controls/DrawCanvas";
 import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
 import { Slider } from "@/components/controls/Slider";
@@ -39,6 +41,7 @@ const GAME_THEME_MAP: Record<string, GameTheme> = {
   "quick-draw": "quick-draw",
   "reality-drift": "reality-drift",
   "hot-take": "hot-take",
+  "brain-battle": "brain-battle",
 };
 
 const GAME_DISPLAY_NAMES: Record<string, string> = {
@@ -47,6 +50,7 @@ const GAME_DISPLAY_NAMES: Record<string, string> = {
   "quick-draw": "Quick Draw",
   "reality-drift": "Reality Drift",
   "hot-take": "Hot Take",
+  "brain-battle": "Brain Battle",
 };
 
 const GAME_ACCENT_CLASSES: Record<string, string> = {
@@ -55,6 +59,7 @@ const GAME_ACCENT_CLASSES: Record<string, string> = {
   "quick-draw": "text-accent-4 bg-accent-4/15",
   "reality-drift": "text-accent-5 bg-accent-5/15",
   "hot-take": "text-accent-6 bg-accent-6/15",
+  "brain-battle": "text-accent-7 bg-accent-7/15",
 };
 
 export function GameController({
@@ -116,7 +121,9 @@ export function GameController({
     phase === "generating-prompt" ||
     phase === "generating-questions" ||
     phase === "picking-drawer" ||
-    phase === "ai-generating";
+    phase === "ai-generating" ||
+    phase === "board-generating" ||
+    phase === "appeal-judging";
 
   if (isWaitingPhase) {
     return <WaitingScreen phase={phase} />;
@@ -143,6 +150,9 @@ export function GameController({
       break;
     case "hot-take":
       content = renderHotTake(phase);
+      break;
+    case "brain-battle":
+      content = renderBrainBattle(phase);
       break;
     default:
       content = renderGenericPhase(phase);
@@ -420,6 +430,148 @@ export function GameController({
       case "results":
       case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      default:
+        return <WaitingScreen phase={currentPhase} />;
+    }
+  }
+
+  function renderBrainBattle(currentPhase: string) {
+    switch (currentPhase) {
+      case "topic-submit":
+        return <BrainBattleTopicSubmit sendMessage={sendMessage} />;
+
+      case "board-generating":
+      case "board-reveal":
+        return <WaitingScreen phase={currentPhase} />;
+
+      case "clue-select":
+        if (privateData?.isSelector) {
+          const categories = (privateData?.categories as string[]) ?? [];
+          const answeredClues = (privateData?.answeredClues as string[]) ?? [];
+          const values = [200, 400, 600, 800, 1000];
+          return (
+            <div className="flex flex-col gap-3 px-2 pb-16 pt-4">
+              <p className="text-center font-display text-lg font-bold text-text-primary">
+                Pick a clue!
+              </p>
+              {/* Mini-board grid */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      {categories.map((cat) => (
+                        <th
+                          key={cat}
+                          className="px-1 py-1 text-center font-display text-[10px] font-bold text-accent-7 uppercase tracking-wider"
+                        >
+                          {cat.length > 8 ? `${cat.slice(0, 8)}...` : cat}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {values.map((val, rowIdx) => (
+                      <tr key={val}>
+                        {categories.map((_cat, colIdx) => {
+                          const clueId = `cat${colIdx}_clue${rowIdx}`;
+                          const isAnswered = answeredClues.includes(clueId);
+                          return (
+                            <td key={clueId} className="p-0.5">
+                              <button
+                                type="button"
+                                disabled={isAnswered}
+                                onClick={() => {
+                                  haptics.tap();
+                                  sendMessage("player:select-clue", { clueId });
+                                }}
+                                className="h-12 w-full rounded-lg font-display text-sm font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100"
+                                style={{
+                                  backgroundColor: isAnswered
+                                    ? "rgba(255,255,255,0.03)"
+                                    : "rgba(255,255,255,0.08)",
+                                  color: isAnswered
+                                    ? "rgba(255,255,255,0.2)"
+                                    : "var(--color-accent-7, #818cf8)",
+                                }}
+                              >
+                                ${val}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Waiting for {(privateData?.selectorName as string) ?? "selector"} to pick a clue...
+            </p>
+          </div>
+        );
+
+      case "buzzing":
+        return (
+          <BuzzButton
+            onBuzz={() => sendMessage("player:buzz")}
+            playerColor={(privateData?.avatarColor as string) ?? undefined}
+          />
+        );
+
+      case "answering":
+        if (privateData?.isBuzzWinner) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt='Your answer -- start with "What is..."'
+                placeholder="What is...?"
+                maxChars={100}
+                onSubmit={handleTextSubmit}
+              />
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Waiting for {(privateData?.buzzWinnerName as string) ?? "player"}&apos;s answer...
+            </p>
+          </div>
+        );
+
+      case "appeal-window":
+        if (privateData?.canAppeal) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <div className="text-center text-sm text-text-muted">
+                Appeals remaining: {(privateData?.appealsRemaining as number) ?? 0}
+              </div>
+              <TextInput
+                prompt="Make your case to the judge!"
+                placeholder="I believe my answer is correct because..."
+                maxChars={140}
+                onSubmit={handleTextSubmit}
+              />
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">Waiting for the appeal...</p>
+          </div>
+        );
+
+      case "appeal-judging":
+      case "appeal-result":
+      case "clue-result":
+      case "final-scores":
+        return renderWatchScreen("Check the main screen!");
+
       default:
         return <WaitingScreen phase={currentPhase} />;
     }

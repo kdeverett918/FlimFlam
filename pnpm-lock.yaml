@@ -153,6 +153,24 @@ importers:
         specifier: ^0.15.55
         version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
+  games/brain-battle:
+    dependencies:
+      '@colyseus/schema':
+        specifier: ^2.0.35
+        version: 2.0.37
+      '@partyline/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@partyline/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@partyline/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
+
   games/hot-take:
     dependencies:
       '@colyseus/schema':
@@ -260,6 +278,9 @@ importers:
       '@partyline/bluff-engine':
         specifier: workspace:*
         version: link:../../games/bluff-engine
+      '@partyline/brain-battle':
+        specifier: workspace:*
+        version: link:../../games/brain-battle
       '@partyline/game-engine':
         specifier: workspace:*
         version: link:../game-engine

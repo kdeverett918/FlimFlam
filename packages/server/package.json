@@ -25,6 +25,7 @@
     "@partyline/quick-draw": "workspace:*",
     "@partyline/reality-drift": "workspace:*",
     "@partyline/hot-take": "workspace:*",
+    "@partyline/brain-battle": "workspace:*",
     "colyseus": "^0.15.55",
     "@colyseus/schema": "^2.0.35",
     "@colyseus/monitor": "^0.16.7",
