@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 function findBin(name) {
-  const bin = process.platform === "win32" ? name + ".cmd" : name;
+  const bin = process.platform === "win32" ? `${name}.cmd` : name;
   const candidate = resolve("node_modules/.bin", bin);
   return existsSync(candidate) ? candidate : null;
 }
@@ -21,15 +21,11 @@ if (!turbo) {
 
 console.log(`[PartyLine] Using turbo: ${turbo}`);
 
-const result = spawnSync(
-  turbo,
-  ["build", "--filter=@partyline/server..."],
-  {
-    stdio: "inherit",
-    // `.cmd` wrappers on Windows require shell invocation.
-    shell: process.platform === "win32",
-  },
-);
+const result = spawnSync(turbo, ["build", "--filter=@partyline/server..."], {
+  stdio: "inherit",
+  // `.cmd` wrappers on Windows require shell invocation.
+  shell: process.platform === "win32",
+});
 
 if (result.error) {
   console.error("[PartyLine] Build failed to spawn turbo", result.error);
