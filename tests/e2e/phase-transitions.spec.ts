@@ -226,9 +226,7 @@ test.describe("Phase Transitions", () => {
         const text = document.body.innerText;
         // The game started if we see any hot-take phase content or phase transition.
         return (
-          text.includes("Hot Take") ||
-          text.includes("Pick Your Topic") ||
-          text.includes("Skip")
+          text.includes("Hot Take") || text.includes("Pick Your Topic") || text.includes("Skip")
         );
       },
       null,
