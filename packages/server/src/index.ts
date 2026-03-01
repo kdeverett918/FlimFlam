@@ -51,4 +51,10 @@ httpServer.listen(port, () => {
   if (process.env.NODE_ENV !== "production") {
     console.log(`[PartyLine] Monitor: http://localhost:${port}/colyseus`);
   }
+
+  // PM2 "wait_ready" integration (used by Colyseus Cloud).
+  // See: ecosystem.config.js (wait_ready: true)
+  if (typeof process.send === "function") {
+    process.send("ready");
+  }
 });

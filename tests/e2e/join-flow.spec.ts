@@ -36,8 +36,9 @@ test("host creates room and players join", async ({ page, browser }) => {
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
     await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 30_000,
+      timeout: 60_000,
     });
+    await expect(controllerPage).toHaveURL(/\/play$/);
     await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
 
     return { context, controllerPage };

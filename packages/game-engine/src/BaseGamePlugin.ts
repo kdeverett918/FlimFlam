@@ -1,6 +1,5 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
 import type { Complexity, GameManifest, ScoreEntry } from "@partyline/shared";
-import { MIN_PLAYERS } from "@partyline/shared";
 import type { Client, Delayed, Room } from "colyseus";
 import type { GamePlugin } from "./GamePlugin";
 import { ScoringEngine } from "./ScoringEngine";
@@ -191,7 +190,12 @@ export abstract class BaseGamePlugin implements GamePlugin {
   // ─── Default Lifecycle Hooks ──────────────────────────────────────────
 
   /**
-   * Default onPlayerLeave: mark disconnected, auto-submit, end if below minPlayers.
+   * Default onPlayerLeave: mark disconnected, auto-submit.
+   *
+   * Note: we intentionally do not force-end the game when active players drop below MIN_PLAYERS.
+   * Colyseus reconnections are common (route transitions, mobile networks), and ending instantly
+   * makes games feel brittle. Game plugins can choose to end/skip phases if they truly require a
+   * minimum player count.
    */
   onPlayerLeave(_room: Room, state: Schema, sessionId: string, _consented: boolean): void {
     const players = asRecord(state).players as MapSchema | undefined;
@@ -204,13 +208,6 @@ export abstract class BaseGamePlugin implements GamePlugin {
       if (!p.hasSubmitted) {
         p.hasSubmitted = true;
       }
-    }
-
-    const activeCount = this.getActivePlayerCount(state);
-    if (activeCount < MIN_PLAYERS) {
-      this.setPhase(state, "final-scores");
-      this.clearTimer();
-      this.setTimerEndsAt(state, 0);
     }
   }
 

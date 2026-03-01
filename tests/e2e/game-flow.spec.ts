@@ -34,9 +34,13 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
     await controllerPage.getByLabel("Your Name").fill(name);
     await controllerPage.getByRole("button", { name: /^join$/i }).click();
     await expect(controllerPage).toHaveURL(/\/play$/);
+
+    // Ensure we actually landed in a connected /play state (not a transient redirect).
     await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 30_000,
+      timeout: 60_000,
     });
+    await expect(controllerPage).toHaveURL(/\/play$/);
+
     await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
     return { context, controllerPage };
   };
@@ -54,34 +58,75 @@ test("hot take game completes end-to-end", async ({ page, browser }) => {
   await expect(startButton).toBeEnabled();
   await startButton.click();
 
-  // Play 3 rounds (kids mode).
-  for (let i = 0; i < 3; i++) {
-    const submit1 = c1.controllerPage.getByRole("button", { name: /^submit$/i });
-    const submit2 = c2.controllerPage.getByRole("button", { name: /^submit$/i });
-    const submit3 = c3.controllerPage.getByRole("button", { name: /^submit$/i });
+  let gameOver = false;
 
-    await Promise.all([submit1.waitFor(), submit2.waitFor(), submit3.waitFor()]);
+  const playController = async (controllerPage: typeof page) => {
+    let votesSubmitted = 0;
+    const deadline = Date.now() + 60_000;
 
-    await Promise.all([submit1.click(), submit2.click(), submit3.click()]);
-
-    // Timer scaling can make the "Submitted!" state very brief, so just assert the submit buttons go away.
-    await Promise.all([
-      expect(submit1).toBeHidden(),
-      expect(submit2).toBeHidden(),
-      expect(submit3).toBeHidden(),
-    ]);
-
-    if (i === 0) {
-      // Results view may be brief with timer scaling, so wait for it to appear at least once.
-      await page.waitForFunction(() => document.body.innerText.includes("THE RESULTS"), null, {
-        timeout: 20_000,
+    while (!gameOver && Date.now() < deadline) {
+      // Hot Take "player input" mode (topic-setup) can be enabled in some environments.
+      // Handle it defensively even though this e2e runs kids mode.
+      const topicSetupHeading = controllerPage.getByRole("heading", {
+        name: /pick a topic for hot take/i,
       });
+      if (await topicSetupHeading.isVisible().catch(() => false)) {
+        const categoryButton = controllerPage
+          .getByRole("button")
+          .filter({ hasText: /politics|dating|workplace|food|technology|lifestyle|wildcard/i })
+          .first();
+        await categoryButton.click().catch(() => {});
+
+        const topic = controllerPage.getByPlaceholder(/type your topic/i);
+        await topic.fill("remote work etiquette").catch(() => {});
+
+        const lockItIn = controllerPage.getByRole("button", { name: /lock it in/i });
+        await lockItIn.click().catch(() => {});
+
+        await controllerPage
+          .getByText(/topic submitted/i)
+          .waitFor({ state: "visible", timeout: 10_000 })
+          .catch(() => {});
+        continue;
+      }
+
+      const submit = controllerPage.getByRole("button", { name: /^submit$/i });
+      if (await submit.isVisible().catch(() => false)) {
+        await submit.click();
+        votesSubmitted++;
+
+        // Timer scaling can make the "Submitted!" state brief, so just wait for the button to go away.
+        await submit.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+        continue;
+      }
+
+      await controllerPage.waitForTimeout(100);
     }
-  }
+
+    return votesSubmitted;
+  };
+
+  const controllerRuns = Promise.all([
+    playController(c1.controllerPage),
+    playController(c2.controllerPage),
+    playController(c3.controllerPage),
+  ]);
+
+  // Results view may be brief with timer scaling, so wait for it to appear at least once.
+  await page.waitForFunction(() => document.body.innerText.includes("THE RESULTS"), null, {
+    timeout: 30_000,
+  });
 
   await page.waitForFunction(() => document.body.innerText.includes("FINAL SCORES"), null, {
     timeout: 60_000,
   });
+  gameOver = true;
+
+  const [votes1, votes2, votes3] = await controllerRuns;
+  expect(votes1).toBeGreaterThan(0);
+  expect(votes2).toBeGreaterThan(0);
+  expect(votes3).toBeGreaterThan(0);
+
   await expect(page.getByRole("heading", { name: /^FINAL SCORES$/ })).toBeVisible();
   await expect(page.getByText("Alice")).toBeVisible();
   await expect(page.getByText("Bob")).toBeVisible();

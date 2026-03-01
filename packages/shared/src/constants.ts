@@ -11,7 +11,10 @@ export const COLYSEUS_PORT = 2567;
 export const HOST_PORT = 3000;
 export const CONTROLLER_PORT = 3001;
 
-export const RECONNECTION_TIMEOUT_MS = 10_000;
+// Allow enough time for client-side route transitions and slow devices to reconnect.
+// This is also used for the controller join-page -> play-page handoff, which relies on
+// Colyseus reconnection tokens.
+export const RECONNECTION_TIMEOUT_MS = 45_000;
 export const ROOM_IDLE_TIMEOUT_MS = 600_000;
 
 export const AI_REQUEST_TIMEOUT_MS = 10_000;
