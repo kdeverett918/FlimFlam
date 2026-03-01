@@ -75,13 +75,27 @@ test("world builder game completes end-to-end", async ({ page, browser }) => {
     );
     if (gameAlreadyComplete) break;
 
+    // The host "Skip" button (and fast timers in CI) can advance the game all the way into end-game
+    // phases before this loop gets to the next round. Treat those as terminal states instead of
+    // hanging forever waiting for the action-input screen.
     await page.waitForFunction(
-      () => document.body.innerText.includes("PLAYERS ARE DECIDING"),
-      null,
-      {
-        timeout: 30_000,
+      () => {
+        const text = document.body.innerText;
+        return (
+          text.includes("PLAYERS ARE DECIDING") ||
+          text.includes("THE REVEAL") ||
+          text.includes("FINAL SCORES")
+        );
       },
+      null,
+      { timeout: 60_000 },
     );
+
+    const shouldStop = await page.evaluate(() => {
+      const text = document.body.innerText;
+      return text.includes("THE REVEAL") || text.includes("FINAL SCORES");
+    });
+    if (shouldStop) break;
 
     await Promise.all([
       submitAction(c1.controllerPage, `Alice action ${round}`),
