@@ -38,7 +38,10 @@
       ".turbo",
       "coverage",
       "playwright-report",
+      "playwright-report-production",
+      "playwright-report-production-remote",
       "test-results",
+      ".cache/ms-playwright",
       "*.tsbuildinfo"
     ]
   }
