@@ -276,7 +276,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
   }, [onClearSend]);
 
   return (
-    <div className="flex w-full flex-col gap-3 px-4">
+    <div className="flex w-full flex-col gap-3 px-4 animate-cinematic-entrance">
       {/* Canvas frame with glass border */}
       <div
         ref={containerRef}

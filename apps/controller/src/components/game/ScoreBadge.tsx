@@ -59,7 +59,8 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
     <div
       className="fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-between border-t border-white/[0.15] px-4"
       style={{
-        background: "oklch(0.09 0.02 250 / 0.9)",
+        background:
+          "linear-gradient(to right, oklch(0.09 0.02 250 / 0.92), oklch(0.11 0.025 248 / 0.92))",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -75,11 +76,19 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
             boxShadow: `0 0 8px ${avatarColor}30`,
           }}
         />
-        {/* Score */}
+        {/* Score with color flash during delta */}
         <span
-          className={`font-mono text-xl font-bold text-primary ${
+          className={`font-mono text-xl font-bold transition-colors duration-300 ${
             animating ? "animate-score-pop" : ""
           }`}
+          style={{
+            color:
+              animating && scoreDelta !== null
+                ? scoreDelta > 0
+                  ? "oklch(0.7 0.2 145)"
+                  : "oklch(0.65 0.25 25)"
+                : "oklch(0.75 0.22 25)",
+          }}
         >
           {score}
         </span>

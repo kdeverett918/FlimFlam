@@ -93,7 +93,7 @@ export function AbilityButton({
       <GlassPanel
         glow
         glowColor="oklch(0.72 0.22 25 / 0.3)"
-        className="flex flex-col items-center gap-2 p-6 transition-all animate-glow-breathe active:scale-95"
+        className="flex flex-col items-center gap-2 p-6 transition-all animate-hover-float active:scale-95"
       >
         <Zap className="h-6 w-6 text-primary" />
         <span className="font-display text-xl text-primary">{abilityName}</span>

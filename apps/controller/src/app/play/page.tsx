@@ -7,9 +7,16 @@ import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
 import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const phaseTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+};
 
 export default function PlayPage() {
   const router = useRouter();
@@ -144,16 +151,20 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* Game content */}
-      <GameController
-        gameId={gameId}
-        phase={phase}
-        round={round}
-        totalRounds={totalRounds}
-        privateData={privateData}
-        errorNonce={errorNonce}
-        sendMessage={sendMessage}
-      />
+      {/* Game content with phase transitions */}
+      <AnimatePresence mode="wait">
+        <motion.div key={`${gameId}-${phase}`} {...phaseTransition}>
+          <GameController
+            gameId={gameId}
+            phase={phase}
+            round={round}
+            totalRounds={totalRounds}
+            privateData={privateData}
+            errorNonce={errorNonce}
+            sendMessage={sendMessage}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Score badge footer */}
       <ScoreBadge

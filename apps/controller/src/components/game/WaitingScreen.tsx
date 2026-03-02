@@ -186,7 +186,7 @@ export function WaitingScreen({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 px-8 py-12">
+    <div className="flex flex-col items-center justify-center gap-5 px-8 py-12 animate-cinematic-entrance">
       <AnimatedBackground variant="subtle" />
 
       {/* Score + Rank badge */}

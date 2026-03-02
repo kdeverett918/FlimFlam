@@ -48,7 +48,7 @@ export function RoleCard({
 
   return (
     <div
-      className="mx-4 overflow-hidden rounded-xl border border-accent-4/40 animate-fade-in-up"
+      className="mx-4 overflow-hidden rounded-xl border border-accent-4/40 animate-cinematic-entrance"
       style={{
         background: "oklch(1 0 0 / 0.10)",
         backdropFilter: "blur(12px)",

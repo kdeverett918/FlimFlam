@@ -2,7 +2,9 @@
 
 import { AVATAR_COLORS, MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "@flimflam/shared";
 import { GlassPanel, haptics } from "@flimflam/ui";
-import { useCallback, useRef, useState } from "react";
+import { motion } from "framer-motion";
+import { Check } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarPicker } from "./AvatarPicker";
 
 const CODE_SLOT_KEYS = ["slot-A", "slot-B", "slot-C", "slot-D"] as const;
@@ -25,7 +27,9 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
   const [name, setName] = useState("");
   const [selectedColor, setSelectedColor] = useState<string>(AVATAR_COLORS[0] ?? "#6366f1");
   const [isJoining, setIsJoining] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const prevCanJoinRef = useRef(false);
 
   const setInputRef = useCallback(
     (index: number) => (el: HTMLInputElement | null) => {
@@ -87,6 +91,11 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
   const code = codeChars.join("");
   const canJoin = code.length === ROOM_CODE_LENGTH && name.trim().length > 0 && !isJoining;
 
+  // Track canJoin transitions for spring animation
+  useEffect(() => {
+    prevCanJoinRef.current = canJoin;
+  }, [canJoin]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -95,7 +104,10 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
       haptics.confirm();
       setIsJoining(true);
       try {
-        await onJoin(code, name.trim(), selectedColor);
+        const success = await onJoin(code, name.trim(), selectedColor);
+        if (success) {
+          setShowSuccess(true);
+        }
       } finally {
         setIsJoining(false);
       }
@@ -127,6 +139,10 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
               onFocus={() => haptics.tap()}
               disabled={disabled || isJoining}
               className="glass-input h-14 w-12 min-[390px]:h-16 min-[390px]:w-16 rounded-xl text-center font-mono text-2xl font-bold text-text-primary uppercase transition-all focus:border-primary/60 focus:shadow-[0_0_16px_oklch(0.75_0.22_25_/_0.25)] disabled:opacity-50"
+              style={{
+                borderColor: char ? "oklch(0.75 0.22 25 / 0.4)" : undefined,
+                boxShadow: char ? "0 0 12px oklch(0.75 0.22 25 / 0.15)" : undefined,
+              }}
               aria-label={`Room code character ${index + 1}`}
             />
           ))}
@@ -175,16 +191,27 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
         </GlassPanel>
       )}
 
-      {/* Join button */}
-      <button
+      {/* Join button with spring animation */}
+      <motion.button
         type="submit"
         disabled={!canJoin || disabled}
-        className="h-14 w-full rounded-xl bg-primary font-display text-xl font-bold text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        animate={{
+          scale: canJoin && !disabled ? 1 : 0.95,
+          opacity: canJoin && !disabled ? 1 : 0.4,
+        }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        whileTap={canJoin ? { scale: 0.95 } : {}}
+        className="h-14 w-full rounded-xl bg-primary font-display text-xl font-bold text-white uppercase tracking-wider transition-shadow disabled:active:scale-100"
         style={{
           boxShadow: canJoin && !disabled ? "0 0 24px oklch(0.75 0.22 25 / 0.4)" : "none",
         }}
       >
-        {isJoining ? (
+        {showSuccess ? (
+          <span className="inline-flex items-center gap-2">
+            <Check className="h-5 w-5" />
+            Joined!
+          </span>
+        ) : isJoining ? (
           <span className="inline-flex items-center gap-2">
             <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             Joining...
@@ -192,7 +219,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
         ) : (
           "Join"
         )}
-      </button>
+      </motion.button>
     </form>
   );
 }

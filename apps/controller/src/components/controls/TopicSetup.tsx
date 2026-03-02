@@ -63,7 +63,7 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-16 pt-4">
+    <div className="flex flex-col gap-6 px-4 pb-16 pt-4 animate-cinematic-entrance">
       <h2 className="text-center font-display text-xl font-bold text-text-primary">
         Pick a topic for Hot Take
       </h2>

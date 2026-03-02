@@ -58,6 +58,8 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
     return "oklch(0.65 0.25 25)";
   };
 
+  const barColor = getBarColor();
+
   return (
     <div
       className="fixed inset-x-0 top-0 z-50"
@@ -68,21 +70,33 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
         WebkitBackdropFilter: "blur(8px)",
       }}
     >
-      <div className="h-1.5 w-full bg-white/[0.12]">
+      <div className="relative h-1.5 w-full bg-white/[0.12]">
         <div
           role="progressbar"
           tabIndex={-1}
           aria-valuenow={Math.round(progress * 100)}
           aria-valuemin={0}
           aria-valuemax={100}
-          className={`h-full transition-all duration-100 ease-linear ${
+          className={`h-full transition-[width] duration-100 ease-linear ${
             isUrgent ? "animate-timer-pulse" : ""
           }`}
           style={{
             width: `${progress * 100}%`,
-            backgroundColor: getBarColor(),
-            boxShadow: isUrgent ? `0 0 8px ${getBarColor()}` : "none",
+            backgroundColor: barColor,
+            boxShadow: isUrgent ? `0 0 8px ${barColor}` : "none",
+            transition: "width 0.1s linear, background-color 1s ease",
           }}
+        />
+        {/* Neon underglow */}
+        <div
+          className="absolute bottom-0 left-0 h-1 blur-[3px]"
+          style={{
+            width: `${progress * 100}%`,
+            backgroundColor: barColor,
+            opacity: 0.5,
+            transition: "width 0.1s linear, background-color 1s ease",
+          }}
+          aria-hidden="true"
         />
       </div>
       {isUrgent && (
