@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-type GameTheme = "default" | "jeopardy" | "wheel-of-fortune" | "family-feud";
+type GameTheme = "default" | "brain-board" | "lucky-letters" | "survey-smash";
 
 interface GameThemeContextValue {
   theme: GameTheme;
@@ -21,20 +21,20 @@ const GAME_THEMES: Record<
     primaryBlob: "oklch(0.72 0.22 25)",
     secondaryBlob: "oklch(0.70 0.15 185)",
   },
-  jeopardy: {
-    accent: "var(--color-accent-jeopardy)",
+  "brain-board": {
+    accent: "var(--color-accent-brainboard)",
     glow: "oklch(0.68 0.22 265 / 0.3)",
     primaryBlob: "oklch(0.68 0.22 265)",
     secondaryBlob: "oklch(0.55 0.20 280)",
   },
-  "wheel-of-fortune": {
-    accent: "var(--color-accent-wheel)",
+  "lucky-letters": {
+    accent: "var(--color-accent-luckyletters)",
     glow: "oklch(0.78 0.20 85 / 0.3)",
     primaryBlob: "oklch(0.78 0.20 85)",
     secondaryBlob: "oklch(0.70 0.18 60)",
   },
-  "family-feud": {
-    accent: "var(--color-accent-feud)",
+  "survey-smash": {
+    accent: "var(--color-accent-surveysmash)",
     glow: "oklch(0.68 0.25 25 / 0.3)",
     primaryBlob: "oklch(0.68 0.25 25)",
     secondaryBlob: "oklch(0.72 0.22 40)",

@@ -138,49 +138,7 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  games/bluff-engine:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/brain-battle:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/family-feud:
+  games/brain-board:
     dependencies:
       '@colyseus/schema':
         specifier: ^2.0.35
@@ -198,28 +156,7 @@ importers:
         specifier: 15.1.0
         version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  games/hot-take:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/jeopardy:
+  games/lucky-letters:
     dependencies:
       '@colyseus/schema':
         specifier: ^2.0.35
@@ -237,71 +174,11 @@ importers:
         specifier: 15.1.0
         version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
 
-  games/quick-draw:
+  games/survey-smash:
     dependencies:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/reality-drift:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/wheel-of-fortune:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/game-engine':
-        specifier: workspace:*
-        version: link:../../packages/game-engine
-      '@flimflam/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      colyseus:
-        specifier: ^0.15.55
-        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
-      next:
-        specifier: 15.1.0
-        version: 15.1.0(@playwright/test@1.58.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-
-  games/world-builder:
-    dependencies:
-      '@colyseus/schema':
-        specifier: ^2.0.35
-        version: 2.0.37
-      '@flimflam/ai':
-        specifier: workspace:*
-        version: link:../../packages/ai
       '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
@@ -353,42 +230,21 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@flimflam/ai':
+      '@flimflam/brain-board':
         specifier: workspace:*
-        version: link:../ai
-      '@flimflam/bluff-engine':
-        specifier: workspace:*
-        version: link:../../games/bluff-engine
-      '@flimflam/brain-battle':
-        specifier: workspace:*
-        version: link:../../games/brain-battle
-      '@flimflam/family-feud':
-        specifier: workspace:*
-        version: link:../../games/family-feud
+        version: link:../../games/brain-board
       '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../game-engine
-      '@flimflam/hot-take':
+      '@flimflam/lucky-letters':
         specifier: workspace:*
-        version: link:../../games/hot-take
-      '@flimflam/jeopardy':
-        specifier: workspace:*
-        version: link:../../games/jeopardy
-      '@flimflam/quick-draw':
-        specifier: workspace:*
-        version: link:../../games/quick-draw
-      '@flimflam/reality-drift':
-        specifier: workspace:*
-        version: link:../../games/reality-drift
+        version: link:../../games/lucky-letters
       '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
-      '@flimflam/wheel-of-fortune':
+      '@flimflam/survey-smash':
         specifier: workspace:*
-        version: link:../../games/wheel-of-fortune
-      '@flimflam/world-builder':
-        specifier: workspace:*
-        version: link:../../games/world-builder
+        version: link:../../games/survey-smash
       colyseus:
         specifier: ^0.15.55
         version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)

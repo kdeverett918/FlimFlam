@@ -1,7 +1,7 @@
 "use client";
 
 import { GameShowcase } from "@/components/home/GameShowcase";
-import { AnimatedBackground, GradientText } from "@flimflam/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -31,10 +31,18 @@ export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  const handleCreateRoom = useCallback(async () => {
+  const handleCreateRoom = useCallback(() => {
     setLoading(true);
     router.push("/room/new");
   }, [router]);
+
+  const handlePlayGame = useCallback(
+    (gameId: string) => {
+      setLoading(true);
+      router.push(`/room/new?game=${gameId}`);
+    },
+    [router],
+  );
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-12 px-4 py-16 sm:gap-16 sm:px-6">
@@ -48,7 +56,10 @@ export default function HomePage() {
         animate="visible"
       >
         {/* Logo with radial spotlight */}
-        <motion.div variants={fadeInUp} className="relative flex flex-col items-center gap-4 animate-hover-float">
+        <motion.div
+          variants={fadeInUp}
+          className="relative flex flex-col items-center gap-4 animate-hover-float"
+        >
           {/* Radial spotlight behind title */}
           <div
             className="pointer-events-none absolute -inset-32 -z-10"
@@ -59,22 +70,11 @@ export default function HomePage() {
             }}
             aria-hidden="true"
           />
-          <h1
-            className="font-display font-extrabold leading-none tracking-[-0.02em]"
-            style={{
-              fontSize: "clamp(3rem, 8vw, 7rem)",
-            }}
-          >
-            <GradientText
-              animated
-              style={{
-                textShadow:
-                  "0 0 40px oklch(0.78 0.22 25 / 0.5), 0 0 80px oklch(0.76 0.15 185 / 0.3)",
-              }}
-            >
-              FLIMFLAM
-            </GradientText>
-          </h1>
+          <img
+            src="/flimflam-logo.png"
+            alt="FLIMFLAM Party Game"
+            className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
+          />
         </motion.div>
 
         {/* Tagline */}
@@ -133,7 +133,7 @@ export default function HomePage() {
 
       {/* Game showcase */}
       <div className="relative z-10 w-full">
-        <GameShowcase />
+        <GameShowcase onPlayGame={handlePlayGame} />
       </div>
 
       {/* Bottom instruction */}

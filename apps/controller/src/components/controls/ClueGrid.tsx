@@ -46,7 +46,7 @@ export function ClueGrid({ categories, answeredClues, onSelect }: ClueGridProps)
         {categories.map((cat) => (
           <div
             key={cat}
-            className="truncate rounded-md bg-accent-jeopardy/20 px-1 py-1 text-center font-display text-[10px] font-bold text-accent-jeopardy uppercase leading-tight"
+            className="truncate rounded-md bg-accent-brainboard/20 px-1 py-1 text-center font-display text-[10px] font-bold text-accent-brainboard uppercase leading-tight"
             title={cat}
           >
             {abbreviate(cat)}
@@ -75,7 +75,7 @@ export function ClueGrid({ categories, answeredClues, onSelect }: ClueGridProps)
                 className={`flex min-h-[48px] items-center justify-center rounded-lg font-mono text-sm font-bold transition-all active:scale-95 ${
                   isAnswered
                     ? "bg-white/[0.02] text-text-dim opacity-30"
-                    : "border border-accent-jeopardy/30 bg-accent-jeopardy/10 text-accent-jeopardy"
+                    : "border border-accent-brainboard/30 bg-accent-brainboard/10 text-accent-brainboard"
                 }`}
                 style={{ touchAction: "manipulation" }}
                 aria-label={`${categories[catIdx]} for ${value}`}

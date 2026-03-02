@@ -11,6 +11,7 @@ export type { PlayerData } from "./types/player";
 
 export type {
   GameManifest,
+  GamePreviewContent,
   WorldBuilderPhase,
   BluffEnginePhase,
   QuickDrawPhase,
@@ -116,6 +117,7 @@ export {
   REACTION_COOLDOWN_MS,
   AVATAR_COLORS,
   GAME_MANIFESTS,
+  GAME_PREVIEW_CONTENT,
 } from "./constants";
 
 // Utilities (browser-safe helpers)

@@ -1,20 +1,8 @@
-import { createBluffEnginePlugin } from "@flimflam/bluff-engine";
-import { createBrainBattlePlugin } from "@flimflam/brain-battle";
-import { createFamilyFeudPlugin } from "@flimflam/family-feud";
+import { createBrainBoardPlugin } from "@flimflam/brain-board";
 import { GameRegistry } from "@flimflam/game-engine";
-import { createHotTakePlugin } from "@flimflam/hot-take";
-import { createJeopardyPlugin } from "@flimflam/jeopardy";
-import { createQuickDrawPlugin } from "@flimflam/quick-draw";
-import { createRealityDriftPlugin } from "@flimflam/reality-drift";
-import { createWheelOfFortunePlugin } from "@flimflam/wheel-of-fortune";
-import { createWorldBuilderPlugin } from "@flimflam/world-builder";
+import { createLuckyLettersPlugin } from "@flimflam/lucky-letters";
+import { createSurveySmashPlugin } from "@flimflam/survey-smash";
 
-GameRegistry.registerGame("world-builder", createWorldBuilderPlugin);
-GameRegistry.registerGame("bluff-engine", createBluffEnginePlugin);
-GameRegistry.registerGame("quick-draw", createQuickDrawPlugin);
-GameRegistry.registerGame("reality-drift", createRealityDriftPlugin);
-GameRegistry.registerGame("hot-take", createHotTakePlugin);
-GameRegistry.registerGame("brain-battle", createBrainBattlePlugin);
-GameRegistry.registerGame("jeopardy", createJeopardyPlugin);
-GameRegistry.registerGame("wheel-of-fortune", createWheelOfFortunePlugin);
-GameRegistry.registerGame("family-feud", createFamilyFeudPlugin);
+GameRegistry.registerGame("brain-board", createBrainBoardPlugin);
+GameRegistry.registerGame("lucky-letters", createLuckyLettersPlugin);
+GameRegistry.registerGame("survey-smash", createSurveySmashPlugin);

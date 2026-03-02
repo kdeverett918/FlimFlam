@@ -3,7 +3,7 @@
 import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
 import { motion } from "framer-motion";
-import { Check, Cpu, Flame, Paintbrush, Sparkles, Zap } from "lucide-react";
+import { Check, HelpCircle, Type, Users } from "lucide-react";
 
 interface GameSelectorProps {
   selectedGameId: string;
@@ -11,27 +11,21 @@ interface GameSelectorProps {
 }
 
 const GAME_ICONS: Record<string, React.ReactNode> = {
-  "world-builder": <Sparkles className="h-10 w-10 text-accent-2 shrink-0" />,
-  "bluff-engine": <Zap className="h-10 w-10 text-accent-3 shrink-0" />,
-  "quick-draw": <Paintbrush className="h-10 w-10 text-accent-4 shrink-0" />,
-  "reality-drift": <Cpu className="h-10 w-10 text-accent-5 shrink-0" />,
-  "hot-take": <Flame className="h-10 w-10 text-accent-6 shrink-0" />,
+  "brain-board": <HelpCircle className="h-10 w-10 text-accent-brainboard shrink-0" />,
+  "lucky-letters": <Type className="h-10 w-10 text-accent-luckyletters shrink-0" />,
+  "survey-smash": <Users className="h-10 w-10 text-accent-surveysmash shrink-0" />,
 };
 
 const GAME_ACCENT_BORDER: Record<string, string> = {
-  "world-builder": "border-accent-2 shadow-[0_0_24px_oklch(0.74_0.20_300/0.35)]",
-  "bluff-engine": "border-accent-3 shadow-[0_0_24px_oklch(0.84_0.18_85/0.35)]",
-  "quick-draw": "border-accent-4 shadow-[0_0_24px_oklch(0.78_0.18_160/0.35)]",
-  "reality-drift": "border-accent-5 shadow-[0_0_24px_oklch(0.76_0.15_210/0.35)]",
-  "hot-take": "border-accent-6 shadow-[0_0_24px_oklch(0.74_0.25_20/0.35)]",
+  "brain-board": "border-accent-brainboard shadow-[0_0_24px_oklch(0.68_0.22_265/0.35)]",
+  "lucky-letters": "border-accent-luckyletters shadow-[0_0_24px_oklch(0.82_0.18_85/0.35)]",
+  "survey-smash": "border-accent-surveysmash shadow-[0_0_24px_oklch(0.74_0.25_25/0.35)]",
 };
 
 const GAME_ACCENT_GRADIENT: Record<string, string> = {
-  "world-builder": "linear-gradient(135deg, oklch(0.74 0.20 300), oklch(0.74 0.20 300 / 0.5))",
-  "bluff-engine": "linear-gradient(135deg, oklch(0.84 0.18 85), oklch(0.84 0.18 85 / 0.5))",
-  "quick-draw": "linear-gradient(135deg, oklch(0.78 0.18 160), oklch(0.78 0.18 160 / 0.5))",
-  "reality-drift": "linear-gradient(135deg, oklch(0.76 0.15 210), oklch(0.76 0.15 210 / 0.5))",
-  "hot-take": "linear-gradient(135deg, oklch(0.74 0.25 20), oklch(0.74 0.25 20 / 0.5))",
+  "brain-board": "linear-gradient(135deg, oklch(0.68 0.22 265), oklch(0.68 0.22 265 / 0.5))",
+  "lucky-letters": "linear-gradient(135deg, oklch(0.82 0.18 85), oklch(0.82 0.18 85 / 0.5))",
+  "survey-smash": "linear-gradient(135deg, oklch(0.74 0.25 25), oklch(0.74 0.25 25 / 0.5))",
 };
 
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
@@ -85,7 +79,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                 {/* Icon + Name row */}
                 <div className="flex items-center gap-4">
                   <div className="transition-transform duration-300 group-hover:scale-110">
-                    {icon ?? <Sparkles className="h-10 w-10 text-text-muted shrink-0" />}
+                    {icon ?? <HelpCircle className="h-10 w-10 text-text-muted shrink-0" />}
                   </div>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="font-display text-[26px] sm:text-[30px] font-bold text-text-primary truncate w-full leading-tight">
@@ -95,7 +89,9 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                       <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         {game.minPlayers}-{game.maxPlayers} players
                       </span>
-                      <span className="text-[14px] text-text-muted hidden sm:inline opacity-50">|</span>
+                      <span className="text-[14px] text-text-muted hidden sm:inline opacity-50">
+                        |
+                      </span>
                       <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         ~{game.estimatedMinutes}min
                       </span>
@@ -110,21 +106,14 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 mt-auto pt-4">
-                  {game.aiRequired && (
-                    <span className="rounded-full bg-accent-4/20 border border-accent-4/30 px-3 py-1 font-body text-[14px] font-semibold text-accent-4 uppercase tracking-wider">
-                      AI Powered
+                  {game.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[14px] text-text-primary/70 uppercase tracking-wider"
+                    >
+                      {tag}
                     </span>
-                  )}
-                  {game.tags
-                    .filter((t) => t !== "ai")
-                    .map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[14px] text-text-primary/70 uppercase tracking-wider"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                  ))}
                 </div>
               </GlassPanel>
             </button>

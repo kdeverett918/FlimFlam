@@ -1,11 +1,8 @@
 "use client";
 
-import { BluffEngineHost } from "@/components/games/BluffEngineHost";
-import { BrainBattleHost } from "@/components/games/BrainBattleHost";
-import { HotTakeHost } from "@/components/games/HotTakeHost";
-import { QuickDrawHost } from "@/components/games/QuickDrawHost";
-import { RealityDriftHost } from "@/components/games/RealityDriftHost";
-import { WorldBuilderHost } from "@/components/games/WorldBuilderHost";
+import { BrainBoardHost } from "@/components/games/BrainBoardHost";
+import { LuckyLettersHost } from "@/components/games/LuckyLettersHost";
+import { SurveySmashHost } from "@/components/games/SurveySmashHost";
 import type { PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 
@@ -41,18 +38,12 @@ export function GameView({
   };
 
   switch (gameId) {
-    case "world-builder":
-      return <WorldBuilderHost {...commonProps} />;
-    case "bluff-engine":
-      return <BluffEngineHost {...commonProps} />;
-    case "quick-draw":
-      return <QuickDrawHost {...commonProps} />;
-    case "reality-drift":
-      return <RealityDriftHost {...commonProps} />;
-    case "hot-take":
-      return <HotTakeHost {...commonProps} />;
-    case "brain-battle":
-      return <BrainBattleHost {...commonProps} />;
+    case "brain-board":
+      return <BrainBoardHost {...commonProps} />;
+    case "lucky-letters":
+      return <LuckyLettersHost {...commonProps} />;
+    case "survey-smash":
+      return <SurveySmashHost {...commonProps} />;
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">

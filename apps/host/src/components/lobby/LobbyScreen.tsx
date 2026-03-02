@@ -24,9 +24,9 @@ interface LobbyScreenProps {
 }
 
 const GAME_ID_TO_THEME: Record<string, GameTheme> = {
-  jeopardy: "jeopardy",
-  "wheel-of-fortune": "wheel-of-fortune",
-  "family-feud": "family-feud",
+  "brain-board": "brain-board",
+  "lucky-letters": "lucky-letters",
+  "survey-smash": "survey-smash",
 };
 
 export function LobbyScreen(props: LobbyScreenProps) {
@@ -44,11 +44,9 @@ function LobbyContent({
   players,
   selectedGameId,
   complexity,
-  hotTakePlayerInputEnabled,
   playerCount,
   onSelectGame,
   onSetComplexity,
-  onSetHotTakePlayerInput,
   onStartGame,
 }: LobbyScreenProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -62,10 +60,6 @@ function LobbyContent({
 
   const joinUrl = controllerUrl ? `${controllerUrl}?code=${roomCode}` : "";
   const canStart = playerCount >= MIN_PLAYERS && selectedGameId !== "";
-  const showHotTakeToggle = selectedGameId === "hot-take";
-  const effectiveHotTakePlayerInputEnabled =
-    complexity === "advanced" ? true : complexity === "kids" ? false : hotTakePlayerInputEnabled;
-  const hotTakeToggleDisabled = complexity !== "standard";
 
   useEffect(() => {
     const theme = GAME_ID_TO_THEME[selectedGameId] ?? "default";
@@ -100,7 +94,15 @@ function LobbyContent({
 
       {/* Main container with max-width for consistent AAA feel */}
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-12 p-6 sm:p-10 md:p-16">
-        
+        {/* Logo header */}
+        <div className="flex justify-center">
+          <img
+            src="/flimflam-logo.png"
+            alt="FLIMFLAM Party Game"
+            className="h-auto w-full max-w-[480px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
+          />
+        </div>
+
         {/* Top section: Room code + QR */}
         <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-12">
           {/* Room Code */}
@@ -150,15 +152,24 @@ function LobbyContent({
             <div className="group relative">
               {/* Decorative glow behind QR */}
               <div className="absolute -inset-4 rounded-3xl bg-primary/20 blur-2xl transition-opacity group-hover:opacity-100 opacity-60" />
-              <GlassPanel rounded="2xl" className="relative p-5 border-2 border-white/20 bg-white/10">
+              <GlassPanel
+                rounded="2xl"
+                className="relative p-5 border-2 border-white/20 bg-white/10"
+              >
                 {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QR code to join the game" className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]" />
+                  <img
+                    src={qrDataUrl}
+                    alt="QR code to join the game"
+                    className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]"
+                  />
                 ) : (
                   <div className="h-[220px] w-[220px] animate-pulse bg-white/5 rounded-xl" />
                 )}
               </GlassPanel>
             </div>
-            <p className="font-body text-[20px] sm:text-[24px] font-medium text-text-muted uppercase tracking-wider">Scan to join</p>
+            <p className="font-body text-[20px] sm:text-[24px] font-medium text-text-muted uppercase tracking-wider">
+              Scan to join
+            </p>
           </div>
         </div>
 
@@ -167,12 +178,18 @@ function LobbyContent({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
-              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">PLAYERS</h2>
+              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">
+                PLAYERS
+              </h2>
             </div>
             <div className="flex items-center gap-3 rounded-full bg-white/5 border border-white/10 px-6 py-2">
-              <span className="font-mono text-[24px] sm:text-[32px] font-bold text-text-primary leading-none">{playerCount}</span>
+              <span className="font-mono text-[24px] sm:text-[32px] font-bold text-text-primary leading-none">
+                {playerCount}
+              </span>
               <span className="text-text-muted/50 text-2xl">/</span>
-              <span className="font-mono text-[24px] sm:text-[32px] text-text-muted leading-none">8</span>
+              <span className="font-mono text-[24px] sm:text-[32px] text-text-muted leading-none">
+                8
+              </span>
             </div>
           </div>
 
@@ -180,7 +197,8 @@ function LobbyContent({
             <div className="flex items-center gap-3 text-accent-3 animate-pulse">
               <div className="h-2 w-2 rounded-full bg-accent-3" />
               <span className="font-body text-[20px] sm:text-[22px] font-medium">
-                Wait for {MIN_PLAYERS - playerCount} more player{MIN_PLAYERS - playerCount > 1 ? 's' : ''} to start
+                Wait for {MIN_PLAYERS - playerCount} more player
+                {MIN_PLAYERS - playerCount > 1 ? "s" : ""} to start
               </span>
             </div>
           )}
@@ -255,7 +273,9 @@ function LobbyContent({
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-4">
             <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
-            <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">SELECT GAME</h2>
+            <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">
+              SELECT GAME
+            </h2>
           </div>
           <GameSelector selectedGameId={selectedGameId} onSelect={onSelectGame} />
         </div>
@@ -266,55 +286,12 @@ function LobbyContent({
           <div className="flex flex-col gap-6">
             <div className="flex items-center gap-4">
               <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
-              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">DIFFICULTY</h2>
+              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">
+                DIFFICULTY
+              </h2>
             </div>
             <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
           </div>
-
-          {/* AI Settings */}
-          {showHotTakeToggle && (
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
-                <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">AI SETTINGS</h2>
-              </div>
-              <GlassPanel glow rounded="2xl" className="p-8 border-2 border-white/10">
-                <div className="flex items-center justify-between gap-8 mb-4">
-                  <div>
-                    <h3 className="font-display text-[26px] sm:text-[30px] font-bold text-text-primary">AI PLAYER INPUT</h3>
-                    <p className="font-body text-[18px] sm:text-[20px] text-text-muted leading-snug">
-                      Players submit custom topics for AI to build into the game.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={hotTakeToggleDisabled}
-                    onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
-                    className={`relative h-14 w-28 shrink-0 rounded-full border-2 transition-all duration-300 ${
-                      effectiveHotTakePlayerInputEnabled
-                        ? "border-accent-5 bg-accent-5/30 shadow-[0_0_20px_oklch(0.76_0.15_210/0.4)]"
-                        : "border-text-dim bg-bg-dark"
-                    } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-105 active:scale-95"}`}
-                    aria-pressed={effectiveHotTakePlayerInputEnabled}
-                  >
-                    <div
-                      className={`absolute top-1/2 h-10 w-10 -translate-y-1/2 rounded-full transition-all duration-300 ${
-                        effectiveHotTakePlayerInputEnabled ? "left-[60px] bg-accent-5" : "left-2 bg-text-dim"
-                      }`}
-                    />
-                  </button>
-                </div>
-                <p className="font-body text-[16px] sm:text-[18px] text-text-muted/70 italic border-t border-white/10 pt-4 mt-4">
-                  {complexity === "advanced" && "Always enabled in Advanced mode."}
-                  {complexity === "kids" && "Always disabled in Kids mode."}
-                  {complexity === "standard" &&
-                    (effectiveHotTakePlayerInputEnabled
-                      ? "Custom group topics enabled."
-                      : "Using standard game prompts.")}
-                </p>
-              </GlassPanel>
-            </div>
-          )}
         </div>
 
         {/* Start game button section */}
@@ -324,7 +301,7 @@ function LobbyContent({
             {canStart && (
               <div className="absolute -inset-4 bg-primary/20 blur-3xl animate-glow-breathe rounded-full" />
             )}
-            
+
             <motion.button
               whileHover={canStart ? { scale: 1.02, y: -4 } : {}}
               whileTap={canStart ? { scale: 0.98 } : {}}
@@ -332,13 +309,13 @@ function LobbyContent({
               onClick={onStartGame}
               disabled={!canStart}
               className={`relative w-full rounded-3xl border-4 py-8 font-display text-[32px] sm:text-[48px] font-black tracking-wider transition-all duration-500 shadow-2xl ${
-                canStart 
-                  ? "border-primary text-primary bg-primary/10 cursor-pointer shadow-primary/20" 
+                canStart
+                  ? "border-primary text-primary bg-primary/10 cursor-pointer shadow-primary/20"
                   : "border-white/10 text-white/20 bg-white/5 cursor-not-allowed"
               }`}
               style={{
                 backdropFilter: "blur(20px)",
-                textShadow: canStart ? "0 0 20px oklch(0.75 0.22 25 / 0.5)" : "none"
+                textShadow: canStart ? "0 0 20px oklch(0.75 0.22 25 / 0.5)" : "none",
               }}
             >
               {canStart ? (
