@@ -42,13 +42,13 @@ export default function HomePage() {
 
       {/* Main content */}
       <motion.div
-        className="relative z-10 flex flex-col items-center gap-8"
+        className="relative z-10 flex flex-col items-center gap-8 animate-cinematic-entrance"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
       >
         {/* Logo with radial spotlight */}
-        <motion.div variants={fadeInUp} className="relative flex flex-col items-center gap-4">
+        <motion.div variants={fadeInUp} className="relative flex flex-col items-center gap-4 animate-hover-float">
           {/* Radial spotlight behind title */}
           <div
             className="pointer-events-none absolute -inset-32 -z-10"
