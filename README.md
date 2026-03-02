@@ -9,7 +9,7 @@ Jackbox-style multiplayer party game platform.
 
 ## Prerequisites
 
-- Node.js 24+
+- Node.js 22.22.0+ (matches Render + Colyseus Cloud)
 - pnpm
 
 ## Setup

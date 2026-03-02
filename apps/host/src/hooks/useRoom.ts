@@ -5,6 +5,7 @@ import {
   type Complexity,
   type HostViewData,
   type PlayerData,
+  RECONNECTION_TIMEOUT_MS,
   resolveRoomIdByCode,
 } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
@@ -30,6 +31,7 @@ interface UseRoomReturn {
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
   error: string | null;
   connected: boolean;
+  reconnecting: boolean;
   roomCode: string | null;
   ready: boolean;
 }
@@ -39,6 +41,35 @@ const ROOM_CODE_KEY = "flimflam_host_room_code";
 const HOST_TOKEN_KEY = "flimflam_host_token";
 const ROOM_CODE_TIMEOUT_MS = 5000;
 
+function storageGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(key) ?? localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key: string, value: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {}
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+}
+
+function storageRemove(key: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(key);
+  } catch {}
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
+
 export function useRoom(): UseRoomReturn {
   const [room, setRoom] = useState<Room | null>(null);
   const [state, setState] = useState<RoomState | null>(null);
@@ -46,19 +77,31 @@ export function useRoom(): UseRoomReturn {
   const [gameData, setGameData] = useState<HostViewData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const reconnectAttempted = useRef(false);
+  const connectedRef = useRef(false);
+  const roomRef = useRef<Room | null>(null);
+  const reconnectInProgress = useRef(false);
+  const reconnectEpoch = useRef(0);
+  const reconnectFnRef = useRef<(() => void) | null>(null);
 
   const attachListeners = useCallback((joinedRoom: Room) => {
+    // Cancel any reconnect loops.
+    reconnectEpoch.current += 1;
+
+    roomRef.current = joinedRoom;
     setRoom(joinedRoom);
     setConnected(true);
+    connectedRef.current = true;
+    setReconnecting(false);
     setError(null);
 
     joinedRoom.onMessage("host-token", (data: { token?: unknown }) => {
       if (typeof window === "undefined") return;
       if (data && typeof data.token === "string" && data.token.trim()) {
-        sessionStorage.setItem(HOST_TOKEN_KEY, data.token);
+        storageSet(HOST_TOKEN_KEY, data.token);
       }
     });
 
@@ -67,9 +110,7 @@ export function useRoom(): UseRoomReturn {
     joinedRoom.send("host:request_token");
 
     // Save session info for reconnection
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(RECONNECT_TOKEN_KEY, joinedRoom.reconnectionToken);
-    }
+    storageSet(RECONNECT_TOKEN_KEY, joinedRoom.reconnectionToken);
 
     // Listen for state changes
     const roomState = joinedRoom.state as Record<string, unknown>;
@@ -186,16 +227,135 @@ export function useRoom(): UseRoomReturn {
     });
 
     joinedRoom.onLeave((code: number) => {
+      roomRef.current = null;
       setConnected(false);
-      if (code !== 1000) {
-        setError(`Disconnected (code: ${code}). Attempting to reconnect...`);
+      connectedRef.current = false;
+
+      // Normal / intentional close.
+      if (code === 1000) {
+        setRoom(null);
+        setState(null);
+        setPlayers(new Map());
+        setGameData(null);
+        setRoomCode(null);
+        setReconnecting(false);
+        setError(null);
+        storageRemove(RECONNECT_TOKEN_KEY);
+        storageRemove(ROOM_CODE_KEY);
+        storageRemove(HOST_TOKEN_KEY);
+        return;
       }
+
+      setRoom(null);
+      setReconnecting(true);
+      setError(`Connection lost (code: ${code}). Reconnecting...`);
+      reconnectFnRef.current?.();
     });
 
     joinedRoom.onError((code: number, message?: string) => {
       setError(`Room error ${code}: ${message ?? "Unknown error"}`);
     });
   }, []);
+
+  const reconnect = useCallback(
+    async (opts?: { clearStaleTokens?: boolean }): Promise<boolean> => {
+      if (reconnectInProgress.current) return false;
+      reconnectInProgress.current = true;
+
+      const clearStaleTokens = opts?.clearStaleTokens ?? true;
+
+      try {
+        const token = storageGet(RECONNECT_TOKEN_KEY);
+        if (!token) {
+          return false;
+        }
+
+        const client = getColyseusClient();
+        const reconnectedRoom = await new Promise<Room>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error("Reconnect timed out")), 8000);
+          client.reconnect(token).then(
+            (joinedRoom) => {
+              clearTimeout(timeout);
+              resolve(joinedRoom);
+            },
+            (err) => {
+              clearTimeout(timeout);
+              reject(err);
+            },
+          );
+        });
+
+        attachListeners(reconnectedRoom);
+
+        // Keep URL + UI stable even if the route param was stale.
+        const stateObj = reconnectedRoom.state as Record<string, unknown>;
+        const codeFromState =
+          typeof stateObj.roomCode === "string" && stateObj.roomCode.length === 4
+            ? stateObj.roomCode
+            : null;
+        const normalized = (codeFromState ?? storageGet(ROOM_CODE_KEY) ?? "").toUpperCase();
+        if (normalized) {
+          setRoomCode(normalized);
+          storageSet(ROOM_CODE_KEY, normalized);
+        }
+
+        return true;
+      } catch {
+        if (clearStaleTokens) {
+          storageRemove(RECONNECT_TOKEN_KEY);
+          storageRemove(ROOM_CODE_KEY);
+          storageRemove(HOST_TOKEN_KEY);
+        }
+        return false;
+      } finally {
+        reconnectInProgress.current = false;
+      }
+    },
+    [attachListeners],
+  );
+
+  const startReconnectLoop = useCallback(() => {
+    const epoch = reconnectEpoch.current + 1;
+    reconnectEpoch.current = epoch;
+
+    setReconnecting(true);
+
+    void (async () => {
+      const deadline = Date.now() + RECONNECTION_TIMEOUT_MS - 2000; // keep a small buffer vs server window
+      let attempt = 0;
+
+      while (reconnectEpoch.current === epoch && Date.now() < deadline) {
+        const ok = await reconnect({ clearStaleTokens: false });
+        if (ok) return;
+
+        attempt++;
+
+        // If the browser is explicitly offline, avoid hammering.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          await new Promise((resolve) => setTimeout(resolve, 750));
+          continue;
+        }
+
+        const delay = Math.min(250 * 2 ** Math.min(attempt, 4), 4000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      if (reconnectEpoch.current !== epoch) return;
+
+      // One final attempt: if the token is stale/invalid, clear it so a manual refresh
+      // doesn't get stuck in a bad loop.
+      await reconnect({ clearStaleTokens: true });
+
+      setReconnecting(false);
+      if (!connectedRef.current) {
+        setError("Unable to reconnect. Please refresh to continue.");
+      }
+    })();
+  }, [reconnect]);
+
+  useEffect(() => {
+    reconnectFnRef.current = () => startReconnectLoop();
+  }, [startReconnectLoop]);
 
   const createRoom = useCallback(async (): Promise<string> => {
     setError(null);
@@ -206,7 +366,7 @@ export function useRoom(): UseRoomReturn {
         isHost: true,
         name: "Host",
         hostToken:
-          typeof window !== "undefined" ? sessionStorage.getItem(HOST_TOKEN_KEY) : undefined,
+          typeof window !== "undefined" ? (storageGet(HOST_TOKEN_KEY) ?? undefined) : undefined,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to create room";
@@ -250,9 +410,7 @@ export function useRoom(): UseRoomReturn {
 
     setRoomCode(code);
 
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(ROOM_CODE_KEY, code);
-    }
+    storageSet(ROOM_CODE_KEY, code);
 
     return code;
   }, [attachListeners]);
@@ -296,7 +454,7 @@ export function useRoom(): UseRoomReturn {
         joinedRoom = await client.joinById(roomId, {
           isHost: true,
           name: "Host",
-          hostToken: sessionStorage.getItem(HOST_TOKEN_KEY) ?? undefined,
+          hostToken: storageGet(HOST_TOKEN_KEY) ?? undefined,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to join room";
@@ -306,21 +464,16 @@ export function useRoom(): UseRoomReturn {
       attachListeners(joinedRoom);
       setRoomCode(code.toUpperCase());
 
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem(ROOM_CODE_KEY, code.toUpperCase());
-      }
+      storageSet(ROOM_CODE_KEY, code.toUpperCase());
     },
     [attachListeners],
   );
 
-  const sendMessage = useCallback(
-    (type: string, data?: Record<string, unknown>) => {
-      if (room) {
-        room.send(type, data ?? {});
-      }
-    },
-    [room],
-  );
+  const sendMessage = useCallback((type: string, data?: Record<string, unknown>) => {
+    if (!connectedRef.current) return;
+    if (!roomRef.current) return;
+    roomRef.current.send(type, data ?? {});
+  }, []);
 
   // Auto-reconnection on mount
   useEffect(() => {
@@ -332,38 +485,57 @@ export function useRoom(): UseRoomReturn {
       return;
     }
 
-    const savedToken = sessionStorage.getItem(RECONNECT_TOKEN_KEY);
-    const savedCode = sessionStorage.getItem(ROOM_CODE_KEY);
+    const savedToken = storageGet(RECONNECT_TOKEN_KEY);
+    const savedCode = storageGet(ROOM_CODE_KEY);
 
     if (!savedToken) {
       setReady(true);
       return;
     }
 
-    const client = getColyseusClient();
-    client
-      .reconnect(savedToken)
-      .then((joinedRoom) => {
-        attachListeners(joinedRoom);
-        const stateObj = joinedRoom.state as Record<string, unknown>;
-        const codeFromState =
-          typeof stateObj.roomCode === "string" && stateObj.roomCode.length === 4
-            ? stateObj.roomCode
-            : null;
-        const normalized = (codeFromState ?? savedCode ?? "").toUpperCase();
-        if (normalized) {
-          setRoomCode(normalized);
+    setReconnecting(true);
+
+    void (async () => {
+      try {
+        // In dev/StrictMode and during route transitions, the server may not have
+        // processed the prior disconnect yet. Retry a few times before giving up.
+        const maxAttempts = 4;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+          const ok = await reconnect({ clearStaleTokens: attempt === maxAttempts - 1 });
+          if (ok) break;
+
+          await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
         }
-      })
-      .catch(() => {
-        sessionStorage.removeItem(RECONNECT_TOKEN_KEY);
-        sessionStorage.removeItem(ROOM_CODE_KEY);
-        sessionStorage.removeItem(HOST_TOKEN_KEY);
-      })
-      .finally(() => {
+
+        if (!connectedRef.current && savedCode) {
+          setRoomCode(savedCode.toUpperCase());
+        }
+      } finally {
         setReady(true);
-      });
-  }, [attachListeners]);
+        if (!connectedRef.current) {
+          setReconnecting(false);
+        }
+      }
+    })();
+  }, [reconnect]);
+
+  useEffect(() => {
+    connectedRef.current = connected;
+  }, [connected]);
+
+  // If the browser goes offline and comes back, try again immediately.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onOnline = () => {
+      if (connectedRef.current) return;
+      if (!storageGet(RECONNECT_TOKEN_KEY)) return;
+      startReconnectLoop();
+    };
+
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [startReconnectLoop]);
 
   return {
     room,
@@ -375,6 +547,7 @@ export function useRoom(): UseRoomReturn {
     sendMessage,
     error,
     connected,
+    reconnecting,
     roomCode,
     ready,
   };
