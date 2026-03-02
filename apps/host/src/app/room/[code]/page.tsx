@@ -24,6 +24,7 @@ export default function RoomPage() {
     sendMessage,
     error,
     connected,
+    reconnecting,
     roomCode,
     ready,
   } = useRoomContext();
@@ -89,16 +90,22 @@ export default function RoomPage() {
     prevPhase.current = gameState.phase;
   }, [gameState.phase]);
 
-  if (!connected && !room) {
+  if (!connected || !room) {
+    const isCreateRoute = routeCode === "NEW" || routeCode.length !== 4;
+    const displayCode = (roomCode ?? routeCode).toUpperCase();
+    const label = reconnecting
+      ? displayCode && displayCode !== "NEW" && displayCode.length === 4
+        ? `Reconnecting to room ${displayCode}...`
+        : "Reconnecting..."
+      : isCreateRoute
+        ? "Creating room..."
+        : `Connecting to room ${displayCode}...`;
+
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
         <div className="flex flex-col items-center gap-6">
           <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/30 border-t-primary" />
-          <p className="font-display text-[36px] text-text-muted">
-            {routeCode === "NEW" || routeCode.length !== 4
-              ? "Creating room..."
-              : `Connecting to room ${routeCode}...`}
-          </p>
+          <p className="font-display text-[36px] text-text-muted">{label}</p>
           {error && <p className="text-[24px] text-accent-6">{error}</p>}
         </div>
       </main>
