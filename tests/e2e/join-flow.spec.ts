@@ -25,6 +25,16 @@ test("host creates room and players join", async ({ page, browser }) => {
   await page.getByRole("button", { name: /create room/i }).click();
   await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
+  // Production safety: host must persist the server-issued host token to prevent
+  // host takeover / reclaim issues. This should be set shortly after join.
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(() => (sessionStorage.getItem("partyline_host_token") ?? "").length),
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(0);
+
   const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
   expect(match).not.toBeNull();
   const code = match?.[1] ?? "";
