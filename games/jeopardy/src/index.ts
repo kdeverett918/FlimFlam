@@ -11,14 +11,13 @@ const CLUE_VALUES = [200, 400, 600, 800, 1000];
 const CATEGORIES_PER_BOARD = 6;
 const CLUES_PER_CATEGORY = 5;
 
-const CATEGORY_REVEAL_DELAY_MS = 4000;
-const CLUE_RESULT_DELAY_MS = 3000;
-const BUZZ_WINDOW_MS = 5000;
-const ANSWER_TIMEOUT_MS = 10000;
-const DAILY_DOUBLE_WAGER_TIMEOUT_MS = 15000;
+const CATEGORY_REVEAL_DELAY_MS = 5000;
+const CLUE_RESULT_DELAY_MS = 6000;
+const ANSWER_TIMEOUT_MS = 20000;
+const DAILY_DOUBLE_WAGER_TIMEOUT_MS = 20000;
 const FINAL_JEOPARDY_WAGER_TIMEOUT_MS = 30000;
 const FINAL_JEOPARDY_ANSWER_TIMEOUT_MS = 30000;
-const FINAL_JEOPARDY_REVEAL_DELAY_MS = 5000;
+const FINAL_JEOPARDY_REVEAL_DELAY_MS = 8000;
 
 const FUZZY_THRESHOLD = 0.85;
 
@@ -40,7 +39,6 @@ type JeopardyPhase =
   | "clue-select"
   | "daily-double-wager"
   | "daily-double-answer"
-  | "buzzing"
   | "answering"
   | "clue-result"
   | "final-jeopardy-category"
@@ -48,11 +46,6 @@ type JeopardyPhase =
   | "final-jeopardy-answer"
   | "final-jeopardy-reveal"
   | "final-scores";
-
-interface BuzzEntry {
-  sessionId: string;
-  timestamp: number;
-}
 
 interface CluePosition {
   categoryIndex: number;
@@ -94,26 +87,7 @@ export function placeDailyDoubles(
 }
 
 /**
- * Resolve the buzz winner: the entry with the lowest timestamp.
- */
-export function resolveBuzzWinner(buzzes: BuzzEntry[]): BuzzEntry | null {
-  if (buzzes.length === 0) return null;
-  const first = buzzes[0];
-  if (!first) return null;
-  let best = first;
-  for (let i = 1; i < buzzes.length; i++) {
-    const entry = buzzes[i];
-    if (entry && entry.timestamp < best.timestamp) {
-      best = entry;
-    }
-  }
-  return best;
-}
-
-/**
  * Validate a wager for daily double.
- * Must be between 5 and max(current score, highest clue value on board).
- * If the player's score is <= 0, max wager is the highest clue value.
  */
 export function validateDailyDoubleWager(wager: number, playerScore: number): boolean {
   if (!Number.isFinite(wager) || wager < 5) return false;
@@ -123,8 +97,6 @@ export function validateDailyDoubleWager(wager: number, playerScore: number): bo
 
 /**
  * Validate a Final Jeopardy wager.
- * Must be between 0 and the player's current score.
- * Players with score <= 0 cannot participate.
  */
 export function validateFinalJeopardyWager(wager: number, playerScore: number): boolean {
   if (playerScore <= 0) return false;
@@ -146,7 +118,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     id: "jeopardy",
     name: "Jeopardy",
     description:
-      "Classic quiz show! Pick clues from the board, buzz in, and answer in the form of a question.",
+      "Classic quiz show! Pick clues from the board and answer in the form of a question.",
     minPlayers: 3,
     maxPlayers: 8,
     estimatedMinutes: 15,
@@ -176,9 +148,8 @@ class JeopardyPlugin extends BaseGamePlugin {
   private currentCategoryName = "";
   private isDailyDouble = false;
 
-  private buzzes: BuzzEntry[] = [];
-  private buzzWinnerSessionId: string | null = null;
-  private wrongBuzzers: Set<string> = new Set();
+  // All-answer tracking: every player submits, then we resolve
+  private playerAnswers: Map<string, string> = new Map();
 
   private finalJeopardy: FinalJeopardyData | null = null;
 
@@ -195,7 +166,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.playerScores.clear();
     this.playerOrder = [];
     this.selectorIndex = 0;
-    this.wrongBuzzers.clear();
+    this.playerAnswers.clear();
 
     // Build player order (exclude host)
     const hostId = this.getHostSessionId(state);
@@ -241,9 +212,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       case "player:select-clue":
         this.handleSelectClue(room, state, client, msg);
         break;
-      case "player:buzz":
-        this.handleBuzz(room, state, client, msg);
-        break;
       case "player:answer":
         this.handleAnswer(room, state, client, msg);
         break;
@@ -283,9 +251,10 @@ class JeopardyPlugin extends BaseGamePlugin {
       this.sendAllPrivateData(room, state);
     }
 
-    // If buzzer winner left during answering, treat as wrong
-    if (this.phase === "answering" && this.buzzWinnerSessionId === sessionId) {
-      this.handleWrongAnswer(room, state, sessionId);
+    // If a player leaves during answering, count as submitted (empty)
+    if (this.phase === "answering" && !this.playerAnswers.has(sessionId)) {
+      this.playerAnswers.set(sessionId, "");
+      this.checkAllAnswered(room, state);
     }
 
     // If daily-double player left, skip the clue
@@ -293,7 +262,7 @@ class JeopardyPlugin extends BaseGamePlugin {
       (this.phase === "daily-double-wager" || this.phase === "daily-double-answer") &&
       this.selectorSessionId === sessionId
     ) {
-      this.goToClueResult(room, state, null, false);
+      this.goToClueResult(room, state, []);
     }
   }
 
@@ -309,9 +278,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.currentClue = null;
     this.currentCluePosition = null;
     this.isDailyDouble = false;
-    this.buzzes = [];
-    this.buzzWinnerSessionId = null;
-    this.wrongBuzzers.clear();
+    this.playerAnswers.clear();
 
     this.setPhase(state, "clue-select");
     this.broadcastGameState(room, state);
@@ -354,94 +321,34 @@ class JeopardyPlugin extends BaseGamePlugin {
       this.broadcastGameState(room, state);
       this.sendAllPrivateData(room, state);
 
-      // Auto-advance if no wager after timeout
       this.scheduleDelayed(room, DAILY_DOUBLE_WAGER_TIMEOUT_MS, () => {
         if (this.phase === "daily-double-wager") {
-          // Default wager: minimum (5)
           this.processDailyDoubleWager(room, state, 5);
         }
       });
     } else {
-      // Open buzzing
-      this.goToBuzzing(room, state);
+      // All players answer simultaneously
+      this.goToAnswering(room, state);
     }
   }
 
-  // ─── Buzzing ─────────────────────────────────────────────────────────
+  // ─── Answering (all players at once) ────────────────────────────────
 
-  private goToBuzzing(room: Room, state: Schema): void {
-    this.phase = "buzzing";
-    this.buzzes = [];
-    this.buzzWinnerSessionId = null;
-
-    this.setPhase(state, "buzzing");
-    this.broadcastGameState(room, state);
-    this.sendAllPrivateData(room, state);
-
-    // After buzz window expires, resolve winner
-    this.scheduleDelayed(room, BUZZ_WINDOW_MS, () => {
-      if (this.phase === "buzzing") {
-        this.resolveBuzz(room, state);
-      }
-    });
-  }
-
-  private handleBuzz(
-    room: Room,
-    state: Schema,
-    client: Client,
-    data: Record<string, unknown>,
-  ): void {
-    if (this.phase !== "buzzing") return;
-    // Cannot buzz if already wrong on this clue
-    if (this.wrongBuzzers.has(client.sessionId)) return;
-    // Cannot buzz if not a player
-    if (!this.playerScores.has(client.sessionId)) return;
-    // Cannot buzz twice
-    if (this.buzzes.some((b) => b.sessionId === client.sessionId)) return;
-
-    const timestamp = typeof data.timestamp === "number" ? data.timestamp : Date.now();
-    this.buzzes.push({ sessionId: client.sessionId, timestamp });
-
-    // If all eligible players buzzed, resolve immediately
-    const eligibleCount = this.getEligibleBuzzerCount();
-    if (this.buzzes.length >= eligibleCount) {
-      this.clearPendingTimer();
-      this.resolveBuzz(room, state);
-    }
-  }
-
-  private resolveBuzz(room: Room, state: Schema): void {
-    const winner = resolveBuzzWinner(this.buzzes);
-
-    if (!winner) {
-      // No one buzzed -- reveal answer and move on
-      this.goToClueResult(room, state, null, false);
-      return;
-    }
-
-    this.buzzWinnerSessionId = winner.sessionId;
+  private goToAnswering(room: Room, state: Schema): void {
     this.phase = "answering";
+    this.playerAnswers.clear();
+
     this.setPhase(state, "answering");
-
-    room.broadcast("game-data", {
-      type: "buzz-winner",
-      sessionId: winner.sessionId,
-    });
-
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    // Answer timeout
+    // Answer timeout — resolve whatever we have
     this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
-      if (this.phase === "answering" && this.buzzWinnerSessionId === winner.sessionId) {
-        // Time ran out -- treat as wrong
-        this.handleWrongAnswer(room, state, winner.sessionId);
+      if (this.phase === "answering") {
+        this.resolveAllAnswers(room, state);
       }
     });
   }
-
-  // ─── Answering ───────────────────────────────────────────────────────
 
   private handleAnswer(
     room: Room,
@@ -450,44 +357,75 @@ class JeopardyPlugin extends BaseGamePlugin {
     data: Record<string, unknown>,
   ): void {
     if (this.phase !== "answering") return;
-    if (client.sessionId !== this.buzzWinnerSessionId) return;
-    if (!this.currentClue) return;
+    if (!this.playerScores.has(client.sessionId)) return;
+    if (this.playerAnswers.has(client.sessionId)) return; // already answered
 
     const answer = typeof data.answer === "string" ? data.answer : "";
-    const isCorrect = judgeAnswer(answer, this.currentClue.answer);
+    this.playerAnswers.set(client.sessionId, answer);
 
-    if (isCorrect) {
-      // Award points
-      const value = this.currentClue.value;
-      this.adjustScore(state, client.sessionId, value);
-      this.selectorSessionId = client.sessionId;
-      this.goToClueResult(room, state, client.sessionId, true);
-    } else {
-      this.handleWrongAnswer(room, state, client.sessionId);
+    // Mark as submitted on schema
+    this.markSubmitted(state, client.sessionId);
+
+    this.checkAllAnswered(room, state);
+  }
+
+  private checkAllAnswered(room: Room, state: Schema): void {
+    // Count connected players
+    let connectedCount = 0;
+    for (const sessionId of this.playerOrder) {
+      if (this.isPlayerConnected(state, sessionId)) {
+        connectedCount++;
+      }
+    }
+
+    if (this.playerAnswers.size >= connectedCount) {
+      this.clearPendingTimer();
+      this.resolveAllAnswers(room, state);
     }
   }
 
-  private handleWrongAnswer(room: Room, state: Schema, sessionId: string): void {
-    if (!this.currentClue) return;
+  private resolveAllAnswers(room: Room, state: Schema): void {
+    if (!this.currentClue) {
+      this.goToClueResult(room, state, []);
+      return;
+    }
 
     const value = this.currentClue.value;
-    // Kids mode: wrong answer = 0 penalty
-    if (this.complexity !== "kids") {
-      this.adjustScore(state, sessionId, -value);
+    const results: Array<{
+      sessionId: string;
+      answer: string;
+      correct: boolean;
+      delta: number;
+    }> = [];
+
+    let firstCorrectId: string | null = null;
+
+    for (const sessionId of this.playerOrder) {
+      const answer = this.playerAnswers.get(sessionId) ?? "";
+      const isCorrect = answer.length > 0 && judgeAnswer(answer, this.currentClue.answer);
+
+      let delta = 0;
+      if (isCorrect) {
+        delta = value;
+        if (!firstCorrectId) firstCorrectId = sessionId;
+      } else if (answer.length > 0 && this.complexity !== "kids") {
+        // Only penalize if they actually submitted a wrong answer (not blank)
+        delta = -value;
+      }
+
+      if (delta !== 0) {
+        this.adjustScore(state, sessionId, delta);
+      }
+
+      results.push({ sessionId, answer, correct: isCorrect, delta });
     }
 
-    this.wrongBuzzers.add(sessionId);
-    this.buzzWinnerSessionId = null;
-
-    // Check if anyone else can still buzz
-    const eligibleCount = this.getEligibleBuzzerCount();
-    if (eligibleCount > 0) {
-      // Reopen buzzing for remaining players
-      this.goToBuzzing(room, state);
-    } else {
-      // No one left to buzz
-      this.goToClueResult(room, state, null, false);
+    // Next selector: first correct answerer, else round-robin
+    if (firstCorrectId) {
+      this.selectorSessionId = firstCorrectId;
     }
+
+    this.goToClueResult(room, state, results);
   }
 
   // ─── Daily Double ────────────────────────────────────────────────────
@@ -512,7 +450,6 @@ class JeopardyPlugin extends BaseGamePlugin {
   private processDailyDoubleWager(room: Room, state: Schema, wager: number): void {
     this.clearPendingTimer();
 
-    // Store wager on the current clue for scoring
     if (this.currentClue) {
       (this.currentClue as JeopardyClue & { wager?: number }).wager = wager;
     }
@@ -528,10 +465,8 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    // Answer timeout
     this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
       if (this.phase === "daily-double-answer") {
-        // Time ran out -- wrong answer
         this.processDailyDoubleAnswer(room, state, "", false);
       }
     });
@@ -572,7 +507,18 @@ class JeopardyPlugin extends BaseGamePlugin {
       }
     }
 
-    this.goToClueResult(room, state, isCorrect ? sessionId : null, isCorrect);
+    const results = sessionId
+      ? [
+          {
+            sessionId,
+            answer: _answer,
+            correct: isCorrect,
+            delta: isCorrect ? wager : this.complexity === "kids" ? 0 : -wager,
+          },
+        ]
+      : [];
+
+    this.goToClueResult(room, state, results);
   }
 
   // ─── Clue Result ─────────────────────────────────────────────────────
@@ -580,8 +526,7 @@ class JeopardyPlugin extends BaseGamePlugin {
   private goToClueResult(
     room: Room,
     state: Schema,
-    winnerId: string | null,
-    correct: boolean,
+    results: Array<{ sessionId: string; answer: string; correct: boolean; delta: number }>,
   ): void {
     this.clearPendingTimer();
     this.phase = "clue-result";
@@ -589,27 +534,27 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     room.broadcast("game-data", {
       type: "clue-result",
-      correct,
-      winnerId,
+      results,
       correctAnswer: this.currentClue?.answer ?? "",
       question: this.currentClue?.question ?? "",
       value: this.currentClue?.value ?? 0,
+      category: this.currentCategoryName,
       isDailyDouble: this.isDailyDouble,
     });
 
     this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
 
     // Auto-advance after delay
     this.scheduleDelayed(room, CLUE_RESULT_DELAY_MS, () => {
-      this.advanceAfterClue(room, state, winnerId);
+      this.advanceAfterClue(room, state);
     });
   }
 
-  private advanceAfterClue(room: Room, state: Schema, lastCorrectId: string | null): void {
-    // Update selector: last correct answerer picks, else round-robin
-    if (lastCorrectId && this.playerOrder.includes(lastCorrectId)) {
-      this.selectorSessionId = lastCorrectId;
-    } else {
+  private advanceAfterClue(room: Room, state: Schema): void {
+    // Selector stays the same (first correct answerer already set in resolveAllAnswers)
+    // or advance round-robin if no one got it right
+    if (!this.playerOrder.includes(this.selectorSessionId ?? "")) {
       this.advanceSelector();
     }
 
@@ -629,8 +574,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       return;
     }
 
-    // Pick a random clue from any category for final jeopardy
-    // Use a fresh clue not on the board
     const banks = getClueBank(this.complexity);
     const otherBoards = banks.filter((b) => b !== this.board);
     const sourceBoard = pickRandom(otherBoards) ?? banks[0];
@@ -661,7 +604,6 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    // Auto-advance to wager phase after brief reveal
     this.scheduleDelayed(room, CATEGORY_REVEAL_DELAY_MS, () => {
       this.goToFinalWager(room, state);
     });
@@ -673,10 +615,8 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    // Wager timeout
     this.scheduleDelayed(room, FINAL_JEOPARDY_WAGER_TIMEOUT_MS, () => {
       if (this.phase === "final-jeopardy-wager") {
-        // Auto-set default wagers for players who didn't submit
         this.finalizeFinalWagers(room, state);
       }
     });
@@ -699,7 +639,6 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     this.finalJeopardy.wagers.set(client.sessionId, wager);
 
-    // Check if all eligible players wagered
     const eligibleCount = this.getFinalJeopardyEligibleCount();
     if (this.finalJeopardy.wagers.size >= eligibleCount) {
       this.clearPendingTimer();
@@ -710,7 +649,6 @@ class JeopardyPlugin extends BaseGamePlugin {
   private finalizeFinalWagers(room: Room, state: Schema): void {
     if (!this.finalJeopardy) return;
 
-    // Set default wager of 0 for players who didn't wager
     for (const sessionId of this.playerOrder) {
       const score = this.playerScores.get(sessionId) ?? 0;
       if (score > 0 && !this.finalJeopardy.wagers.has(sessionId)) {
@@ -727,7 +665,6 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    // Answer timeout
     this.scheduleDelayed(room, FINAL_JEOPARDY_ANSWER_TIMEOUT_MS, () => {
       if (this.phase === "final-jeopardy-answer") {
         this.finalizeFinalAnswers(room, state);
@@ -748,7 +685,6 @@ class JeopardyPlugin extends BaseGamePlugin {
     const answer = typeof data.answer === "string" ? data.answer : "";
     this.finalJeopardy.answers.set(client.sessionId, answer);
 
-    // Check if all wagering players answered
     if (this.finalJeopardy.answers.size >= this.finalJeopardy.wagers.size) {
       this.clearPendingTimer();
       this.finalizeFinalAnswers(room, state);
@@ -761,7 +697,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       return;
     }
 
-    // Score each player
     const results: Array<{
       sessionId: string;
       answer: string;
@@ -802,7 +737,6 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.phase = "final-scores";
     this.setPhase(state, "final-scores");
 
-    // Update all player scores on schema
     for (const [sessionId, score] of this.playerScores) {
       this.updatePlayerScore(state, sessionId, score);
     }
@@ -824,16 +758,11 @@ class JeopardyPlugin extends BaseGamePlugin {
       case "category-reveal":
         this.goToClueSelect(room, state);
         break;
-      case "buzzing":
-        this.resolveBuzz(room, state);
-        break;
       case "answering":
-        if (this.buzzWinnerSessionId) {
-          this.handleWrongAnswer(room, state, this.buzzWinnerSessionId);
-        }
+        this.resolveAllAnswers(room, state);
         break;
       case "clue-result":
-        this.advanceAfterClue(room, state, null);
+        this.advanceAfterClue(room, state);
         break;
       case "daily-double-wager":
         this.processDailyDoubleWager(room, state, 5);
@@ -854,7 +783,6 @@ class JeopardyPlugin extends BaseGamePlugin {
         this.goToFinalScores(room, state);
         break;
       case "final-scores":
-        // Do nothing
         break;
     }
   }
@@ -865,7 +793,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     const boardData = this.board
       ? this.board.categories.map((cat) => ({
           name: cat.name,
-          clues: cat.clues.map((clue, _clueIdx) => ({
+          clues: cat.clues.map((clue) => ({
             value: clue.value,
           })),
         }))
@@ -879,21 +807,22 @@ class JeopardyPlugin extends BaseGamePlugin {
       dailyDoubleCount: this.dailyDoubles.size,
       selectorSessionId: this.selectorSessionId,
       currentClueValue: this.currentClue?.value ?? null,
+      // Show the question (the "answer" in Jeopardy terms) during answering
       currentClueQuestion:
-        this.phase === "buzzing" ||
-        this.phase === "answering" ||
-        this.phase === "daily-double-answer"
+        this.phase === "answering" || this.phase === "daily-double-answer"
           ? (this.currentClue?.question ?? null)
           : null,
       currentCategoryName: this.currentCategoryName,
       isDailyDouble: this.isDailyDouble,
-      buzzWinnerSessionId: this.buzzWinnerSessionId,
       standings: this.getStandings(),
       finalJeopardyCategory: this.finalJeopardy?.category ?? null,
       finalJeopardyQuestion:
         this.phase === "final-jeopardy-answer" || this.phase === "final-jeopardy-reveal"
           ? (this.finalJeopardy?.clue.question ?? null)
           : null,
+      // Show how many have answered
+      answeredCount: this.playerAnswers.size,
+      totalPlayerCount: this.playerOrder.length,
     });
   }
 
@@ -903,11 +832,7 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     const score = this.playerScores.get(sessionId) ?? 0;
     const isSelector = this.selectorSessionId === sessionId;
-    const isBuzzWinner = this.buzzWinnerSessionId === sessionId;
-    const canBuzz =
-      this.phase === "buzzing" &&
-      !this.wrongBuzzers.has(sessionId) &&
-      !this.buzzes.some((b) => b.sessionId === sessionId);
+    const hasAnswered = this.playerAnswers.has(sessionId);
 
     const canWagerFinal =
       this.phase === "final-jeopardy-wager" &&
@@ -921,23 +846,28 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     // Include board data for the selector so the phone can render ClueGrid
     const categories =
-      isSelector && this.board
-        ? this.board.categories.map((cat) => cat.name)
-        : undefined;
-    const answeredClues =
-      isSelector ? [...this.revealedClues] : undefined;
+      isSelector && this.board ? this.board.categories.map((cat) => cat.name) : undefined;
+    const answeredClues = isSelector ? [...this.revealedClues] : undefined;
+
+    // Send the clue question to ALL players during answering phase
+    const clueQuestion = this.phase === "answering" ? (this.currentClue?.question ?? null) : null;
+    const clueCategory = this.phase === "answering" ? this.currentCategoryName : null;
+    const clueValue = this.phase === "answering" ? (this.currentClue?.value ?? null) : null;
 
     room.send(client, "private-data", {
       type: "player-state",
       score,
       isSelector,
-      isBuzzWinner,
-      canBuzz,
+      hasAnswered,
+      canAnswer: this.phase === "answering" && !hasAnswered,
       canWagerFinal,
       canAnswerFinal,
       isDailyDoublePlayer: this.isDailyDouble && isSelector,
       categories,
       answeredClues,
+      clueQuestion,
+      clueCategory,
+      clueValue,
     });
   }
 
@@ -959,6 +889,15 @@ class JeopardyPlugin extends BaseGamePlugin {
     const player = players.get(sessionId);
     if (!player) return false;
     return (player as unknown as Record<string, unknown>).connected as boolean;
+  }
+
+  private markSubmitted(state: Schema, sessionId: string): void {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema | undefined;
+    if (!players) return;
+    const player = players.get(sessionId);
+    if (player) {
+      (player as unknown as Record<string, unknown>).hasSubmitted = true;
+    }
   }
 
   private findClient(room: Room, sessionId: string): Client | undefined {
@@ -985,30 +924,15 @@ class JeopardyPlugin extends BaseGamePlugin {
   }
 
   private advanceSelector(): void {
-    // Round-robin to next connected player
     const startIndex = this.playerOrder.indexOf(this.selectorSessionId ?? "");
     const start = startIndex >= 0 ? startIndex : this.selectorIndex;
     const idx = (start + 1) % this.playerOrder.length;
-    // In case all are disconnected, just pick next in order
     this.selectorSessionId = this.playerOrder[idx] ?? this.playerOrder[0] ?? null;
     this.selectorIndex = idx;
   }
 
   private allCluesRevealed(): boolean {
     return this.revealedClues.size >= CATEGORIES_PER_BOARD * CLUES_PER_CATEGORY;
-  }
-
-  private getEligibleBuzzerCount(): number {
-    let count = 0;
-    for (const sessionId of this.playerOrder) {
-      if (!this.wrongBuzzers.has(sessionId) && this.playerScores.has(sessionId)) {
-        // Don't count those who already buzzed in the current buzz round
-        if (!this.buzzes.some((b) => b.sessionId === sessionId)) {
-          count++;
-        }
-      }
-    }
-    return count;
   }
 
   private getFinalJeopardyEligibleCount(): number {
@@ -1029,10 +953,6 @@ class JeopardyPlugin extends BaseGamePlugin {
     return standings;
   }
 
-  /**
-   * Schedule a delayed callback using the room clock.
-   * Clears any previous pending delayed timer.
-   */
   private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
     this.clearPendingTimer();
     const delayed = room.clock.setTimeout(callback, delayMs);
@@ -1047,7 +967,7 @@ class JeopardyPlugin extends BaseGamePlugin {
           delayed.clear();
         }
       } catch {
-        // Ignore -- timer may have already fired
+        // Ignore
       }
       this.pendingTimerId = null;
     }
@@ -1064,7 +984,6 @@ export {
   CLUE_VALUES,
   CATEGORIES_PER_BOARD,
   CLUES_PER_CATEGORY,
-  BUZZ_WINDOW_MS,
   FUZZY_THRESHOLD,
   getDailyDoubleCount,
 };

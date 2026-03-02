@@ -248,23 +248,33 @@ export function GameController({
         );
       }
 
-      case "buzzing":
-        return <BuzzButton onBuzz={handleBuzz} disabled={pd.canBuzz === false} />;
-
       case "answering": {
-        if (pd.isBuzzWinner) {
-          return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
-              <TextInput
-                prompt="Your answer:"
-                placeholder="What is..."
-                onSubmit={handleJeopardyAnswer}
-                resetNonce={errorNonce}
-              />
-            </div>
-          );
+        if (pd.hasAnswered) {
+          return renderWatchScreen("Answer submitted! Waiting for others...");
         }
-        return renderWatchScreen("Watch the answer...");
+        const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
+        const clueCat = typeof pd.clueCategory === "string" ? pd.clueCategory : "";
+        const clueVal = typeof pd.clueValue === "number" ? pd.clueValue : 0;
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4">
+            {clueCat && (
+              <div className="mx-4 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-jeopardy">
+                {clueCat} — ${clueVal}
+              </div>
+            )}
+            {clueQ && (
+              <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
+                {clueQ}
+              </p>
+            )}
+            <TextInput
+              prompt="Your answer:"
+              placeholder="What is..."
+              onSubmit={handleJeopardyAnswer}
+              resetNonce={errorNonce}
+            />
+          </div>
+        );
       }
 
       case "daily-double-wager": {

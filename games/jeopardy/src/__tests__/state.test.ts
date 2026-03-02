@@ -11,7 +11,6 @@ import {
   getDailyDoubleCount,
   judgeAnswer,
   placeDailyDoubles,
-  resolveBuzzWinner,
   validateDailyDoubleWager,
   validateFinalJeopardyWager,
 } from "../index";
@@ -151,44 +150,6 @@ describe("placeDailyDoubles", () => {
 });
 
 // ─── Buzz Resolution Tests ────────────────────────────────────────────────
-
-describe("resolveBuzzWinner", () => {
-  it("returns null when no buzzes", () => {
-    expect(resolveBuzzWinner([])).toBeNull();
-  });
-
-  it("returns the single buzzer when only one", () => {
-    const result = resolveBuzzWinner([{ sessionId: "p1", timestamp: 1000 }]);
-    expect(result).toEqual({ sessionId: "p1", timestamp: 1000 });
-  });
-
-  it("returns the earliest buzzer among multiple", () => {
-    const result = resolveBuzzWinner([
-      { sessionId: "p2", timestamp: 1200 },
-      { sessionId: "p1", timestamp: 1100 },
-      { sessionId: "p3", timestamp: 1300 },
-    ]);
-    expect(result?.sessionId).toBe("p1");
-  });
-
-  it("handles tie by returning first in array order (both have same timestamp)", () => {
-    const result = resolveBuzzWinner([
-      { sessionId: "p1", timestamp: 1000 },
-      { sessionId: "p2", timestamp: 1000 },
-    ]);
-    // With equal timestamps the first entry wins
-    expect(result?.sessionId).toBe("p1");
-  });
-
-  it("correctly identifies winner when timestamps are very close", () => {
-    const result = resolveBuzzWinner([
-      { sessionId: "p3", timestamp: 1000002 },
-      { sessionId: "p1", timestamp: 1000001 },
-      { sessionId: "p2", timestamp: 1000003 },
-    ]);
-    expect(result?.sessionId).toBe("p1");
-  });
-});
 
 // ─── Fuzzy Matching / Answer Judging Tests ────────────────────────────────
 
