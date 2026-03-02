@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
 const COLYSEUS_HEALTH_URL =
-  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
+  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
 
 test.describe("Neon Arena Design System", () => {
   test("host home page has dark theme and correct visual elements", async ({ page }) => {
@@ -15,17 +15,17 @@ test.describe("Neon Arena Design System", () => {
     // Expect a very dark color (close to oklch(0.08 0.02 280) ~= #0e0e19)
     expect(bgColor).not.toBe("rgb(255, 255, 255)");
 
-    // Verify "PARTYLINE" logo is present with display font
+    // Verify "FLIMFLAM" logo is present with display font
     const logo = page.locator("h1");
-    await expect(logo).toHaveText("PARTYLINE");
+    await expect(logo).toHaveText("FLIMFLAM");
     const fontFamily = await logo.evaluate((el) => window.getComputedStyle(el).fontFamily);
-    expect(fontFamily.toLowerCase()).toMatch(/space[ _-]?grotesk/);
+    expect(fontFamily.toLowerCase()).toMatch(/bricolage[ _-]?grotesque/);
 
     // Verify tagline is present
-    await expect(page.getByText("Party games. Reimagined.")).toBeVisible();
+    await expect(page.getByText("Games that get weird.")).toBeVisible();
 
     // Verify "CREATE ROOM" button exists
-    const createBtn = page.getByRole("button", { name: /create room/i });
+    const createBtn = page.getByRole("button", { name: /create a new game room/i }).first();
     await expect(createBtn).toBeVisible();
 
     // Verify AnimatedBackground is present (the noise SVG)
@@ -42,9 +42,9 @@ test.describe("Neon Arena Design System", () => {
     const page = await context.newPage();
     await page.goto(CONTROLLER_URL);
 
-    // Verify "PARTYLINE" logo on controller
+    // Verify "FLIMFLAM" logo on controller
     const logo = page.locator("h1");
-    await expect(logo).toHaveText("PARTYLINE");
+    await expect(logo).toHaveText("FLIMFLAM");
 
     // Verify room code inputs exist (4 individual inputs)
     const codeInputs = page.locator('input[aria-label^="Room code"]');
@@ -87,7 +87,10 @@ test.describe("Neon Arena Design System", () => {
       )
       .toBe(200);
 
-    await page.getByRole("button", { name: /create room/i }).click();
+    await page
+      .getByRole("button", { name: /create a new game room/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
     // Verify room code is displayed with mono font
@@ -129,7 +132,10 @@ test.describe("Neon Arena Design System", () => {
       )
       .toBe(200);
 
-    await page.getByRole("button", { name: /create room/i }).click();
+    await page
+      .getByRole("button", { name: /create a new game room/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
     const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);

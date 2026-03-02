@@ -39,10 +39,10 @@ importers:
 
   apps/controller:
     dependencies:
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@partyline/ui':
+      '@flimflam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/postcss':
@@ -85,10 +85,10 @@ importers:
 
   apps/host:
     dependencies:
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
-      '@partyline/ui':
+      '@flimflam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tailwindcss/postcss':
@@ -140,13 +140,31 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
+
+  games/brain-battle:
+    dependencies:
+      '@colyseus/schema':
+        specifier: ^2.0.35
+        version: 2.0.37
+      '@flimflam/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@flimflam/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -158,13 +176,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -176,10 +194,10 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -191,13 +209,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -209,13 +227,13 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
-      '@partyline/game-engine':
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       colyseus:
@@ -227,7 +245,7 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
       zod:
@@ -239,7 +257,7 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
       colyseus:
@@ -254,28 +272,31 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
-      '@partyline/ai':
+      '@flimflam/ai':
         specifier: workspace:*
         version: link:../ai
-      '@partyline/bluff-engine':
+      '@flimflam/bluff-engine':
         specifier: workspace:*
         version: link:../../games/bluff-engine
-      '@partyline/game-engine':
+      '@flimflam/brain-battle':
+        specifier: workspace:*
+        version: link:../../games/brain-battle
+      '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../game-engine
-      '@partyline/hot-take':
+      '@flimflam/hot-take':
         specifier: workspace:*
         version: link:../../games/hot-take
-      '@partyline/quick-draw':
+      '@flimflam/quick-draw':
         specifier: workspace:*
         version: link:../../games/quick-draw
-      '@partyline/reality-drift':
+      '@flimflam/reality-drift':
         specifier: workspace:*
         version: link:../../games/reality-drift
-      '@partyline/shared':
+      '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
-      '@partyline/world-builder':
+      '@flimflam/world-builder':
         specifier: workspace:*
         version: link:../../games/world-builder
       colyseus:
@@ -306,6 +327,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@gsap/react':
+        specifier: ^2.1.2
+        version: 2.1.2(gsap@3.14.2)(react@19.2.4)
       '@radix-ui/react-avatar':
         specifier: ^1.1.5
         version: 1.1.11(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -330,6 +354,12 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      gsap:
+        specifier: ^3.14.2
+        version: 3.14.2
+      howler:
+        specifier: ^2.2.4
+        version: 2.2.4
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@19.2.4)
@@ -352,6 +382,9 @@ importers:
       '@types/canvas-confetti':
         specifier: ^1.9.0
         version: 1.9.0
+      '@types/howler':
+        specifier: ^2.2.12
+        version: 2.2.12
       '@types/react':
         specifier: ^19.1.2
         version: 19.2.14
@@ -624,6 +657,12 @@ packages:
 
   '@gamestdio/timer@1.4.2':
     resolution: {integrity: sha512-WNciVCKSJzY56CM95TCVf+dtWShWNFUdziY1Qc+2gaqNCRbC3Egqzq9zumGRrV92Ym9GL6znkqTzF2AoAdydNw==}
+
+  '@gsap/react@2.1.2':
+    resolution: {integrity: sha512-JqliybO1837UcgH2hVOM4VO+38APk3ECNrsuSM4MuXp+rbf+/2IG2K1YJiqfTcXQHH7XlA0m3ykniFYstfq0Iw==}
+    peerDependencies:
+      gsap: ^3.12.5
+      react: '>=17'
 
   '@img/colour@1.0.0':
     resolution: {integrity: sha512-A5P/LfWGFSl6nsckYtjw9da+19jB8hkJ6ACTGcDfEJ0aE+l2n2El7dsVM7UVHZQ9s2lmYMWlrS21YLy2IR1LUw==}
@@ -1440,6 +1479,9 @@ packages:
   '@types/express@5.0.6':
     resolution: {integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==}
 
+  '@types/howler@2.2.12':
+    resolution: {integrity: sha512-hy769UICzOSdK0Kn1FBk4gN+lswcj1EKRkmiDtMkUGvFfYJzgaDXmVXkSShS2m89ERAatGIPnTUlp2HhfkVo5g==}
+
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
 
@@ -1892,6 +1934,9 @@ packages:
     resolution: {integrity: sha512-PD5AvSI7wgCBDi2mEd6M/TIe+70c/fVc3Ik4B0s4mloWTy9J800eUEcxivOiyqSP9wvBy2QjWq1JR8gOfDMnEg==}
     engines: {node: '>=12.0.0'}
 
+  gsap@3.14.2:
+    resolution: {integrity: sha512-P8/mMxVLU7o4+55+1TCnQrPmgjPKnwkzkXOK1asnR9Jg2lna4tEY5qBJjMmAaOBDDZWtlRjBXjLa0w53G/uBLA==}
+
   has-symbols@1.1.0:
     resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
     engines: {node: '>= 0.4'}
@@ -1909,6 +1954,9 @@ packages:
 
   hmac-drbg@1.0.1:
     resolution: {integrity: sha512-Tti3gMqLdZfhOQY1Mzf/AanLiqh1WTiJgEj26ZuYQ9fbkLomzGchCws4FyrSd4VkpBfiNhaE1On+lOz894jvXg==}
+
+  howler@2.2.4:
+    resolution: {integrity: sha512-iARIBPgcQrwtEr+tALF+rapJ8qSc+Set2GJQl7xT1MQzWaVkFebdJhR3alVlSiUf5U7nAANKuj3aWpwerocD5w==}
 
   http-errors@2.0.1:
     resolution: {integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==}
@@ -2991,6 +3039,11 @@ snapshots:
     dependencies:
       '@gamestdio/clock': 1.1.9
 
+  '@gsap/react@2.1.2(gsap@3.14.2)(react@19.2.4)':
+    dependencies:
+      gsap: 3.14.2
+      react: 19.2.4
+
   '@img/colour@1.0.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
@@ -3588,6 +3641,8 @@ snapshots:
       '@types/express-serve-static-core': 5.1.1
       '@types/serve-static': 2.2.0
 
+  '@types/howler@2.2.12': {}
+
   '@types/http-errors@2.0.5': {}
 
   '@types/jsonwebtoken@9.0.10':
@@ -4118,6 +4173,8 @@ snapshots:
       jwk-to-pem: 2.0.7
       jws: 4.0.1
 
+  gsap@3.14.2: {}
+
   has-symbols@1.1.0: {}
 
   has-tostringtag@1.0.2:
@@ -4140,6 +4197,8 @@ snapshots:
       minimalistic-assert: 1.0.1
       minimalistic-crypto-utils: 1.0.1
     optional: true
+
+  howler@2.2.4: {}
 
   http-errors@2.0.1:
     dependencies:

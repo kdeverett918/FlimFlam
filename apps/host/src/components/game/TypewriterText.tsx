@@ -77,10 +77,10 @@ export function TypewriterText({
       {displayed}
       {showCursor && (
         <span
-          className="ml-1 inline-block h-[1em] w-[0.5em] translate-y-[0.1em] rounded-sm bg-accent-1"
+          className="ml-1 inline-block h-[1em] w-[0.5em] translate-y-[0.1em] rounded-sm bg-primary"
           style={{
             animation: "glow-breathe 1s ease-in-out infinite",
-            boxShadow: "0 0 8px oklch(0.7 0.18 265 / 0.6)",
+            boxShadow: "0 0 8px oklch(0.72 0.22 25 / 0.6)",
           }}
         />
       )}

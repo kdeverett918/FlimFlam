@@ -1,7 +1,7 @@
 "use client";
 
-import { GAME_MANIFESTS } from "@partyline/shared";
-import { GlassPanel } from "@partyline/ui";
+import { GAME_MANIFESTS } from "@flimflam/shared";
+import { GlassPanel } from "@flimflam/ui";
 import { Cpu, Flame, Paintbrush, Sparkles, Zap } from "lucide-react";
 import { useRef } from "react";
 
@@ -19,11 +19,11 @@ const GAME_ICONS: Record<string, React.ReactNode> = {
 };
 
 const GAME_ACCENT_BORDER: Record<string, string> = {
-  "world-builder": "border-accent-2 shadow-[0_0_24px_oklch(0.7_0.2_330/0.25)]",
-  "bluff-engine": "border-accent-3 shadow-[0_0_24px_oklch(0.75_0.18_85/0.25)]",
-  "quick-draw": "border-accent-4 shadow-[0_0_24px_oklch(0.75_0.15_195/0.25)]",
-  "reality-drift": "border-accent-5 shadow-[0_0_24px_oklch(0.7_0.2_145/0.25)]",
-  "hot-take": "border-accent-6 shadow-[0_0_24px_oklch(0.65_0.25_25/0.25)]",
+  "world-builder": "border-accent-2 shadow-[0_0_24px_oklch(0.68_0.20_300/0.25)]",
+  "bluff-engine": "border-accent-3 shadow-[0_0_24px_oklch(0.78_0.18_85/0.25)]",
+  "quick-draw": "border-accent-4 shadow-[0_0_24px_oklch(0.72_0.18_160/0.25)]",
+  "reality-drift": "border-accent-5 shadow-[0_0_24px_oklch(0.70_0.15_210/0.25)]",
+  "hot-take": "border-accent-6 shadow-[0_0_24px_oklch(0.68_0.25_20/0.25)]",
 };
 
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
@@ -42,14 +42,16 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
             key={game.id}
             type="button"
             onClick={() => onSelect(game.id)}
-            className="snap-center"
+            aria-label={game.name}
+            aria-pressed={isSelected}
+            className="snap-center rounded-2xl transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
           >
             <GlassPanel
               glow={isSelected}
               rounded="2xl"
               className={`flex min-w-[320px] flex-col gap-3 border p-6 transition-all duration-300 ${
                 isSelected
-                  ? (GAME_ACCENT_BORDER[game.id] ?? "border-accent-1")
+                  ? (GAME_ACCENT_BORDER[game.id] ?? "border-primary")
                   : "border-white/[0.08] hover:border-white/[0.16]"
               }`}
             >

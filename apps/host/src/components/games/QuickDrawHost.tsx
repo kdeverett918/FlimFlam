@@ -1,9 +1,9 @@
 "use client";
 
-import { Scoreboard } from "@/components/game/Scoreboard";
+import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { Timer } from "@/components/game/Timer";
-import type { DrawStrokeBroadcast, PlayerData, ScoreEntry } from "@partyline/shared";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import type { DrawStrokeBroadcast, PlayerData } from "@flimflam/shared";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
 import { Pencil } from "lucide-react";
@@ -48,7 +48,13 @@ export function QuickDrawHost({
     case "word-reveal":
       return <WordRevealView payload={payload} players={players} />;
     case "final-scores":
-      return <DrawFinalScoresView players={players} />;
+      return (
+        <FinalScoresLayout
+          scores={buildScores(players)}
+          accentColorClass="text-accent-4"
+          room={room}
+        />
+      );
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
@@ -81,7 +87,7 @@ function PickingDrawerView({
       </motion.div>
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.75 0.15 195 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.72 0.18 160 / 0.4)" }}
       >
         PICKING THE ARTIST...
       </h2>
@@ -176,7 +182,7 @@ function ActiveRoundView({
                   >
                     <GlassPanel
                       glow={guess.correct}
-                      glowColor="oklch(0.75 0.15 195 / 0.3)"
+                      glowColor="oklch(0.72 0.18 160 / 0.3)"
                       rounded="lg"
                       className="p-3"
                     >
@@ -399,7 +405,7 @@ function WordRevealView({
       >
         <GlassPanel
           glow
-          glowColor="oklch(0.75 0.15 195 / 0.4)"
+          glowColor="oklch(0.72 0.18 160 / 0.4)"
           rounded="2xl"
           className="px-12 py-6"
         >
@@ -436,31 +442,6 @@ function WordRevealView({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function DrawFinalScoresView({ players }: { players: PlayerData[] }) {
-  const scores: ScoreEntry[] = players
-    .map((p) => ({
-      sessionId: p.sessionId,
-      name: p.name,
-      score: p.score,
-      rank: 0,
-      breakdown: [],
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
-
-  return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <AnimatedBackground variant="subtle" />
-      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-4">
-        FINAL SCORES
-      </h1>
-      <div className="relative z-10 w-full max-w-4xl">
-        <Scoreboard scores={scores} />
-      </div>
     </div>
   );
 }

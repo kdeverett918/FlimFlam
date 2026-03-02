@@ -5,25 +5,25 @@
  *   npx playwright test --config playwright.production.remote.config.ts
  *
  * Override defaults:
- *   PARTYLINE_E2E_HOST_URL=https://...
- *   PARTYLINE_E2E_CONTROLLER_URL=https://...
- *   PARTYLINE_E2E_COLYSEUS_HEALTH_URL=https://.../health
+ *   FLIMFLAM_E2E_HOST_URL=https://...
+ *   FLIMFLAM_E2E_CONTROLLER_URL=https://...
+ *   FLIMFLAM_E2E_COLYSEUS_HEALTH_URL=https://.../health
  */
 import { defineConfig, devices } from "@playwright/test";
 
-const DEFAULT_HOST_URL = "https://partyline-host.onrender.com";
-const DEFAULT_CONTROLLER_URL = "https://partyline-controller.onrender.com";
+const DEFAULT_HOST_URL = "https://flimflam.gg";
+const DEFAULT_CONTROLLER_URL = "https://play.flimflam.gg";
 const DEFAULT_COLYSEUS_HEALTH_URL = "https://us-dfw-baad7ee4.colyseus.cloud/health";
 
-const e2eHostUrl = process.env.PARTYLINE_E2E_HOST_URL ?? DEFAULT_HOST_URL;
-const e2eControllerUrl = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? DEFAULT_CONTROLLER_URL;
+const e2eHostUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? DEFAULT_HOST_URL;
+const e2eControllerUrl = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? DEFAULT_CONTROLLER_URL;
 const colyseusHealthUrl =
-  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? DEFAULT_COLYSEUS_HEALTH_URL;
+  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? DEFAULT_COLYSEUS_HEALTH_URL;
 
 // Make URLs visible to test specs (they read process.env at module load).
-process.env.PARTYLINE_E2E_HOST_URL = e2eHostUrl;
-process.env.PARTYLINE_E2E_CONTROLLER_URL = e2eControllerUrl;
-process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL = colyseusHealthUrl;
+process.env.FLIMFLAM_E2E_HOST_URL = e2eHostUrl;
+process.env.FLIMFLAM_E2E_CONTROLLER_URL = e2eControllerUrl;
+process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL = colyseusHealthUrl;
 
 export default defineConfig({
   testDir: "./tests/e2e",

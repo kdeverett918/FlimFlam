@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "../lib/utils";
 import { ConfettiBurst } from "./confetti-burst";
 
-interface ScoreRevealProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ScoreRevealProps extends React.HTMLAttributes<HTMLDivElement> {
   score: number;
   previousScore?: number;
   duration?: number;
@@ -88,7 +88,10 @@ function ScoreReveal({
       className={cn("relative inline-flex flex-col items-center justify-center", className)}
       {...props}
     >
-      <span className="font-mono text-5xl tabular-nums text-text-primary leading-none">
+      <span
+        className="font-mono text-5xl tabular-nums leading-none"
+        style={{ color: "oklch(0.95 0.01 80)" }}
+      >
         {displayedScore.toLocaleString()}
       </span>
 
@@ -135,4 +138,3 @@ function ScoreReveal({
 ScoreReveal.displayName = "ScoreReveal";
 
 export { ScoreReveal };
-export type { ScoreRevealProps };

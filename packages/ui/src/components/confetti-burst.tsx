@@ -13,19 +13,19 @@ const presetConfigs = {
     particleCount: 80,
     spread: 70,
     startVelocity: 45,
-    colors: ["#818cf8", "#a855f7", "#06b6d4", "#22c55e", "#f59e0b"],
+    colors: ["#e8664a", "#3db8a0", "#06b6d4", "#22c55e", "#f59e0b"],
   },
   correct: {
     particleCount: 40,
     spread: 50,
     startVelocity: 30,
-    colors: ["#22c55e", "#06b6d4", "#818cf8"],
+    colors: ["#22c55e", "#3db8a0", "#e8664a"],
   },
   celebration: {
     particleCount: 90,
     spread: 90,
     startVelocity: 50,
-    colors: ["#818cf8", "#a855f7", "#f59e0b", "#ef4444", "#06b6d4", "#22c55e"],
+    colors: ["#e8664a", "#3db8a0", "#f59e0b", "#06b6d4", "#22c55e", "#f5c842"],
   },
 } as const;
 

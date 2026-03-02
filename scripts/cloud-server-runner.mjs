@@ -14,16 +14,16 @@ function findTsx() {
   }
 
   const checked = candidates.join(", ");
-  console.error(`[PartyLine] ERROR: tsx binary not found. Checked: ${checked}`);
+  console.error(`[FlimFlam] ERROR: tsx binary not found. Checked: ${checked}`);
   process.exit(1);
 }
 
 const tsxBinary = findTsx();
-console.log(`[PartyLine] Using tsx: ${tsxBinary}`);
+console.log(`[FlimFlam] Using tsx: ${tsxBinary}`);
 
 const serverEntry = resolve("packages/server/src/index.ts");
 const tsconfigPath = resolve("packages/server/tsconfig.json");
-console.log(`[PartyLine] Server entry: ${serverEntry}`);
+console.log(`[FlimFlam] Server entry: ${serverEntry}`);
 
 const child = spawn(tsxBinary, [serverEntry], {
   env: {
@@ -44,7 +44,7 @@ function maybeMarkReadyFromStdout(chunkText) {
   stdoutBuffer = lines.pop() ?? "";
 
   for (const line of lines) {
-    if (!readySent && line.includes("[PartyLine] Server listening on port")) {
+    if (!readySent && line.includes("[FlimFlam] Server listening on port")) {
       readySent = true;
       if (typeof process.send === "function") {
         process.send("ready");

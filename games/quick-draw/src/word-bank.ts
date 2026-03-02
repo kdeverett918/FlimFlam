@@ -1,4 +1,4 @@
-import type { Complexity } from "@partyline/shared";
+import { type Complexity, pickRandom } from "@flimflam/shared";
 
 /**
  * Word bank for Quick Draw, organized by complexity tier.
@@ -529,7 +529,7 @@ export function pickRandomWord(complexity: Complexity, usedWords: Set<string>): 
   if (available.length === 0) {
     // All words used, reset
     usedWords.clear();
-    return words[Math.floor(Math.random() * words.length)] ?? "cat";
+    return pickRandom(words) ?? "cat";
   }
-  return available[Math.floor(Math.random() * available.length)] ?? "dog";
+  return pickRandom(available) ?? "dog";
 }

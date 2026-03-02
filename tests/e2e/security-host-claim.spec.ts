@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { Client } from "colyseus.js";
 
 function inferColyseusWsUrl(): string {
-  const healthUrl = process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? "http://localhost:2567/health";
+  const healthUrl = process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://localhost:2567/health";
   const wsBase = healthUrl
     .replace(/^https:\/\//, "wss://")
     .replace(/^http:\/\//, "ws://")

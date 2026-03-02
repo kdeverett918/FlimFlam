@@ -2,44 +2,58 @@
 @import "tw-animate-css";
 
 @theme inline {
-  /* Background layers */
-  --color-bg-deep: oklch(0.08 0.02 280);
-  --color-bg-dark: oklch(0.11 0.03 275);
-  --color-bg-surface: oklch(0.15 0.04 270);
-  --color-bg-elevated: oklch(0.19 0.05 265);
+  /* ── Background layers (warm deep blue undertone) ── */
+  --color-bg-deep: oklch(0.09 0.02 250);
+  --color-bg-dark: oklch(0.12 0.025 248);
+  --color-bg-surface: oklch(0.16 0.03 245);
+  --color-bg-elevated: oklch(0.2 0.035 242);
 
-  /* Per-game accent colors */
-  --color-accent-1: oklch(0.7 0.18 265);
-  --color-accent-2: oklch(0.7 0.2 330);
-  --color-accent-3: oklch(0.75 0.18 85);
-  --color-accent-4: oklch(0.75 0.15 195);
-  --color-accent-5: oklch(0.7 0.2 145);
-  --color-accent-6: oklch(0.65 0.25 25);
+  /* ── Primary: Electric Coral ── */
+  --color-primary: oklch(0.72 0.22 25);
+  --color-primary-hover: oklch(0.78 0.2 25);
+  --color-primary-muted: oklch(0.72 0.22 25 / 0.15);
+  --color-primary-glow: oklch(0.72 0.22 25 / 0.4);
 
-  /* Text */
-  --color-text-primary: oklch(0.96 0.01 280);
-  --color-text-muted: oklch(0.6 0.03 270);
-  --color-text-dim: oklch(0.4 0.03 270);
+  /* ── Secondary: Deep Teal ── */
+  --color-secondary: oklch(0.7 0.15 185);
+  --color-secondary-hover: oklch(0.76 0.13 185);
+  --color-secondary-muted: oklch(0.7 0.15 185 / 0.15);
 
-  /* Semantic */
-  --color-destructive: oklch(0.55 0.22 25);
-  --color-success: oklch(0.65 0.2 145);
-  --color-border: oklch(0.2 0.03 270);
-  --color-ring: oklch(0.7 0.18 265);
+  /* ── Per-game accent colors ── */
+  --color-accent-1: oklch(0.72 0.22 25);
+  --color-accent-2: oklch(0.68 0.2 300);
+  --color-accent-3: oklch(0.78 0.18 85);
+  --color-accent-4: oklch(0.72 0.18 160);
+  --color-accent-5: oklch(0.7 0.15 210);
+  --color-accent-6: oklch(0.68 0.25 20);
+  --color-accent-7: oklch(0.65 0.22 260);
 
-  /* Radius */
+  /* ── Text (warm white) ── */
+  --color-text-primary: oklch(0.95 0.01 80);
+  --color-text-muted: oklch(0.65 0.02 80);
+  --color-text-dim: oklch(0.42 0.02 80);
+
+  /* ── Semantic ── */
+  --color-destructive: oklch(0.58 0.22 25);
+  --color-success: oklch(0.68 0.18 150);
+  --color-warning: oklch(0.78 0.18 85);
+  --color-border: oklch(0.22 0.02 250);
+  --color-ring: oklch(0.72 0.22 25);
+
+  /* ── Radius ── */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
 
-  /* Fonts */
-  --font-display: "Space Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* ── Fonts ── */
+  --font-display: "Bricolage Grotesque", sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 }
 
-/* Neon Arena keyframes */
+/* ── Keyframes ── */
 
 @keyframes nebula-drift {
   0% {
@@ -67,10 +81,10 @@
 @keyframes glow-breathe {
   0%,
   100% {
-    box-shadow: 0 0 12px oklch(0.7 0.18 265 / 0.2), 0 0 24px oklch(0.7 0.18 265 / 0.1);
+    box-shadow: 0 0 12px oklch(0.72 0.22 25 / 0.2), 0 0 24px oklch(0.72 0.22 25 / 0.1);
   }
   50% {
-    box-shadow: 0 0 20px oklch(0.7 0.18 265 / 0.35), 0 0 40px oklch(0.7 0.18 265 / 0.15);
+    box-shadow: 0 0 20px oklch(0.72 0.22 25 / 0.35), 0 0 40px oklch(0.72 0.22 25 / 0.15);
   }
 }
 
@@ -100,10 +114,10 @@
 @keyframes glow-pulse {
   0%,
   100% {
-    box-shadow: 0 0 16px oklch(0.7 0.18 265 / 0.3), 0 0 32px oklch(0.7 0.18 265 / 0.15);
+    box-shadow: 0 0 16px oklch(0.72 0.22 25 / 0.3), 0 0 32px oklch(0.72 0.22 25 / 0.15);
   }
   50% {
-    box-shadow: 0 0 24px oklch(0.7 0.18 265 / 0.5), 0 0 48px oklch(0.7 0.2 330 / 0.2);
+    box-shadow: 0 0 24px oklch(0.72 0.22 25 / 0.5), 0 0 48px oklch(0.7 0.15 185 / 0.2);
   }
 }
 
@@ -161,51 +175,56 @@
   }
 }
 
-/* Utility classes */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ── Utility classes ── */
 
 .animate-glow-pulse {
   animation: glow-pulse 2s ease-in-out infinite;
 }
-
 .animate-glow-breathe {
   animation: glow-breathe 3s ease-in-out infinite;
 }
-
 .animate-pulse-ring {
   animation: pulse-ring 1.5s ease-out infinite;
 }
-
 .animate-score-pop {
   animation: score-pop 0.4s ease-out;
 }
-
 .animate-timer-pulse {
   animation: timer-pulse 1s ease-in-out infinite;
 }
-
 .animate-spin-slow {
   animation: spin-slow 3s linear infinite;
 }
-
 .animate-fade-in-up {
   animation: fade-in-up 0.3s ease-out forwards;
 }
-
 .animate-dot-pulse {
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
-
 .animate-float-up-fade {
   animation: float-up-fade 0.8s ease-out forwards;
 }
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
 
-/* Base styles */
+/* ── Base styles ── */
 
 html,
 body {
-  background-color: oklch(0.08 0.02 280);
-  color: oklch(0.96 0.01 280);
-  font-family: "Inter", sans-serif;
+  background-color: oklch(0.09 0.02 250);
+  color: oklch(0.95 0.01 80);
+  font-family: "Plus Jakarta Sans", sans-serif;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -219,18 +238,15 @@ textarea,
   -webkit-user-select: text;
 }
 
-/* Prevent overscroll bounce on iOS */
 html {
   overscroll-behavior: none;
 }
 
-/* Large touch targets helper */
 .touch-target {
   min-height: 48px;
   min-width: 48px;
 }
 
-/* Glass input focus ring */
 .glass-input {
   background: oklch(1 0 0 / 0.04);
   backdrop-filter: blur(8px);
@@ -240,7 +256,19 @@ html {
 }
 
 .glass-input:focus {
-  border-color: oklch(0.7 0.18 265 / 0.5);
-  box-shadow: 0 0 12px oklch(0.7 0.18 265 / 0.15);
+  border-color: oklch(0.72 0.22 25 / 0.5);
+  box-shadow: 0 0 12px oklch(0.72 0.22 25 / 0.15);
   outline: none;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -6,7 +6,7 @@ import {
   type HostViewData,
   type PlayerData,
   resolveRoomIdByCode,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -34,9 +34,9 @@ interface UseRoomReturn {
   ready: boolean;
 }
 
-const RECONNECT_TOKEN_KEY = "partyline_host_reconnect_token";
-const ROOM_CODE_KEY = "partyline_host_room_code";
-const HOST_TOKEN_KEY = "partyline_host_token";
+const RECONNECT_TOKEN_KEY = "flimflam_host_reconnect_token";
+const ROOM_CODE_KEY = "flimflam_host_room_code";
+const HOST_TOKEN_KEY = "flimflam_host_token";
 const ROOM_CODE_TIMEOUT_MS = 5000;
 
 export function useRoom(): UseRoomReturn {
@@ -61,6 +61,10 @@ export function useRoom(): UseRoomReturn {
         sessionStorage.setItem(HOST_TOKEN_KEY, data.token);
       }
     });
+
+    // Request the host token after handlers are registered (avoids missing a
+    // token message that could arrive before onMessage() is set up).
+    joinedRoom.send("host:request_token");
 
     // Save session info for reconnection
     if (typeof window !== "undefined") {

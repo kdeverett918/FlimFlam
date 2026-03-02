@@ -8,7 +8,8 @@ type GameTheme =
   | "bluff-engine"
   | "quick-draw"
   | "reality-drift"
-  | "hot-take";
+  | "hot-take"
+  | "brain-battle";
 
 interface GameThemeContextValue {
   theme: GameTheme;
@@ -17,30 +18,51 @@ interface GameThemeContextValue {
   setTheme: (theme: GameTheme) => void;
 }
 
-const GAME_THEMES: Record<GameTheme, { accent: string; glow: string }> = {
+const GAME_THEMES: Record<
+  GameTheme,
+  { accent: string; glow: string; primaryBlob: string; secondaryBlob: string }
+> = {
   default: {
-    accent: "var(--color-accent-1)",
-    glow: "oklch(0.7 0.18 265 / 0.3)",
+    accent: "var(--color-primary)",
+    glow: "oklch(0.72 0.22 25 / 0.3)",
+    primaryBlob: "oklch(0.72 0.22 25)",
+    secondaryBlob: "oklch(0.70 0.15 185)",
   },
   "world-builder": {
     accent: "var(--color-accent-2)",
-    glow: "oklch(0.7 0.2 330 / 0.3)",
+    glow: "oklch(0.68 0.2 300 / 0.3)",
+    primaryBlob: "oklch(0.68 0.20 300)",
+    secondaryBlob: "oklch(0.60 0.18 270)",
   },
   "bluff-engine": {
     accent: "var(--color-accent-3)",
-    glow: "oklch(0.75 0.18 85 / 0.3)",
+    glow: "oklch(0.78 0.18 85 / 0.3)",
+    primaryBlob: "oklch(0.78 0.18 85)",
+    secondaryBlob: "oklch(0.70 0.16 60)",
   },
   "quick-draw": {
     accent: "var(--color-accent-4)",
-    glow: "oklch(0.75 0.15 195 / 0.3)",
+    glow: "oklch(0.72 0.18 160 / 0.3)",
+    primaryBlob: "oklch(0.72 0.18 160)",
+    secondaryBlob: "oklch(0.65 0.15 140)",
   },
   "reality-drift": {
     accent: "var(--color-accent-5)",
-    glow: "oklch(0.7 0.2 145 / 0.3)",
+    glow: "oklch(0.7 0.15 210 / 0.3)",
+    primaryBlob: "oklch(0.70 0.15 210)",
+    secondaryBlob: "oklch(0.62 0.14 240)",
   },
   "hot-take": {
     accent: "var(--color-accent-6)",
-    glow: "oklch(0.65 0.25 25 / 0.3)",
+    glow: "oklch(0.68 0.25 20 / 0.3)",
+    primaryBlob: "oklch(0.68 0.25 20)",
+    secondaryBlob: "oklch(0.72 0.22 40)",
+  },
+  "brain-battle": {
+    accent: "var(--color-accent-7)",
+    glow: "oklch(0.65 0.22 260 / 0.3)",
+    primaryBlob: "oklch(0.65 0.22 260)",
+    secondaryBlob: "oklch(0.58 0.20 280)",
   },
 };
 

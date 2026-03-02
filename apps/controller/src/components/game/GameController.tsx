@@ -1,16 +1,19 @@
 "use client";
 
 import { AbilityButton } from "@/components/controls/AbilityButton";
+import { BrainBattleTopicSubmit } from "@/components/controls/BrainBattleTopicSubmit";
+import { BuzzButton } from "@/components/controls/BuzzButton";
 import { DrawCanvas } from "@/components/controls/DrawCanvas";
 import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
 import { Slider } from "@/components/controls/Slider";
 import { TextInput } from "@/components/controls/TextInput";
 import { TopicSetup } from "@/components/controls/TopicSetup";
 import { VoteGrid } from "@/components/controls/VoteGrid";
-import { GameThemeProvider, GlassPanel, haptics } from "@partyline/ui";
-import type { GameTheme } from "@partyline/ui";
-import { Check, Monitor } from "lucide-react";
+import { GameThemeProvider, GlassPanel, haptics } from "@flimflam/ui";
+import type { GameTheme } from "@flimflam/ui";
+import { Check, Monitor, Trophy } from "lucide-react";
 import { useCallback } from "react";
+import { ReactionBar } from "./ReactionBar";
 import { RoleCard } from "./RoleCard";
 import { WaitingScreen } from "./WaitingScreen";
 
@@ -39,6 +42,7 @@ const GAME_THEME_MAP: Record<string, GameTheme> = {
   "quick-draw": "quick-draw",
   "reality-drift": "reality-drift",
   "hot-take": "hot-take",
+  "brain-battle": "brain-battle",
 };
 
 const GAME_DISPLAY_NAMES: Record<string, string> = {
@@ -47,6 +51,7 @@ const GAME_DISPLAY_NAMES: Record<string, string> = {
   "quick-draw": "Quick Draw",
   "reality-drift": "Reality Drift",
   "hot-take": "Hot Take",
+  "brain-battle": "Brain Battle",
 };
 
 const GAME_ACCENT_CLASSES: Record<string, string> = {
@@ -55,6 +60,7 @@ const GAME_ACCENT_CLASSES: Record<string, string> = {
   "quick-draw": "text-accent-4 bg-accent-4/15",
   "reality-drift": "text-accent-5 bg-accent-5/15",
   "hot-take": "text-accent-6 bg-accent-6/15",
+  "brain-battle": "text-accent-7 bg-accent-7/15",
 };
 
 export function GameController({
@@ -116,10 +122,31 @@ export function GameController({
     phase === "generating-prompt" ||
     phase === "generating-questions" ||
     phase === "picking-drawer" ||
-    phase === "ai-generating";
+    phase === "ai-generating" ||
+    phase === "board-generating" ||
+    phase === "appeal-judging";
 
   if (isWaitingPhase) {
-    return <WaitingScreen phase={phase} />;
+    return (
+      <>
+        <WaitingScreen
+          phase={phase}
+          score={typeof privateData?.score === "number" ? privateData.score : undefined}
+          rank={typeof privateData?.rank === "number" ? privateData.rank : undefined}
+          totalPlayers={
+            typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : undefined
+          }
+          submittedCount={
+            typeof privateData?.submittedCount === "number" ? privateData.submittedCount : undefined
+          }
+          totalCount={
+            typeof privateData?.totalCount === "number" ? privateData.totalCount : undefined
+          }
+          gameId={gameId}
+        />
+        <ReactionBar sendMessage={sendMessage} />
+      </>
+    );
   }
 
   const themeKey = GAME_THEME_MAP[gameId] ?? "default";
@@ -144,6 +171,9 @@ export function GameController({
     case "hot-take":
       content = renderHotTake(phase);
       break;
+    case "brain-battle":
+      content = renderBrainBattle(phase);
+      break;
     default:
       content = renderGenericPhase(phase);
       break;
@@ -151,15 +181,21 @@ export function GameController({
 
   return (
     <GameThemeProvider defaultTheme={themeKey}>
-      {/* Game-specific header bar */}
-      <div className="flex items-center justify-center gap-2 px-4 py-2">
+      {/* Compact header bar with game info */}
+      <div className="flex items-center justify-center gap-3 px-4 py-2">
         <div
           className={`rounded-full px-3 py-1 font-display text-xs font-bold uppercase tracking-wider ${accentClass}`}
         >
           {gameName}
         </div>
+        {round > 0 && totalRounds > 0 && (
+          <span className="font-mono text-xs text-text-muted">
+            {round}/{totalRounds}
+          </span>
+        )}
       </div>
       {content}
+      <ReactionBar sendMessage={sendMessage} />
     </GameThemeProvider>
   );
 
@@ -187,7 +223,7 @@ export function GameController({
                 }}
                 className="h-14 w-full rounded-xl bg-accent-2 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
                 style={{
-                  boxShadow: "0 0 16px oklch(0.7 0.2 330 / 0.25)",
+                  boxShadow: "0 0 16px oklch(0.68 0.20 300 / 0.25)",
                 }}
               >
                 Ready
@@ -224,10 +260,11 @@ export function GameController({
       case "narration-display":
         return renderWatchScreen("Watch the story unfold on the main screen...");
       case "reveal":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -287,10 +324,11 @@ export function GameController({
         );
       }
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -344,9 +382,9 @@ export function GameController({
           ? renderSuccessCard("You got it!", "Keep watching the main screen...")
           : renderWatchScreen("Check the main screen for the reveal!");
       case "final-scores":
-        return renderWatchScreen("Check the main screen for the reveal!");
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -387,10 +425,11 @@ export function GameController({
           </div>
         );
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
-        return <WaitingScreen phase={currentPhase} />;
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -418,10 +457,159 @@ export function GameController({
           </div>
         );
       case "results":
-      case "final-scores":
         return renderWatchScreen("Check the main screen for results!");
+      case "final-scores":
+        return renderFinalScoresCard();
       default:
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
+    }
+  }
+
+  function renderBrainBattle(currentPhase: string) {
+    switch (currentPhase) {
+      case "topic-submit":
+        return <BrainBattleTopicSubmit sendMessage={sendMessage} />;
+
+      case "board-generating":
+      case "board-reveal":
         return <WaitingScreen phase={currentPhase} />;
+
+      case "clue-select":
+        if (privateData?.isSelector) {
+          const board =
+            (privateData?.board as Array<{
+              name: string;
+              clues: Array<{ id: string; value: number; answered: boolean }>;
+            }>) ?? [];
+          const categories = board.map((cat) => cat.name);
+          const answeredClues = (privateData?.answeredClues as string[]) ?? [];
+          const values = [200, 400, 600, 800, 1000];
+          return (
+            <div className="flex flex-col gap-3 px-2 pb-16 pt-4">
+              <p className="text-center font-display text-lg font-bold text-text-primary">
+                Pick a clue!
+              </p>
+              {/* Mini-board grid */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr>
+                      {categories.map((cat) => (
+                        <th
+                          key={cat}
+                          className="px-1 py-1 text-center font-display text-xs font-bold text-accent-7 uppercase tracking-wider"
+                        >
+                          {cat.length > 8 ? `${cat.slice(0, 8)}...` : cat}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {values.map((val, rowIdx) => (
+                      <tr key={val}>
+                        {categories.map((_cat, colIdx) => {
+                          const clueId = `cat${colIdx}_clue${rowIdx}`;
+                          const isAnswered = answeredClues.includes(clueId);
+                          return (
+                            <td key={clueId} className="p-0.5">
+                              <button
+                                type="button"
+                                disabled={isAnswered}
+                                onClick={() => {
+                                  haptics.tap();
+                                  sendMessage("player:select-clue", { clueId });
+                                }}
+                                className="h-12 w-full rounded-lg font-display text-sm font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100"
+                                style={{
+                                  backgroundColor: isAnswered
+                                    ? "rgba(255,255,255,0.03)"
+                                    : "rgba(255,255,255,0.08)",
+                                  color: isAnswered
+                                    ? "rgba(255,255,255,0.2)"
+                                    : "var(--color-accent-7, #818cf8)",
+                                }}
+                              >
+                                ${val}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Waiting for {(privateData?.selectorName as string) ?? "selector"} to pick a clue...
+            </p>
+          </div>
+        );
+
+      case "buzzing":
+        return (
+          <BuzzButton
+            onBuzz={() => sendMessage("player:buzz")}
+            playerColor={(privateData?.avatarColor as string) ?? undefined}
+          />
+        );
+
+      case "answering":
+        if (privateData?.isBuzzWinner) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt='Your answer -- start with "What is..."'
+                placeholder="What is...?"
+                maxChars={100}
+                onSubmit={handleTextSubmit}
+              />
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">
+              Waiting for {(privateData?.buzzWinnerName as string) ?? "player"}&apos;s answer...
+            </p>
+          </div>
+        );
+
+      case "appeal-window":
+        if (privateData?.canAppeal) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <div className="text-center text-sm text-text-muted">
+                Appeals remaining: {(privateData?.appealsRemaining as number) ?? 0}
+              </div>
+              <TextInput
+                prompt="Make your case to the judge!"
+                placeholder="I believe my answer is correct because..."
+                maxChars={140}
+                onSubmit={handleTextSubmit}
+              />
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
+            <p className="text-center text-lg text-text-muted">Waiting for the appeal...</p>
+          </div>
+        );
+
+      case "appeal-judging":
+      case "appeal-result":
+      case "clue-result":
+        return renderWatchScreen("Check the main screen!");
+      case "final-scores":
+        return renderFinalScoresCard();
+
+      default:
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
 
@@ -448,6 +636,52 @@ export function GameController({
       );
     }
     return renderWatchScreen("Watch the main screen...");
+  }
+
+  function renderFinalScoresCard() {
+    const playerScore = typeof privateData?.score === "number" ? privateData.score : null;
+    const playerRank = typeof privateData?.rank === "number" ? privateData.rank : null;
+    const total = typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : null;
+
+    const getRankSuffix = (r: number): string => {
+      if (r % 100 >= 11 && r % 100 <= 13) return "th";
+      switch (r % 10) {
+        case 1:
+          return "st";
+        case 2:
+          return "nd";
+        case 3:
+          return "rd";
+        default:
+          return "th";
+      }
+    };
+
+    if (playerRank !== null && playerScore !== null) {
+      return (
+        <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
+          <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
+            <Trophy className="h-8 w-8 text-accent-5" />
+            <p className="font-display text-3xl font-bold text-primary">
+              {playerRank}
+              {getRankSuffix(playerRank)}
+            </p>
+            <div className="flex items-baseline gap-2">
+              <span className="font-mono text-2xl font-bold text-text-primary">{playerScore}</span>
+              <span className="font-body text-sm text-text-dim">pts</span>
+            </div>
+            {total !== null && (
+              <p className="font-body text-sm text-text-muted">out of {total} players</p>
+            )}
+          </GlassPanel>
+          <p className="text-center font-body text-sm text-text-muted">
+            Check the main screen for full results!
+          </p>
+        </div>
+      );
+    }
+
+    return renderWatchScreen("Check the main screen for results!");
   }
 
   function renderWatchScreen(message: string) {

@@ -4,7 +4,7 @@ import {
   type AIResponse,
   AI_MAX_RETRIES,
   AI_REQUEST_TIMEOUT_MS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { ZodSchema } from "zod";
 import { parseAIResponse } from "./parser";
 
@@ -73,9 +73,9 @@ export async function aiRequest<T>(
   zodSchema: ZodSchema<T>,
   options?: AIRequestOptions,
 ): Promise<AIResponse<T>> {
-  const aiDisabled = process.env.PARTYLINE_DISABLE_AI;
+  const aiDisabled = process.env.FLIMFLAM_DISABLE_AI;
   if (aiDisabled === "1" || aiDisabled === "true") {
-    throw new AIError("AI disabled by PARTYLINE_DISABLE_AI");
+    throw new AIError("AI disabled by FLIMFLAM_DISABLE_AI");
   }
 
   const timeoutMs = options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS;

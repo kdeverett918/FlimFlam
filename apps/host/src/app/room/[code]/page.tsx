@@ -2,6 +2,8 @@
 
 import { GameView } from "@/components/game/GameView";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
+import { ReactionOverlay } from "@/components/game/ReactionOverlay";
+import { VolumeControl } from "@/components/game/VolumeControl";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
 import { useParams, useRouter } from "next/navigation";
@@ -91,7 +93,7 @@ export default function RoomPage() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
         <div className="flex flex-col items-center gap-6">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-accent-1/30 border-t-accent-1" />
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/30 border-t-primary" />
           <p className="font-display text-[36px] text-text-muted">
             {routeCode === "NEW" || routeCode.length !== 4
               ? "Creating room..."
@@ -106,7 +108,20 @@ export default function RoomPage() {
   return (
     <main className="relative min-h-screen bg-bg-dark">
       {/* Phase transition overlay */}
-      {showTransition && <PhaseTransition label={transitionLabel} />}
+      {showTransition && (
+        <PhaseTransition
+          label={transitionLabel}
+          gameId={gameState.selectedGameId}
+          round={gameState.round}
+          totalRounds={gameState.totalRounds}
+        />
+      )}
+
+      {/* Reaction overlay */}
+      <ReactionOverlay room={room} />
+
+      {/* Volume control */}
+      <VolumeControl />
 
       {/* Main content based on game phase */}
       {gameState.screenView === "lobby" && (
@@ -137,7 +152,7 @@ export default function RoomPage() {
             room={room}
           />
 
-          <div className="pointer-events-none absolute bottom-8 right-8 flex gap-3">
+          <div className="pointer-events-none absolute bottom-8 right-8 z-50 flex gap-3">
             <button
               type="button"
               onClick={() => sendMessage("host:skip")}
@@ -148,7 +163,7 @@ export default function RoomPage() {
             <button
               type="button"
               onClick={() => sendMessage("host:end-game")}
-              className="pointer-events-auto h-12 rounded-xl border border-accent-1/30 bg-accent-1/10 px-5 font-display text-sm text-accent-1 uppercase tracking-wider backdrop-blur transition-all hover:bg-accent-1/15 active:scale-95"
+              className="pointer-events-auto h-12 rounded-xl border border-primary/30 bg-primary/10 px-5 font-display text-sm text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-primary/15 active:scale-95"
             >
               End
             </button>

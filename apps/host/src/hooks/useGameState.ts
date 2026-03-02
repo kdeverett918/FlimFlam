@@ -1,6 +1,6 @@
 "use client";
 
-import type { Complexity, HostViewData, PlayerData } from "@partyline/shared";
+import type { Complexity, HostViewData, PlayerData } from "@flimflam/shared";
 import { useMemo } from "react";
 
 export type ScreenView = "lobby" | "game";

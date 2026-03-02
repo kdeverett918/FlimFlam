@@ -4,15 +4,17 @@ import {
   aiRequest,
   buildTriviaBatchPrompt,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type Complexity,
   GAME_MANIFESTS,
   TriviaBatchSchema,
   type TriviaQuestion,
   type TriviaQuestionRaw,
-} from "@partyline/shared";
+  randomInt,
+  shuffleInPlace,
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
 import {
@@ -28,6 +30,10 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "reality-drift")!;
 export class RealityDriftPlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: RealityDriftInternalState;
+
+  // Bonus award tracking
+  private _correctClassifications = new Map<string, number>();
+  private _caughtDrifts = new Map<string, number>();
 
   private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
     const s = state as unknown as Record<string, unknown>;
@@ -328,6 +334,8 @@ export class RealityDriftPlugin extends BaseGamePlugin {
         if (calledDrift) {
           points = SCORING.CATCH_DRIFT;
           reason = "Caught the drift!";
+          this._correctClassifications.set(key, (this._correctClassifications.get(key) ?? 0) + 1);
+          this._caughtDrifts.set(key, (this._caughtDrifts.get(key) ?? 0) + 1);
         } else {
           reason = "Missed the drift";
         }
@@ -339,6 +347,7 @@ export class RealityDriftPlugin extends BaseGamePlugin {
         } else if (answerIndex === correctAnswerIndex) {
           points = SCORING.CORRECT_ANSWER;
           reason = "Correct answer";
+          this._correctClassifications.set(key, (this._correctClassifications.get(key) ?? 0) + 1);
         } else {
           reason = "Wrong answer";
         }
@@ -388,8 +397,56 @@ export class RealityDriftPlugin extends BaseGamePlugin {
     }
   }
 
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+
+    // Reality Anchor: most correct real/fake classifications
+    let maxCorrect = 0;
+    let anchor = "";
+    for (const [sid, count] of this._correctClassifications) {
+      if (count > maxCorrect) {
+        maxCorrect = count;
+        anchor = sid;
+      }
+    }
+    if (anchor) {
+      awards.push({
+        title: "Reality Anchor",
+        sessionId: anchor,
+        playerName: getName(anchor),
+        reason: `${maxCorrect} correct classification${maxCorrect !== 1 ? "s" : ""}`,
+      });
+    }
+
+    // Drift Master: caught most fakes
+    let maxDrifts = 0;
+    let driftMaster = "";
+    for (const [sid, count] of this._caughtDrifts) {
+      if (count > maxDrifts) {
+        maxDrifts = count;
+        driftMaster = sid;
+      }
+    }
+    if (driftMaster && driftMaster !== anchor) {
+      awards.push({
+        title: "Drift Master",
+        sessionId: driftMaster,
+        playerName: getName(driftMaster),
+        reason: `Caught ${maxDrifts} fake${maxDrifts !== 1 ? "s" : ""}`,
+      });
+    }
+
+    return awards;
+  }
+
   private _showFinalScores(room: Room, state: Schema): void {
-    this._broadcastHost(room, state, {});
+    this._broadcastHost(room, state, { bonusAwards: this._computeBonusAwards(state) });
   }
 }
 
@@ -429,12 +486,7 @@ function normalizeTriviaQuestion(question: TriviaQuestion): TriviaQuestion | nul
 
 function shuffle<T>(items: T[]): T[] {
   const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = result[i];
-    result[i] = result[j] as T;
-    result[j] = tmp as T;
-  }
+  shuffleInPlace(result);
   return result;
 }
 
@@ -456,8 +508,8 @@ function buildQuestionDeck(
   const fallbackReal = FALLBACK_TRIVIA_QUESTIONS.filter((q) => !q.isDrift);
   const fallbackDrift = FALLBACK_TRIVIA_QUESTIONS.filter((q) => q.isDrift);
 
-  let realFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackReal.length));
-  let driftFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackDrift.length));
+  let realFallbackCursor = randomInt(Math.max(1, fallbackReal.length));
+  let driftFallbackCursor = randomInt(Math.max(1, fallbackDrift.length));
 
   const nextFallback = (wantDrift: boolean): TriviaQuestion => {
     const pool = wantDrift ? fallbackDrift : fallbackReal;

@@ -1,7 +1,4 @@
-import {
-  resolveNextPublicColyseusHttpUrl,
-  resolveNextPublicColyseusWsUrl,
-} from "@partyline/shared";
+import { resolveNextPublicColyseusHttpUrl, resolveNextPublicColyseusWsUrl } from "@flimflam/shared";
 import { Client } from "colyseus.js";
 
 let clientInstance: Client | null = null;

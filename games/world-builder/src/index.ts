@@ -6,8 +6,8 @@ import {
   buildNarrationPrompt,
   buildScenarioPrompt,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type BonusJudgingRaw,
   BonusJudgingRawSchema,
@@ -19,7 +19,8 @@ import {
   RoundNarrationRawSchema,
   type RoundNarrationResult,
   type WorldState,
-} from "@partyline/shared";
+  shuffleInPlace,
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING, clampRoundPoints } from "./scoring";
 import {
@@ -154,12 +155,7 @@ export class WorldBuilderPlugin extends BaseGamePlugin {
     });
 
     // Shuffle player keys for random role assignment
-    for (let i = playerKeys.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = playerKeys[i] as string;
-      playerKeys[i] = playerKeys[j] as string;
-      playerKeys[j] = temp;
-    }
+    shuffleInPlace(playerKeys);
 
     const roles = this.internal.scenario.roles;
     for (let i = 0; i < playerKeys.length; i++) {

@@ -37,7 +37,7 @@ pnpm test:e2e
 ```
 
 Builds all apps and starts local server + frontends automatically.
-No env setup needed (AI is disabled for E2E: `PARTYLINE_DISABLE_AI=1`).
+No env setup needed (AI is disabled for E2E: `FLIMFLAM_DISABLE_AI=1`).
 
 ## Run E2E tests against production Colyseus server
 

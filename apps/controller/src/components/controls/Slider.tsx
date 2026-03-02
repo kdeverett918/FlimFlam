@@ -1,6 +1,6 @@
 "use client";
 
-import { GlassPanel, haptics } from "@partyline/ui";
+import { GlassPanel, haptics } from "@flimflam/ui";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -114,7 +114,7 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
   const thumbPosition = ((value + 2) / 4) * 100;
 
   const getTrackGradient = () => {
-    return "linear-gradient(to right, oklch(0.65 0.25 25), oklch(0.65 0.25 25 / 0.5), oklch(0.6 0.03 270 / 0.5), oklch(0.65 0.2 145 / 0.5), oklch(0.65 0.2 145))";
+    return "linear-gradient(to right, oklch(0.65 0.25 25), oklch(0.65 0.25 25 / 0.5), oklch(0.65 0.02 80 / 0.5), oklch(0.65 0.2 145 / 0.5), oklch(0.65 0.2 145))";
   };
 
   const currentLabel = LABELS[value + 2];
@@ -150,6 +150,21 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
           ref={trackRef}
           className="relative h-3 w-full cursor-pointer rounded-full"
           style={{ background: getTrackGradient() }}
+          role="slider"
+          aria-valuemin={-2}
+          aria-valuemax={2}
+          aria-valuenow={value}
+          aria-valuetext={LABELS[value + 2]}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              setValue((v) => Math.min(2, v + 1));
+            } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              setValue((v) => Math.max(-2, v - 1));
+            }
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -179,11 +194,11 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
             style={{ left: `${thumbPosition}%` }}
           >
             <div
-              className="h-[52px] w-[52px] rounded-full border-2 border-white/30 bg-white/[0.08]"
+              className="h-14 w-14 rounded-full border-2 border-white/30 bg-white/[0.08]"
               style={{
                 backdropFilter: "blur(12px)",
                 WebkitBackdropFilter: "blur(12px)",
-                boxShadow: "0 0 16px oklch(0.7 0.18 265 / 0.3), inset 0 0 8px oklch(1 0 0 / 0.05)",
+                boxShadow: "0 0 16px oklch(0.72 0.22 25 / 0.3), inset 0 0 8px oklch(1 0 0 / 0.05)",
               }}
             />
           </div>
@@ -194,7 +209,7 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
           {LABELS.map((label) => (
             <span
               key={label}
-              className="max-w-16 text-center font-body text-[10px] leading-tight text-text-muted"
+              className="max-w-16 text-center font-body text-xs leading-tight text-text-muted"
             >
               {label}
             </span>
@@ -205,9 +220,9 @@ export function Slider({ prompt, onSubmit, resetNonce }: SliderProps) {
       <button
         type="button"
         onClick={handleSubmit}
-        className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
+        className="h-14 w-full rounded-xl bg-primary font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
         style={{
-          boxShadow: "0 0 16px oklch(0.7 0.18 265 / 0.25)",
+          boxShadow: "0 0 16px oklch(0.72 0.22 25 / 0.25)",
         }}
       >
         Submit

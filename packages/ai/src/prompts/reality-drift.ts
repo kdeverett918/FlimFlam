@@ -1,4 +1,4 @@
-import type { Complexity } from "@partyline/shared";
+import type { Complexity } from "@flimflam/shared";
 
 /**
  * Build prompt for generating a batch of headline-style rounds (Headline or Hallucination),

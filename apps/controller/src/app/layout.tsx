@@ -1,21 +1,23 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Bricolage_Grotesque, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const bricolage = Bricolage_Grotesque({
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
 });
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const ibmPlexMono = IBM_Plex_Mono({
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
   variable: "--font-mono",
   display: "swap",
@@ -24,16 +26,18 @@ const jetbrainsMono = JetBrains_Mono({
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#0a0a14",
+  viewportFit: "cover",
+  themeColor: "#0f1020",
 };
 
 export const metadata: Metadata = {
-  title: "PARTYLINE",
+  metadataBase: new URL("https://play.flimflam.gg"),
+  title: "FLIMFLAM",
   description: "AI-powered party games — join from your phone!",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "PARTYLINE",
+    title: "FLIMFLAM",
   },
   icons: {
     apple: "/apple-touch-icon.png",
@@ -47,10 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} ${jetbrainsMono.variable}`}
-    >
+    <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-dvh bg-bg-deep font-body text-text-primary antialiased">
         {children}
         <Script id="sw-register" strategy="afterInteractive">

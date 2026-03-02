@@ -1,17 +1,19 @@
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { clearRoomQueue, costTracker } from "@partyline/ai";
-import type { GamePlugin } from "@partyline/game-engine";
-import { GameRegistry } from "@partyline/game-engine";
+import { clearRoomQueue, costTracker } from "@flimflam/ai";
+import type { GamePlugin } from "@flimflam/game-engine";
+import { GameRegistry } from "@flimflam/game-engine";
 import {
   AVATAR_COLORS,
   type Complexity,
   MAX_NAME_LENGTH,
   MAX_PLAYERS,
   MIN_PLAYERS,
+  REACTION_COOLDOWN_MS,
+  REACTION_EMOJIS,
   RECONNECTION_TIMEOUT_MS,
   ROOM_IDLE_TIMEOUT_MS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Delayed } from "colyseus";
 import { GamePlayerSchema, RoomState } from "./LobbyState";
 import { generateRoomCode } from "./room-code";
@@ -29,6 +31,8 @@ export class PartyRoom extends Room<RoomState> {
   private _idleTimeout: Delayed | null = null;
   private _hostToken: string | null = null;
 
+  private _lastReactionAt = new Map<string, number>();
+
   private _getOrCreateHostToken(): string {
     if (!this._hostToken) {
       // 256-bit token, kept server-side only (never in shared room state).
@@ -44,7 +48,14 @@ export class PartyRoom extends Room<RoomState> {
     if (!options?.isHost) return true;
 
     const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
-    if (this._hostToken && providedToken !== this._hostToken) {
+    // First host claim: create a server-side token and allow the host to join
+    // without providing it. All subsequent host joins must provide the exact token.
+    if (!this._hostToken) {
+      this._getOrCreateHostToken();
+      return true;
+    }
+
+    if (providedToken !== this._hostToken) {
       // Reject host takeover attempts at the handshake level (before onJoin).
       throw new Error("Host already assigned for this room");
     }
@@ -225,6 +236,44 @@ export class PartyRoom extends Room<RoomState> {
       this.transitionToLobby();
     };
 
+    const handleRestartGame = (client: Client) => {
+      if (!requireHost(client)) return;
+      if (this.state.lobbyPhase !== "in-game") {
+        this.send(client, "error", { message: "Can only restart during a game" });
+        return;
+      }
+      if (this.state.gamePhase !== "final-scores") {
+        this.send(client, "error", { message: "Can only restart from final scores" });
+        return;
+      }
+      this._startGame();
+    };
+
+    const reactionEmojiSet = new Set<string>(REACTION_EMOJIS);
+    const handlePlayerReaction = (client: Client, data: { emoji?: unknown }) => {
+      const emoji = typeof data?.emoji === "string" ? data.emoji : "";
+      if (!reactionEmojiSet.has(emoji)) return;
+
+      const now = Date.now();
+      const lastAt = this._lastReactionAt.get(client.sessionId) ?? 0;
+      if (now - lastAt < REACTION_COOLDOWN_MS) return;
+      this._lastReactionAt.set(client.sessionId, now);
+
+      const player = this.state.players.get(client.sessionId);
+      const playerName = player?.name ?? "Unknown";
+
+      this.broadcast("reaction", {
+        sessionId: client.sessionId,
+        playerName,
+        emoji,
+      });
+    };
+
+    const handleHostRequestToken = (client: Client) => {
+      if (!requireHost(client)) return;
+      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
+    };
+
     const handlePlayerReady = (client: Client) => {
       const player = this.state.players.get(client.sessionId);
       if (player) {
@@ -252,9 +301,12 @@ export class PartyRoom extends Room<RoomState> {
     this.onMessage("host:start-game", handleStartGame);
     this.onMessage("host:skip", (client) => handleHostSkip(client));
     this.onMessage("host:end-game", (client) => handleHostEnd(client));
+    this.onMessage("host:restart-game", (client) => handleRestartGame(client));
+    this.onMessage("host:request_token", (client) => handleHostRequestToken(client));
 
     // Player messages (preferred)
     this.onMessage("player:ready", (client) => handlePlayerReady(client));
+    this.onMessage("player:reaction", (client, data) => handlePlayerReaction(client, data));
 
     // Backward-compatible aliases (older clients/spec drafts)
     this.onMessage("select-game", handleSelectGame);
@@ -268,13 +320,16 @@ export class PartyRoom extends Room<RoomState> {
     // Wildcard handler: delegate all other messages to the current game plugin
     this.onMessage("*", (client, type, data) => {
       const internalTypes = new Set<string>([
+        "host:request_token",
         "host:select-game",
         "host:set-complexity",
         "host:set-player-input",
         "host:start-game",
         "host:skip",
         "host:end-game",
+        "host:restart-game",
         "player:ready",
+        "player:reaction",
         // legacy aliases
         "select-game",
         "set-complexity",
@@ -302,20 +357,10 @@ export class PartyRoom extends Room<RoomState> {
     this._resetIdleTimeout();
 
     if (options.isHost) {
-      const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
-
-      // If a host was ever established for this room, require the server-issued token
-      // for any future host joins. This prevents any client from claiming host by
-      // sending `{ isHost: true }`.
-      if (this._hostToken && providedToken !== this._hostToken) {
-        this.send(client, "error", { message: "Host already assigned for this room" });
-        client.leave(1000);
-        return;
-      }
-
       // Host connects as a non-playing client. Players join from their own devices.
       this.state.hostSessionId = client.sessionId;
-      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
+      // Host token is requested by the host client after it registers its handlers.
+      // (Sending during onJoin can race with client-side handler registration.)
       this.setMetadata({
         code: this._roomCode,
         gameName: this.state.selectedGameId || "lobby",

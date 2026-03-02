@@ -1,11 +1,12 @@
 "use client";
 
 import { BluffEngineHost } from "@/components/games/BluffEngineHost";
+import { BrainBattleHost } from "@/components/games/BrainBattleHost";
 import { HotTakeHost } from "@/components/games/HotTakeHost";
 import { QuickDrawHost } from "@/components/games/QuickDrawHost";
 import { RealityDriftHost } from "@/components/games/RealityDriftHost";
 import { WorldBuilderHost } from "@/components/games/WorldBuilderHost";
-import type { PlayerData } from "@partyline/shared";
+import type { PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 
 interface GameViewProps {
@@ -50,6 +51,8 @@ export function GameView({
       return <RealityDriftHost {...commonProps} />;
     case "hot-take":
       return <HotTakeHost {...commonProps} />;
+    case "brain-battle":
+      return <BrainBattleHost {...commonProps} />;
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">

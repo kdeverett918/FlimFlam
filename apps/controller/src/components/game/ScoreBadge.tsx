@@ -59,9 +59,10 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
     <div
       className="fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-between border-t border-white/[0.06] px-4"
       style={{
-        background: "oklch(0.08 0.02 280 / 0.9)",
+        background: "oklch(0.09 0.02 250 / 0.9)",
         backdropFilter: "blur(16px) saturate(1.2)",
         WebkitBackdropFilter: "blur(16px) saturate(1.2)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       <div className="relative flex items-center gap-3">
@@ -76,7 +77,7 @@ export function ScoreBadge({ avatarColor, score, rank, totalPlayers }: ScoreBadg
         />
         {/* Score */}
         <span
-          className={`font-mono text-xl font-bold text-accent-1 ${
+          className={`font-mono text-xl font-bold text-primary ${
             animating ? "animate-score-pop" : ""
           }`}
         >

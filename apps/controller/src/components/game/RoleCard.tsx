@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { ChevronDown, ChevronUp, Eye, User, Zap } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -29,6 +29,7 @@ export function RoleCard({
       <button
         type="button"
         onClick={handleToggle}
+        aria-expanded={false}
         className="mx-4 flex h-14 items-center gap-3 rounded-xl border border-accent-4/30 px-4 transition-all active:scale-[0.98]"
         style={{
           background: "oklch(1 0 0 / 0.04)",
@@ -58,6 +59,7 @@ export function RoleCard({
       <button
         type="button"
         onClick={handleToggle}
+        aria-expanded={true}
         className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3"
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-4/15">
@@ -78,10 +80,10 @@ export function RoleCard({
         </div>
 
         {/* Secret objective -- accent-colored left border */}
-        <div className="rounded-lg border-l-2 border-accent-1/60 bg-accent-1/[0.08] p-3">
+        <div className="rounded-lg border-l-2 border-primary/60 bg-primary/[0.08] p-3">
           <div className="mb-1 flex items-center gap-1.5">
-            <Eye className="h-3.5 w-3.5 text-accent-1" />
-            <span className="font-body text-xs font-medium text-accent-1 uppercase tracking-wider">
+            <Eye className="h-3.5 w-3.5 text-primary" />
+            <span className="font-body text-xs font-medium text-primary uppercase tracking-wider">
               Secret Objective
             </span>
           </div>

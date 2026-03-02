@@ -1,9 +1,9 @@
 "use client";
 
-import type { Complexity, PlayerData } from "@partyline/shared";
-import { MIN_PLAYERS } from "@partyline/shared";
-import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@partyline/ui";
-import type { GameTheme } from "@partyline/ui";
+import type { Complexity, PlayerData } from "@flimflam/shared";
+import { MIN_PLAYERS } from "@flimflam/shared";
+import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@flimflam/ui";
+import type { GameTheme } from "@flimflam/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
@@ -59,7 +59,8 @@ function LobbyContent({
   const controllerUrlFromEnv =
     typeof window !== "undefined" ? process.env.NEXT_PUBLIC_CONTROLLER_URL : undefined;
   const controllerUrl =
-    controllerUrlFromEnv ?? (process.env.NODE_ENV === "production" ? "" : "http://localhost:3001");
+    controllerUrlFromEnv ??
+    (process.env.NODE_ENV === "production" ? "https://play.flimflam.gg" : "http://localhost:3001");
 
   const joinUrl = controllerUrl ? `${controllerUrl}?code=${roomCode}` : "";
   const canStart = playerCount >= MIN_PLAYERS && selectedGameId !== "";
@@ -78,7 +79,7 @@ function LobbyContent({
     let cancelled = false;
     QRCode.toDataURL(joinUrl, {
       color: {
-        dark: "#e8e6f0",
+        dark: "#f0ede6",
         light: "#00000000",
       },
       margin: 1,
@@ -109,7 +110,7 @@ function LobbyContent({
           </p>
           <GlassPanel
             glow
-            glowColor="oklch(0.75 0.15 195 / 0.2)"
+            glowColor="oklch(0.72 0.22 25 / 0.2)"
             rounded="2xl"
             className="px-10 py-4"
           >
@@ -117,7 +118,7 @@ function LobbyContent({
               {roomCode}
             </span>
           </GlassPanel>
-          <p className="font-body text-[20px] text-text-muted">Enter this code on your phone</p>
+          <p className="font-body text-[24px] text-text-muted">Enter this code on your phone</p>
         </div>
 
         {/* QR Code */}
@@ -127,7 +128,7 @@ function LobbyContent({
               <img src={qrDataUrl} alt="QR code to join the game" className="h-[200px] w-[200px]" />
             )}
           </GlassPanel>
-          <p className="font-body text-[18px] text-text-muted">Scan to join</p>
+          <p className="font-body text-[24px] text-text-muted">Scan to join</p>
         </div>
       </div>
 
@@ -168,7 +169,7 @@ function LobbyContent({
                 >
                   {player.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary">
+                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary sm:max-w-[140px] md:max-w-[220px]">
                   {player.name}
                 </span>
                 {player.ready && <span className="font-mono text-[16px] text-accent-5">Ready</span>}
@@ -255,7 +256,8 @@ function LobbyContent({
           type="button"
           onClick={onStartGame}
           disabled={!canStart}
-          className="w-full max-w-2xl rounded-2xl border border-accent-1/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-accent-1 transition-all duration-300 hover:border-accent-1 hover:shadow-[0_0_40px_oklch(0.7_0.18_265/0.3)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-accent-1/50 disabled:hover:shadow-none"
+          aria-label="Start the game"
+          className="w-full max-w-2xl rounded-2xl border border-primary/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none"
           style={{
             backdropFilter: "blur(16px)",
           }}

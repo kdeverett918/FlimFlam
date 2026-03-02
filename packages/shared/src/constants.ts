@@ -5,7 +5,9 @@ export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_PLAYERS = 8;
 export const MIN_PLAYERS = 3;
-export const MAX_NAME_LENGTH = 12;
+// 12 chars was causing real player names to be silently truncated in the lobby UI.
+// Keep it bounded for layout + abuse prevention, but long enough for typical names/handles.
+export const MAX_NAME_LENGTH = 20;
 
 export const COLYSEUS_PORT = 2567;
 export const HOST_PORT = 3000;
@@ -46,7 +48,19 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   rating: 20_000,
   "results-display": 8_000,
   reveal: 15_000,
+  // Brain Battle
+  "topic-submit": 45_000,
+  "board-reveal": 4_000,
+  buzzing: 5_000,
+  answering: 15_000,
+  "appeal-window": 12_000,
+  "appeal-result": 5_000,
+  "clue-result": 3_000,
+  "clue-select": 30_000,
 };
+
+export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;
+export const REACTION_COOLDOWN_MS = 2_000;
 
 export const AVATAR_COLORS = [
   "#FF3366", // hot pink
@@ -123,5 +137,18 @@ export const GAME_MANIFESTS: GameManifest[] = [
     complexityLevels: ["kids", "standard", "advanced"],
     tags: ["opinions", "social", "ai"],
     icon: "🔥",
+  },
+  {
+    id: "brain-battle",
+    name: "Brain Battle",
+    description:
+      "AI builds a quiz board from YOUR topics. Buzz in fast, answer smart, and appeal wrong answers to the AI judge!",
+    minPlayers: 3,
+    maxPlayers: 8,
+    estimatedMinutes: 15,
+    aiRequired: true,
+    complexityLevels: ["kids", "standard", "advanced"],
+    tags: ["ai", "trivia", "buzzer", "appeals"],
+    icon: "🧠",
   },
 ];

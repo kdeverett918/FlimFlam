@@ -1,5 +1,5 @@
 {
-  "name": "@partyline/game-engine",
+  "name": "@flimflam/game-engine",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@partyline/shared": "workspace:*",
+    "@flimflam/shared": "workspace:*",
     "colyseus": "^0.15.55",
     "@colyseus/schema": "^2.0.35"
   }

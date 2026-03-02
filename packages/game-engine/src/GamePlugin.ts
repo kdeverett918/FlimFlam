@@ -1,5 +1,5 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
-import type { Complexity, GameManifest } from "@partyline/shared";
+import type { Complexity, GameManifest } from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 
 export interface GamePlugin {

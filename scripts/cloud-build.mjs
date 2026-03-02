@@ -15,20 +15,20 @@ const turbo = findBin("turbo");
 // runs TypeScript directly via tsx in production (see ecosystem.config.js),
 // it's safe to treat the build step as a no-op in that environment.
 if (!turbo) {
-  console.log("[PartyLine] turbo not found (likely prod-only install). Skipping build step.");
+  console.log("[FlimFlam] turbo not found (likely prod-only install). Skipping build step.");
   process.exit(0);
 }
 
-console.log(`[PartyLine] Using turbo: ${turbo}`);
+console.log(`[FlimFlam] Using turbo: ${turbo}`);
 
-const result = spawnSync(turbo, ["build", "--filter=@partyline/server..."], {
+const result = spawnSync(turbo, ["build", "--filter=@flimflam/server..."], {
   stdio: "inherit",
   // `.cmd` wrappers on Windows require shell invocation.
   shell: process.platform === "win32",
 });
 
 if (result.error) {
-  console.error("[PartyLine] Build failed to spawn turbo", result.error);
+  console.error("[FlimFlam] Build failed to spawn turbo", result.error);
 }
 
 process.exit(result.status ?? 1);

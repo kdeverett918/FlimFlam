@@ -4,14 +4,14 @@ import {
   aiRequest,
   buildBluffPromptGeneration,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type BluffPromptRaw,
   BluffPromptSchema,
   type Complexity,
   GAME_MANIFESTS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
 import {
@@ -28,6 +28,12 @@ const MANIFEST = GAME_MANIFESTS.find((m) => m.id === "bluff-engine")!;
 export class BluffEnginePlugin extends BaseGamePlugin {
   manifest = MANIFEST;
   private internal!: BluffEngineInternalState;
+
+  // Bonus award tracking
+  private _totalFooled = new Map<string, number>();
+  private _correctVotes = new Map<string, number>();
+  private _totalVotesPerPlayer = new Map<string, number>();
+  private _perAnswerFooled: Array<{ sessionId: string; text: string; fooledCount: number }> = [];
 
   private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
     const s = state as unknown as Record<string, unknown>;
@@ -417,9 +423,12 @@ export class BluffEnginePlugin extends BaseGamePlugin {
 
       this.internal.totalVoteCount++;
 
+      this._totalVotesPerPlayer.set(voterId, (this._totalVotesPerPlayer.get(voterId) ?? 0) + 1);
+
       if (option?.isReal) {
         // Correct vote
         this.internal.correctVoteCount++;
+        this._correctVotes.set(voterId, (this._correctVotes.get(voterId) ?? 0) + 1);
         this.addPoints(state, voterId, SCORING.CORRECT_VOTE, "Spotted the truth");
         roundResults.push({
           sessionId: voterId,
@@ -446,10 +455,28 @@ export class BluffEnginePlugin extends BaseGamePlugin {
       }
     }
 
-    // Award fool points
+    // Award fool points and track for bonus awards
     for (const [authorId, count] of foolCounts) {
       const points = count * SCORING.FOOL_PLAYER;
       this.addPoints(state, authorId, points, `Fooled ${count} player${count > 1 ? "s" : ""}`);
+      this._totalFooled.set(authorId, (this._totalFooled.get(authorId) ?? 0) + count);
+    }
+
+    // Track per-answer fooled counts for "Best Lie" award
+    for (const option of this.internal.answerOptions) {
+      if (option.isReal || !option.authorSessionId) continue;
+      let fooledCount = 0;
+      for (const [, votedIndex] of this.internal.votes) {
+        const votedOption = this.internal.answerOptions[votedIndex];
+        if (votedOption === option) fooledCount++;
+      }
+      if (fooledCount > 0) {
+        this._perAnswerFooled.push({
+          sessionId: option.authorSessionId,
+          text: option.text,
+          fooledCount,
+        });
+      }
     }
 
     const voterNamesByIndex = new Map<number, string[]>();
@@ -480,11 +507,78 @@ export class BluffEnginePlugin extends BaseGamePlugin {
     });
   }
 
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+
+    // Master Bluffer: most players fooled total
+    let maxFooled = 0;
+    let masterBluffer = "";
+    for (const [sid, count] of this._totalFooled) {
+      if (count > maxFooled) {
+        maxFooled = count;
+        masterBluffer = sid;
+      }
+    }
+    if (masterBluffer) {
+      awards.push({
+        title: "Master Bluffer",
+        sessionId: masterBluffer,
+        playerName: getName(masterBluffer),
+        reason: `Fooled ${maxFooled} player${maxFooled !== 1 ? "s" : ""} total`,
+      });
+    }
+
+    // Truth Seeker: highest correct vote %
+    let bestPct = 0;
+    let truthSeeker = "";
+    for (const [sid, total] of this._totalVotesPerPlayer) {
+      if (total === 0) continue;
+      const correct = this._correctVotes.get(sid) ?? 0;
+      const pct = correct / total;
+      if (pct > bestPct) {
+        bestPct = pct;
+        truthSeeker = sid;
+      }
+    }
+    if (truthSeeker && truthSeeker !== masterBluffer) {
+      awards.push({
+        title: "Truth Seeker",
+        sessionId: truthSeeker,
+        playerName: getName(truthSeeker),
+        reason: `${Math.round(bestPct * 100)}% correct vote rate`,
+      });
+    }
+
+    // Best Lie: single answer that fooled the most
+    let bestLie: { sessionId: string; text: string; fooledCount: number } | null = null;
+    for (const entry of this._perAnswerFooled) {
+      if (!bestLie || entry.fooledCount > bestLie.fooledCount) {
+        bestLie = entry;
+      }
+    }
+    if (bestLie && bestLie.sessionId !== masterBluffer) {
+      awards.push({
+        title: "Best Lie",
+        sessionId: bestLie.sessionId,
+        playerName: getName(bestLie.sessionId),
+        reason: `"${bestLie.text}" fooled ${bestLie.fooledCount}`,
+      });
+    }
+
+    return awards;
+  }
+
   private async _advanceAfterResults(room: Room, state: Schema): Promise<void> {
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
       this.setTimerEndsAt(state, 0);
-      this._broadcastHost(room, state, {});
+      this._broadcastHost(room, state, { bonusAwards: this._computeBonusAwards(state) });
     } else {
       await this._startRound(room, state);
     }

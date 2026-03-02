@@ -110,3 +110,31 @@ export interface GeneratedHotTakePrompt {
   reasoning?: string;
   escalationLevel?: number;
 }
+
+// ─── Brain Battle (Jeopardy-inspired) ──────────────────────────────────
+
+export interface BrainBattleClue {
+  id: string;
+  answer: string;
+  question: string;
+  value: number;
+}
+
+export interface BrainBattleCategory {
+  name: string;
+  clues: BrainBattleClue[];
+}
+
+export interface GeneratedBoard {
+  categories: BrainBattleCategory[];
+}
+
+export interface AnswerJudgeResult {
+  correct: boolean;
+  explanation: string;
+}
+
+export interface AppealResult {
+  granted: boolean;
+  reasoning: string;
+}

@@ -1,4 +1,4 @@
-import type { Complexity, TriviaQuestion } from "@partyline/shared";
+import { type Complexity, type TriviaQuestion, randomFloat } from "@flimflam/shared";
 
 // ─── In-Memory Game State ───────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ export function computeDriftSchedule(
   for (let pick = 0; pick < targetCount; pick++) {
     let totalWeight = 0;
     for (const w of weights) totalWeight += w;
-    let r = Math.random() * totalWeight;
+    let r = randomFloat() * totalWeight;
 
     let selectedIdx = weights.length - 1;
     for (let i = 0; i < weights.length; i++) {

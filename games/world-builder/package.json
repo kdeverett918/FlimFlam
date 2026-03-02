@@ -1,5 +1,5 @@
 {
-  "name": "@partyline/world-builder",
+  "name": "@flimflam/world-builder",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@partyline/shared": "workspace:*",
-    "@partyline/game-engine": "workspace:*",
-    "@partyline/ai": "workspace:*",
+    "@flimflam/shared": "workspace:*",
+    "@flimflam/game-engine": "workspace:*",
+    "@flimflam/ai": "workspace:*",
     "@colyseus/schema": "^2.0.35",
     "colyseus": "^0.15.55"
   }

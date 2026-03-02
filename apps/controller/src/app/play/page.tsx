@@ -1,11 +1,12 @@
 "use client";
 
 import { GameController } from "@/components/game/GameController";
+import { ReactionBar } from "@/components/game/ReactionBar";
 import { ScoreBadge } from "@/components/game/ScoreBadge";
 import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -47,7 +48,7 @@ export default function PlayPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
         <AnimatedBackground variant="subtle" />
         <GlassPanel className="flex flex-col items-center gap-4 px-8 py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent-1" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-primary" />
           <p className="font-body text-text-muted">Connecting...</p>
           {error && <p className="text-center font-body text-sm text-accent-6">{error}</p>}
         </GlassPanel>
@@ -95,6 +96,7 @@ export default function PlayPage() {
             ))}
           </div>
         </GlassPanel>
+        <ReactionBar sendMessage={sendMessage} />
       </main>
     );
   }
@@ -112,6 +114,7 @@ export default function PlayPage() {
             The host is picking the next game.
           </p>
         </GlassPanel>
+        <ReactionBar sendMessage={sendMessage} />
       </main>
     );
   }

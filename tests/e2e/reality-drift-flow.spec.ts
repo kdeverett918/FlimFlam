@@ -1,42 +1,23 @@
 import { type Page, expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test("reality drift game completes end-to-end", async ({ page, browser }) => {
   await page.goto("/");
 
-  await page.getByRole("button", { name: /create room/i }).click();
-  await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
+  await waitForColyseusHealthy(page);
+  const { code } = await createRoom(page);
 
-  const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-  expect(match).not.toBeNull();
-  const code = match?.[1] ?? "";
-
-  const joinController = async (name: string) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const controllerPage = await context.newPage();
-    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-    await controllerPage.getByLabel("Your Name").fill(name);
-    await controllerPage.getByRole("button", { name: /^join$/i }).click();
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 60_000,
-    });
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
-    return { context, controllerPage };
-  };
-
-  const c1 = await joinController("Alice");
-  const c2 = await joinController("Bob");
-  const c3 = await joinController("Casey");
+  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
+  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
 
   // Select game and set difficulty.
   await page.getByRole("button", { name: /reality drift/i }).click();
   await page.getByRole("button", { name: /^kids/i }).click();
 
   // Start game.
-  const startButton = page.getByRole("button", { name: /start game/i });
+  const startButton = page.getByRole("button", { name: /start the game/i });
   await expect(startButton).toBeEnabled();
   await startButton.click();
 

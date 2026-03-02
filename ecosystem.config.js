@@ -13,13 +13,17 @@
 module.exports = {
   apps: [
     {
-      // New app name avoids inheriting stale PM2 scale state from older failed
-      // rollouts that accumulated extra instances.
+      // Keep a stable PM2 app name so Colyseus Cloud's post-deploy can reliably
+      // reload/replace the already-running process.
+      //
+      // NOTE: the existing Colyseus Cloud instance is already running under
+      // this name. If we change it, deployments won’t replace the live process.
       name: "partyline-server",
       // Run TypeScript directly (tsx loader).
       script: "packages/server/src/index.ts",
       interpreter: "node",
-      node_args: "--import tsx",
+      // Use array form to avoid any ambiguity in PM2 arg splitting.
+      node_args: ["--import", "tsx"],
       time: true,
       watch: false,
       instances: 1,

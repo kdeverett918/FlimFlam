@@ -16,6 +16,7 @@ export type {
   QuickDrawPhase,
   RealityDriftPhase,
   HotTakePhase,
+  BrainBattlePhase,
   GamePhase,
   TimerConfig,
   HostViewData,
@@ -39,6 +40,7 @@ export type {
   PrivateDataMessage,
   DrawStrokeBroadcast,
   ErrorMessage,
+  PlayerReactionMessage,
 } from "./types/messages";
 
 export type {
@@ -57,6 +59,11 @@ export type {
   HotTakePlayerProfile,
   HotTakeRoundHistory,
   GeneratedHotTakePrompt,
+  BrainBattleClue,
+  BrainBattleCategory,
+  GeneratedBoard,
+  AnswerJudgeResult,
+  AppealResult,
 } from "./types/ai";
 
 // Schemas
@@ -69,6 +76,9 @@ export {
   TriviaBatchSchema,
   HotTakePromptSchema,
   HotTakeBatchSchema,
+  GeneratedBoardSchema,
+  AnswerJudgeSchema,
+  AppealResultSchema,
 } from "./schemas/ai-responses";
 
 export type {
@@ -80,6 +90,9 @@ export type {
   TriviaBatchRaw,
   HotTakePromptRaw,
   HotTakeBatchRaw,
+  GeneratedBoardRaw,
+  AnswerJudgeRaw,
+  AppealResultRaw,
 } from "./schemas/ai-responses";
 
 // Constants
@@ -99,6 +112,8 @@ export {
   COMPLEXITY_TIMER_MULTIPLIERS,
   COMPLEXITY_ROUND_COUNTS,
   DEFAULT_PHASE_TIMERS,
+  REACTION_EMOJIS,
+  REACTION_COOLDOWN_MS,
   AVATAR_COLORS,
   GAME_MANIFESTS,
 } from "./constants";
@@ -113,3 +128,5 @@ export {
 } from "./utils/colyseus";
 
 export type { ResolveRoomIdResult } from "./utils/colyseus";
+
+export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";

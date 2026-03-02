@@ -1,4 +1,4 @@
-import type { Complexity, RoundNarrationInput } from "@partyline/shared";
+import type { Complexity, RoundNarrationInput } from "@flimflam/shared";
 
 /**
  * Build the system + user prompts for scenario generation.

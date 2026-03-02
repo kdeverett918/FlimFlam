@@ -1,4 +1,4 @@
-# 🎮 PARTYLINE — AI Party Games Platform
+# 🎮 FLIMFLAM — AI Party Games Platform
 
 ## Full Technical Specification v1.0
 
@@ -21,7 +21,7 @@
 
 ## 1. Platform Vision
 
-**PARTYLINE** is a Jackbox-style party game platform — a compilation of games playable on any device via browser. One person hosts on a shared screen (TV/laptop), everyone else joins from their phones by entering a room code.
+**FLIMFLAM** is a Jackbox-style party game platform — a compilation of games playable on any device via browser. One person hosts on a shared screen (TV/laptop), everyone else joins from their phones by entering a room code.
 
 ### Core Principles
 
@@ -32,7 +32,7 @@
 
 ### Platform Name Options (pick one)
 
-- **PARTYLINE** (recommended — implies connection + communication)
+- **FLIMFLAM** (recommended — implies connection + communication)
 - **LIVEWIRE**
 - **WAVELENGTH**
 - **SIGNAL**
@@ -101,17 +101,17 @@ This is the **reusable foundation** that every game plugs into. Build this FIRST
 ### 3.1 Room Creation & Join Flow
 
 **Host flow:**
-1. Host opens `partyline.app` on shared screen
+1. Host opens `flimflam.gg` on shared screen
 2. Clicks "Create Room"
 3. Server generates a 4-character alphanumeric room code (e.g., `AXKM`)
-4. Host screen shows the code prominently + a QR code that links to `partyline.app/join?code=AXKM`
+4. Host screen shows the code prominently + a QR code that links to `play.flimflam.gg?code=AXKM`
 5. Host sees players appear as they join
 6. Host selects a game from the compilation menu
 7. Host sets complexity level (Kids / Standard / Advanced)
 8. Host clicks "Start Game"
 
 **Player flow:**
-1. Player opens `partyline.app` on phone
+1. Player opens `play.flimflam.gg` on phone
 2. Enters room code
 3. Enters display name (max 12 characters)
 4. Optionally picks an avatar/color from a preset grid
@@ -939,7 +939,8 @@ Anthropic API
 ANTHROPIC_API_KEY=sk-ant-...
 REDIS_URL=redis://...
 NEXT_PUBLIC_WS_URL=wss://your-server.fly.dev
-NEXT_PUBLIC_APP_URL=https://partyline.app
+NEXT_PUBLIC_HOST_URL=https://flimflam.gg
+NEXT_PUBLIC_CONTROLLER_URL=https://play.flimflam.gg
 NODE_ENV=production
 ```
 
@@ -1048,7 +1049,7 @@ Test: Have someone in a different location join and play.
 ## Appendix A: File Structure
 
 ```
-partyline/
+flimflam/
 ├── server/
 │   ├── index.ts                 # Express + Socket.IO entry
 │   ├── rooms/
