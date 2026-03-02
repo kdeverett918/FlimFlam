@@ -329,7 +329,8 @@
 }
 
 @keyframes hover-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0) rotate(0deg);
   }
   50% {
@@ -338,7 +339,8 @@
 }
 
 @keyframes glass-breathe {
-  0%, 100% {
+  0%,
+  100% {
     border-color: oklch(1 0 0 / 0.15);
   }
   50% {
@@ -370,7 +372,8 @@
 }
 
 @keyframes crown-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1) rotate(0deg);
     filter: drop-shadow(0 0 8px oklch(0.82 0.18 85 / 0.6));
   }
@@ -385,7 +388,8 @@
     transform: scale(1);
     opacity: 0.6;
   }
-  80%, 100% {
+  80%,
+  100% {
     transform: scale(1.5);
     opacity: 0;
   }

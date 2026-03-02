@@ -48,7 +48,10 @@ export default function HomePage() {
         animate="visible"
       >
         {/* Logo with radial spotlight */}
-        <motion.div variants={fadeInUp} className="relative flex flex-col items-center gap-4 animate-hover-float">
+        <motion.div
+          variants={fadeInUp}
+          className="relative flex flex-col items-center gap-4 animate-hover-float"
+        >
           {/* Radial spotlight behind title */}
           <div
             className="pointer-events-none absolute -inset-32 -z-10"
