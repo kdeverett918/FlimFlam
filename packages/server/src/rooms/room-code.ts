@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@partyline/shared";
+import { ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@flimflam/shared";
 
 /**
  * Generate a random room code using crypto.randomInt for secure randomness.

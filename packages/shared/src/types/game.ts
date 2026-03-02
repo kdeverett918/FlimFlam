@@ -52,12 +52,26 @@ export type HotTakePhase =
   | "results"
   | "final-scores";
 
+export type BrainBattlePhase =
+  | "topic-submit"
+  | "board-generating"
+  | "board-reveal"
+  | "clue-select"
+  | "buzzing"
+  | "answering"
+  | "appeal-window"
+  | "appeal-judging"
+  | "appeal-result"
+  | "clue-result"
+  | "final-scores";
+
 export type GamePhase =
   | WorldBuilderPhase
   | BluffEnginePhase
   | QuickDrawPhase
   | RealityDriftPhase
-  | HotTakePhase;
+  | HotTakePhase
+  | BrainBattlePhase;
 
 export interface TimerConfig {
   durationMs: number;

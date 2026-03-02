@@ -1,4 +1,4 @@
-import type { BluffPrompt, Complexity } from "@partyline/shared";
+import type { BluffPrompt, Complexity } from "@flimflam/shared";
 
 // ─── In-Memory Game State ───────────────────────────────────────────────
 

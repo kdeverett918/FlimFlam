@@ -1,15 +1,15 @@
-# PARTYLINE — AI Party Games Platform
+# FLIMFLAM — AI Party Games Platform
 
 ## Project Overview
 
-PARTYLINE is a Jackbox-style multiplayer party game platform where one person hosts on a shared screen and players join from their phones via room code. It ships with a compilation of games, some AI-powered (via Claude API), some not. All games support scaling complexity (Kids / Standard / Advanced).
+FLIMFLAM is a Jackbox-style multiplayer party game platform where one person hosts on a shared screen and players join from their phones via room code. It ships with a compilation of games, some AI-powered (via Claude API), some not. All games support scaling complexity (Kids / Standard / Advanced).
 
 ## Architecture
 
 **Monorepo with Turborepo + pnpm workspaces**
 
 ```
-partyline/
+flimflam/
 ├── apps/
 │   ├── host/          # Next.js 15 — the shared screen display
 │   └── controller/    # Next.js 15 — the phone PWA (mobile-first)
@@ -126,8 +126,8 @@ const client = new Anthropic(); // reads ANTHROPIC_API_KEY from env
 ```
 ANTHROPIC_API_KEY=sk-ant-...        # Required for AI games
 NEXT_PUBLIC_COLYSEUS_URL=ws://localhost:2567
-NEXT_PUBLIC_HOST_URL=http://localhost:3000
-NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001
+NEXT_PUBLIC_HOST_URL=http://localhost:3000          # Production: https://flimflam.gg
+NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001    # Production: https://play.flimflam.gg
 NODE_ENV=development
 ```
 

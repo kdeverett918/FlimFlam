@@ -11,7 +11,9 @@ export type ClientMessageType =
   | "host:skip"
   | "host:end-game"
   | "host:set-complexity"
-  | "host:set-player-input";
+  | "host:set-player-input"
+  | "host:restart-game"
+  | "player:reaction";
 
 export interface PlayerSubmitMessage {
   type: "player:submit";
@@ -69,7 +71,8 @@ export type ServerMessageType =
   | "error"
   | "phase-change"
   | "timer-sync"
-  | "score-update";
+  | "score-update"
+  | "reaction";
 
 export interface GameDataMessage {
   type: "game-data";
@@ -93,4 +96,9 @@ export interface ErrorMessage {
   type: "error";
   message: string;
   code?: string;
+}
+
+export interface PlayerReactionMessage {
+  type: "player:reaction";
+  emoji: string;
 }

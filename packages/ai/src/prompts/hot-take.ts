@@ -1,4 +1,4 @@
-import type { Complexity, HotTakePlayerProfile, HotTakeRoundHistory } from "@partyline/shared";
+import type { Complexity, HotTakePlayerProfile, HotTakeRoundHistory } from "@flimflam/shared";
 
 function getComplexityGuide(complexity: Complexity): string {
   if (complexity === "kids") {

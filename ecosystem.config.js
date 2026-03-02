@@ -15,7 +15,7 @@ module.exports = {
     {
       // New app name avoids inheriting stale PM2 scale state from older failed
       // rollouts that accumulated extra instances.
-      name: "partyline-server",
+      name: "flimflam-server",
       // Run TypeScript directly (tsx loader).
       script: "packages/server/src/index.ts",
       interpreter: "node",

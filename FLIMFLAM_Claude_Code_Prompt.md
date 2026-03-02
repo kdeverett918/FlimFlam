@@ -1,8 +1,8 @@
-# PARTYLINE — Claude Code Agent Teams Build Prompt
+# FLIMFLAM — Claude Code Agent Teams Build Prompt
 
 ## How to Use This Document
 
-This document contains everything you need to scaffold and build PARTYLINE using Claude Code with Agent Teams (Opus 4.6). It has three sections:
+This document contains everything you need to scaffold and build FLIMFLAM using Claude Code with Agent Teams (Opus 4.6). It has three sections:
 
 1. **Setup Instructions** — Run these commands BEFORE starting Claude Code
 2. **CLAUDE.md** — Copy this file into your project root for all agents to read
@@ -46,7 +46,7 @@ claude mcp add --scope user sequential-thinking npx -y @anthropic-ai/mcp-sequent
 ### Create the Project Directory
 
 ```bash
-mkdir partyline && cd partyline
+mkdir flimflam && cd flimflam
 git init
 ```
 
@@ -59,18 +59,18 @@ git init
 Save the following as `CLAUDE.md` in your project root. Every agent (lead + teammates) will read this automatically.
 
 ```markdown
-# PARTYLINE — AI Party Games Platform
+# FLIMFLAM — AI Party Games Platform
 
 ## Project Overview
 
-PARTYLINE is a Jackbox-style multiplayer party game platform where one person hosts on a shared screen and players join from their phones via room code. It ships with a compilation of games, some AI-powered (via Claude API), some not. All games support scaling complexity (Kids / Standard / Advanced).
+FLIMFLAM is a Jackbox-style multiplayer party game platform where one person hosts on a shared screen and players join from their phones via room code. It ships with a compilation of games, some AI-powered (via Claude API), some not. All games support scaling complexity (Kids / Standard / Advanced).
 
 ## Architecture
 
 **Monorepo with Turborepo + pnpm workspaces**
 
 ```
-partyline/
+flimflam/
 ├── apps/
 │   ├── host/          # Next.js 15 — the shared screen display
 │   └── controller/    # Next.js 15 — the phone PWA (mobile-first)
@@ -239,8 +239,8 @@ All games read a `complexity` setting: `"kids" | "standard" | "advanced"`
 ```
 ANTHROPIC_API_KEY=sk-ant-...        # Required for AI games
 NEXT_PUBLIC_COLYSEUS_URL=ws://localhost:2567
-NEXT_PUBLIC_HOST_URL=http://localhost:3000
-NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001
+NEXT_PUBLIC_HOST_URL=http://localhost:3000          # Production: https://flimflam.gg
+NEXT_PUBLIC_CONTROLLER_URL=http://localhost:3001    # Production: https://play.flimflam.gg
 NODE_ENV=development
 ```
 
@@ -272,12 +272,12 @@ pnpm typecheck     # tsc --noEmit across all packages
 
 ## PART 3: The Agent Teams Prompt
 
-Paste this entire block into Claude Code after navigating to your `partyline/` directory:
+Paste this entire block into Claude Code after navigating to your `flimflam/` directory:
 
 ---
 
 ```
-Create an agent team to build PARTYLINE, a Jackbox-style AI party games platform. Read CLAUDE.md first — it contains the full architecture, tech decisions, and coding standards.
+Create an agent team to build FLIMFLAM, a Jackbox-style AI party games platform. Read CLAUDE.md first — it contains the full architecture, tech decisions, and coding standards.
 
 ## Project Scaffold (Lead does this first)
 
@@ -376,7 +376,7 @@ Own: apps/host/
 Tasks:
 1. Initialize Next.js 15 app with App Router, Tailwind CSS 4, TypeScript
 2. Install colyseus.js client SDK
-3. Install shared packages: @partyline/shared, @partyline/ui
+3. Install shared packages: @flimflam/shared, @flimflam/ui
 
 4. Build pages:
    - / (home) — "Create Room" button, animated logo
@@ -417,7 +417,7 @@ Own: apps/controller/
 Tasks:
 1. Initialize Next.js 15 app, Tailwind CSS 4, TypeScript
 2. Configure as PWA: next-pwa, manifest.json, service worker, meta viewport
-3. Install colyseus.js, @partyline/shared, @partyline/ui
+3. Install colyseus.js, @flimflam/shared, @flimflam/ui
 
 4. Build pages:
    - / — Join screen: room code input (4 large digit boxes), name input, avatar/color picker

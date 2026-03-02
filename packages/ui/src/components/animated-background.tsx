@@ -1,58 +1,97 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "../lib/utils";
+import { GAME_THEMES, type GameTheme } from "./game-theme-provider";
 
-interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "subtle";
+  /** Override primary blob color (defaults to coral) */
+  primaryColor?: string;
+  /** Override secondary blob color (defaults to teal) */
+  secondaryColor?: string;
+  /** Use per-game blob colors from GAME_THEMES */
+  gameId?: string;
 }
 
-function AnimatedBackground({ variant = "default", className, ...props }: AnimatedBackgroundProps) {
+function AnimatedBackground({
+  variant = "default",
+  primaryColor,
+  secondaryColor,
+  gameId,
+  className,
+  ...props
+}: AnimatedBackgroundProps) {
   const filterId = React.useId();
+
+  let coral = primaryColor ?? "oklch(0.72 0.22 25)";
+  let teal = secondaryColor ?? "oklch(0.70 0.15 185)";
+
+  if (gameId && !primaryColor && !secondaryColor) {
+    const theme = GAME_THEMES[gameId as GameTheme];
+    if (theme) {
+      coral = theme.primaryBlob;
+      teal = theme.secondaryBlob;
+    }
+  }
 
   return (
     <div
       className={cn("fixed inset-0 -z-10 overflow-hidden", className)}
       aria-hidden="true"
+      style={{ contain: "strict" }}
       {...props}
     >
-      {/* Background base color */}
+      {/* Background base */}
       <div className="absolute inset-0 bg-bg-deep" />
 
-      {/* Layer 1: Animated gradient nebula */}
+      {/* Layer 1: Coral blob — top-left, slow drift */}
       <div
-        className="absolute inset-0"
+        className="absolute -left-[20%] -top-[20%] h-[70%] w-[70%] will-change-transform"
         style={{
-          background: [
-            "radial-gradient(ellipse 80% 60% at 20% 40%, oklch(0.15 0.08 265 / 0.6), transparent)",
-            "radial-gradient(ellipse 60% 80% at 80% 20%, oklch(0.12 0.06 330 / 0.5), transparent)",
-            variant === "default"
-              ? "radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.1 0.05 195 / 0.4), transparent)"
-              : "",
-          ]
-            .filter(Boolean)
-            .join(", "),
-          animation: "nebulaShift 30s ease-in-out infinite alternate",
+          background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.18)")}, transparent 70%)`,
+          animation: "bgBlobA 28s ease-in-out infinite alternate",
         }}
       />
 
-      {/* Layer 2: Dot grid pattern */}
+      {/* Layer 2: Teal blob — bottom-right, offset drift */}
+      <div
+        className="absolute -bottom-[15%] -right-[15%] h-[65%] w-[65%] will-change-transform"
+        style={{
+          background: `radial-gradient(ellipse at center, ${teal.replace(")", " / 0.15)")}, transparent 70%)`,
+          animation: "bgBlobB 32s ease-in-out infinite alternate",
+        }}
+      />
+
+      {/* Layer 3: Secondary coral highlight — center-right */}
+      {variant === "default" && (
+        <div
+          className="absolute right-[10%] top-[30%] h-[45%] w-[45%] will-change-transform"
+          style={{
+            background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.08)")}, transparent 70%)`,
+            animation: "bgBlobC 24s ease-in-out infinite alternate",
+          }}
+        />
+      )}
+
+      {/* Layer 4: Dot grid */}
       <div
         className={cn(
           "absolute inset-0",
-          variant === "subtle" ? "opacity-[0.03]" : "opacity-[0.06]",
+          variant === "subtle" ? "opacity-[0.03]" : "opacity-[0.05]",
         )}
         style={{
           backgroundImage:
-            "radial-gradient(circle at center, oklch(0.96 0.01 280) 0.5px, transparent 0.5px)",
+            "radial-gradient(circle at center, oklch(0.95 0.01 80) 0.5px, transparent 0.5px)",
           backgroundSize: "24px 24px",
         }}
       />
 
-      {/* Layer 3: SVG noise overlay */}
+      {/* Layer 5: SVG noise texture */}
       <svg
-        role="img"
         aria-hidden="true"
         className={cn(
-          "absolute inset-0 h-full w-full",
+          "pointer-events-none absolute inset-0 h-full w-full",
           variant === "subtle" ? "opacity-[0.015]" : "opacity-[0.03]",
         )}
       >
@@ -68,19 +107,25 @@ function AnimatedBackground({ variant = "default", className, ...props }: Animat
       </svg>
 
       <style>{`
-        @keyframes nebulaShift {
-          0% {
-            transform: scale(1) translate(0, 0);
-          }
-          33% {
-            transform: scale(1.05) translate(-2%, 1%);
-          }
-          66% {
-            transform: scale(0.98) translate(1%, -1%);
-          }
-          100% {
-            transform: scale(1.02) translate(-1%, 2%);
-          }
+        @keyframes bgBlobA {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(4%, 6%) scale(1.08); }
+          100% { transform: translate(-2%, 3%) scale(0.95); }
+        }
+        @keyframes bgBlobB {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(-5%, -4%) scale(1.1); }
+          100% { transform: translate(3%, -2%) scale(0.97); }
+        }
+        @keyframes bgBlobC {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(-3%, 5%) scale(1.05); }
+          100% { transform: translate(2%, -3%) scale(0.98); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          @keyframes bgBlobA { 0%, 100% { transform: none; } }
+          @keyframes bgBlobB { 0%, 100% { transform: none; } }
+          @keyframes bgBlobC { 0%, 100% { transform: none; } }
         }
       `}</style>
     </div>
@@ -89,4 +134,3 @@ function AnimatedBackground({ variant = "default", className, ...props }: Animat
 AnimatedBackground.displayName = "AnimatedBackground";
 
 export { AnimatedBackground };
-export type { AnimatedBackgroundProps };

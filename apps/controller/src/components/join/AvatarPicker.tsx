@@ -1,7 +1,7 @@
 "use client";
 
-import { AVATAR_COLORS } from "@partyline/shared";
-import { haptics } from "@partyline/ui";
+import { AVATAR_COLORS } from "@flimflam/shared";
+import { haptics } from "@flimflam/ui";
 import { Check } from "lucide-react";
 
 const COLOR_NAMES: Record<string, string> = {
@@ -43,7 +43,7 @@ export function AvatarPicker({ selectedColor, onSelect }: AvatarPickerProps) {
                 height: 56,
                 backgroundColor: color,
                 boxShadow: isSelected
-                  ? `0 0 0 3px oklch(0.08 0.02 280), 0 0 0 5px ${color}, 0 0 20px ${color}80`
+                  ? "0 0 0 3px oklch(0.09 0.02 250), 0 0 0 5px oklch(0.72 0.22 25), 0 0 20px oklch(0.72 0.22 25 / 0.5)"
                   : "none",
                 transform: isSelected ? "scale(1.1)" : "scale(1)",
               }}

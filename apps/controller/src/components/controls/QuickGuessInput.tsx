@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MAX_CHARS = 80;
@@ -102,7 +102,7 @@ export function QuickGuessInput({
           autoCorrect="off"
           autoComplete="off"
           inputMode="text"
-          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-accent-1/50 focus:shadow-[0_0_12px_oklch(0.7_0.18_265_/_0.15)] disabled:opacity-50"
+          className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-primary/50 focus:shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)] disabled:opacity-50"
         />
         <span
           className={`absolute right-3 top-1/2 -translate-y-1/2 font-mono text-xs font-medium transition-colors ${
@@ -117,9 +117,9 @@ export function QuickGuessInput({
         type="button"
         onClick={submit}
         disabled={disabled || !text.trim()}
-        className="h-14 w-full rounded-xl bg-accent-1 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
+        className="h-14 w-full rounded-xl bg-primary font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         style={{
-          boxShadow: text.trim() && !disabled ? "0 0 16px oklch(0.7 0.18 265 / 0.25)" : "none",
+          boxShadow: text.trim() && !disabled ? "0 0 16px oklch(0.72 0.22 25 / 0.25)" : "none",
         }}
       >
         Guess

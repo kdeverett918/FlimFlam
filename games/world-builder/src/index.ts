@@ -6,8 +6,8 @@ import {
   buildNarrationPrompt,
   buildScenarioPrompt,
   enqueueAIRequest,
-} from "@partyline/ai";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
+} from "@flimflam/ai";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
 import {
   type BonusJudgingRaw,
   BonusJudgingRawSchema,
@@ -19,7 +19,7 @@ import {
   RoundNarrationRawSchema,
   type RoundNarrationResult,
   type WorldState,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING, clampRoundPoints } from "./scoring";
 import {

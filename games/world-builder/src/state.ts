@@ -4,7 +4,7 @@ import type {
   GeneratedScenario,
   RoundNarrationResult,
   WorldState,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 
 // ─── In-Memory Game State (not synced to client via schema) ─────────────
 

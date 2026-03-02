@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "PARTYLINE",
-    short_name: "PARTYLINE",
+    name: "FLIMFLAM",
+    short_name: "FLIMFLAM",
     description: "AI-powered party games — join from your phone!",
     start_url: "/",
     display: "standalone",

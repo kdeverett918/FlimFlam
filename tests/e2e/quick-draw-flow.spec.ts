@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));

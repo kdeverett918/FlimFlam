@@ -2,10 +2,10 @@ import { spawn } from "node:child_process";
 
 const isWin = process.platform === "win32";
 const pnpm = "pnpm";
-const hostPort = process.env.PARTYLINE_E2E_HOST_PORT ?? "3300";
-const controllerPort = process.env.PARTYLINE_E2E_CONTROLLER_PORT ?? "3301";
+const hostPort = process.env.FLIMFLAM_E2E_HOST_PORT ?? "3300";
+const controllerPort = process.env.FLIMFLAM_E2E_CONTROLLER_PORT ?? "3301";
 const skipServer =
-  process.env.PARTYLINE_E2E_SKIP_SERVER === "1" || process.env.PARTYLINE_E2E_SKIP_SERVER === "true";
+  process.env.FLIMFLAM_E2E_SKIP_SERVER === "1" || process.env.FLIMFLAM_E2E_SKIP_SERVER === "true";
 
 let shuttingDown = false;
 const children = [];
@@ -58,25 +58,17 @@ process.on("SIGTERM", () => shutdown(0));
 process.on("exit", () => shutdown(0));
 
 if (skipServer) {
-  console.log("[e2e-webserver] Skipping @partyline/server (PARTYLINE_E2E_SKIP_SERVER=1)");
+  console.log("[e2e-webserver] Skipping @flimflam/server (FLIMFLAM_E2E_SKIP_SERVER=1)");
 } else {
-  children.push(spawnService("server", ["--filter", "@partyline/server", "start:e2e"]));
+  children.push(spawnService("server", ["--filter", "@flimflam/server", "start:e2e"]));
 }
 children.push(
-  spawnService("host", [
-    "--filter",
-    "@partyline/host",
-    "exec",
-    "next",
-    "start",
-    "--port",
-    hostPort,
-  ]),
+  spawnService("host", ["--filter", "@flimflam/host", "exec", "next", "start", "--port", hostPort]),
 );
 children.push(
   spawnService("controller", [
     "--filter",
-    "@partyline/controller",
+    "@flimflam/controller",
     "exec",
     "next",
     "start",

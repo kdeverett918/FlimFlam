@@ -22,13 +22,13 @@ function validateEnv() {
     const msg = [
       "",
       "=".repeat(70),
-      " PARTYLINE — Missing production environment variables",
+      " FLIMFLAM — Missing production environment variables",
       "=".repeat(70),
       ...errors.map((e) => `  * ${e}`),
       "=".repeat(70),
       "",
     ].join("\n");
-    if (process.env.PARTYLINE_STRICT_ENV === "1") throw new Error(msg);
+    if (process.env.FLIMFLAM_STRICT_ENV === "1") throw new Error(msg);
     console.warn(msg);
   }
 }
@@ -46,7 +46,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@partyline/shared", "@partyline/ui"],
+  transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -1,14 +1,14 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { Trash2, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PRESET_COLORS = ["#FFFFFF", "#FF3366", "#00D4AA", "#FFB800", "#7B61FF", "#000000"];
 const BRUSH_SIZES = [
-  { label: "S", size: 3, dot: 4 },
-  { label: "M", size: 8, dot: 8 },
-  { label: "L", size: 16, dot: 14 },
+  { label: "S", size: 3, dot: 4, ariaLabel: "Small brush" },
+  { label: "M", size: 8, dot: 8, ariaLabel: "Medium brush" },
+  { label: "L", size: 16, dot: 14, ariaLabel: "Large brush" },
 ];
 
 const MAX_POINTS_PER_STROKE = 512;
@@ -287,6 +287,8 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
       >
         <canvas
           ref={canvasRef}
+          role="img"
+          aria-label="Drawing canvas"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -312,7 +314,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 setCurrentColor(color);
               }}
               className={`h-12 w-12 rounded-full border-2 transition-all active:scale-90 ${
-                isSelected ? "scale-110 border-accent-4" : "border-white/10"
+                isSelected ? "scale-110 border-primary" : "border-white/10"
               }`}
               style={{
                 backgroundColor: color,
@@ -334,13 +336,14 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
               <button
                 key={brush.label}
                 type="button"
+                aria-label={brush.ariaLabel}
                 onClick={() => {
                   haptics.tap();
                   setCurrentSize(brush.size);
                 }}
                 className={`flex h-12 w-12 items-center justify-center rounded-xl border transition-all active:scale-90 ${
                   isSelected
-                    ? "border-accent-4/50 bg-white/[0.08]"
+                    ? "border-primary/50 bg-white/[0.08]"
                     : "border-white/[0.08] bg-white/[0.04]"
                 }`}
                 style={{
@@ -349,7 +352,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 }}
               >
                 <div
-                  className={`rounded-full ${isSelected ? "bg-accent-4" : "bg-text-muted"}`}
+                  className={`rounded-full ${isSelected ? "bg-primary" : "bg-text-muted"}`}
                   style={{ width: brush.dot, height: brush.dot }}
                 />
               </button>

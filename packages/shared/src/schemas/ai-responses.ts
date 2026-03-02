@@ -131,6 +131,38 @@ export const HotTakeBatchSchema = z.object({
   prompts: z.array(HotTakePromptSchema),
 });
 
+// ─── Brain Battle Schemas ───────────────────────────────────────────────
+
+const BrainBattleClueSchema = z.object({
+  id: z.string().default(""),
+  answer: z.string(),
+  question: z.string(),
+  value: z.number(),
+});
+
+const BrainBattleCategorySchema = z.object({
+  name: z.string(),
+  clues: z.array(BrainBattleClueSchema).min(5).max(5),
+});
+
+export const GeneratedBoardSchema = z.object({
+  categories: z.array(BrainBattleCategorySchema).min(5).max(5),
+});
+
+export const AnswerJudgeSchema = z.object({
+  correct: z.boolean(),
+  explanation: z.string(),
+});
+
+export const AppealResultSchema = z.object({
+  granted: z.boolean(),
+  reasoning: z.string(),
+});
+
+export type GeneratedBoardRaw = z.infer<typeof GeneratedBoardSchema>;
+export type AnswerJudgeRaw = z.infer<typeof AnswerJudgeSchema>;
+export type AppealResultRaw = z.infer<typeof AppealResultSchema>;
+
 export type GeneratedScenarioRaw = z.infer<typeof GeneratedScenarioRawSchema>;
 export type RoundNarrationRaw = z.infer<typeof RoundNarrationRawSchema>;
 export type BonusJudgingRaw = z.infer<typeof BonusJudgingRawSchema>;

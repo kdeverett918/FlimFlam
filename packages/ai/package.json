@@ -1,5 +1,5 @@
 {
-  "name": "@partyline/ai",
+  "name": "@flimflam/ai",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@partyline/shared": "workspace:*",
+    "@flimflam/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.39.0",
     "zod": "^3.24.2"
   }

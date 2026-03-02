@@ -1,17 +1,19 @@
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { clearRoomQueue, costTracker } from "@partyline/ai";
-import type { GamePlugin } from "@partyline/game-engine";
-import { GameRegistry } from "@partyline/game-engine";
+import { clearRoomQueue, costTracker } from "@flimflam/ai";
+import type { GamePlugin } from "@flimflam/game-engine";
+import { GameRegistry } from "@flimflam/game-engine";
 import {
   AVATAR_COLORS,
   type Complexity,
   MAX_NAME_LENGTH,
   MAX_PLAYERS,
   MIN_PLAYERS,
+  REACTION_COOLDOWN_MS,
+  REACTION_EMOJIS,
   RECONNECTION_TIMEOUT_MS,
   ROOM_IDLE_TIMEOUT_MS,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 import type { Client, Delayed } from "colyseus";
 import { GamePlayerSchema, RoomState } from "./LobbyState";
 import { generateRoomCode } from "./room-code";
@@ -28,6 +30,8 @@ export class PartyRoom extends Room<RoomState> {
   private _roomCode = "";
   private _idleTimeout: Delayed | null = null;
   private _hostToken: string | null = null;
+
+  private _lastReactionAt = new Map<string, number>();
 
   private _getOrCreateHostToken(): string {
     if (!this._hostToken) {
@@ -232,6 +236,39 @@ export class PartyRoom extends Room<RoomState> {
       this.transitionToLobby();
     };
 
+    const handleRestartGame = (client: Client) => {
+      if (!requireHost(client)) return;
+      if (this.state.lobbyPhase !== "in-game") {
+        this.send(client, "error", { message: "Can only restart during a game" });
+        return;
+      }
+      if (this.state.gamePhase !== "final-scores") {
+        this.send(client, "error", { message: "Can only restart from final scores" });
+        return;
+      }
+      this._startGame();
+    };
+
+    const reactionEmojiSet = new Set<string>(REACTION_EMOJIS);
+    const handlePlayerReaction = (client: Client, data: { emoji?: unknown }) => {
+      const emoji = typeof data?.emoji === "string" ? data.emoji : "";
+      if (!reactionEmojiSet.has(emoji)) return;
+
+      const now = Date.now();
+      const lastAt = this._lastReactionAt.get(client.sessionId) ?? 0;
+      if (now - lastAt < REACTION_COOLDOWN_MS) return;
+      this._lastReactionAt.set(client.sessionId, now);
+
+      const player = this.state.players.get(client.sessionId);
+      const playerName = player?.name ?? "Unknown";
+
+      this.broadcast("reaction", {
+        sessionId: client.sessionId,
+        playerName,
+        emoji,
+      });
+    };
+
     const handleHostRequestToken = (client: Client) => {
       if (!requireHost(client)) return;
       this.send(client, "host-token", { token: this._getOrCreateHostToken() });
@@ -264,10 +301,12 @@ export class PartyRoom extends Room<RoomState> {
     this.onMessage("host:start-game", handleStartGame);
     this.onMessage("host:skip", (client) => handleHostSkip(client));
     this.onMessage("host:end-game", (client) => handleHostEnd(client));
+    this.onMessage("host:restart-game", (client) => handleRestartGame(client));
     this.onMessage("host:request_token", (client) => handleHostRequestToken(client));
 
     // Player messages (preferred)
     this.onMessage("player:ready", (client) => handlePlayerReady(client));
+    this.onMessage("player:reaction", (client, data) => handlePlayerReaction(client, data));
 
     // Backward-compatible aliases (older clients/spec drafts)
     this.onMessage("select-game", handleSelectGame);
@@ -288,7 +327,9 @@ export class PartyRoom extends Room<RoomState> {
         "host:start-game",
         "host:skip",
         "host:end-game",
+        "host:restart-game",
         "player:ready",
+        "player:reaction",
         // legacy aliases
         "select-game",
         "set-complexity",

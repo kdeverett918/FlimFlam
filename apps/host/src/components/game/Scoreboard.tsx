@@ -1,8 +1,8 @@
 "use client";
 
-import type { ScoreEntry } from "@partyline/shared";
-import { AVATAR_COLORS } from "@partyline/shared";
-import { ConfettiBurst, GlassPanel, ScoreReveal } from "@partyline/ui";
+import type { ScoreEntry } from "@flimflam/shared";
+import { AVATAR_COLORS } from "@flimflam/shared";
+import { ConfettiBurst, GlassPanel, ScoreReveal } from "@flimflam/ui";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +13,7 @@ interface ScoreboardProps {
 }
 
 const PODIUM_COLORS: Record<number, { text: string; glow: string }> = {
-  1: { text: "text-accent-3", glow: "0 0 24px oklch(0.75 0.18 85 / 0.5)" },
+  1: { text: "text-accent-3", glow: "0 0 24px oklch(0.78 0.18 85 / 0.5)" },
   2: { text: "text-text-muted", glow: "0 0 24px oklch(0.7 0.02 270 / 0.3)" },
   3: { text: "text-[oklch(0.65_0.15_70)]", glow: "0 0 24px oklch(0.65 0.15 70 / 0.4)" },
 };

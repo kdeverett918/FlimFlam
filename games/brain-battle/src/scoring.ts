@@ -1,0 +1,4 @@
+export const SCORING = {
+  WRONG_DEDUCTION_FACTOR: 1,
+  APPEAL_GRANTED_BONUS: 50,
+} as const;

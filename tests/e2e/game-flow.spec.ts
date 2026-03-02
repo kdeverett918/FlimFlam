@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
 const COLYSEUS_HEALTH_URL =
-  process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
+  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
 
 test("hot take game completes end-to-end", async ({ page, browser }) => {
   await page.goto("/");

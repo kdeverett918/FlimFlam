@@ -1,4 +1,4 @@
-import type { Complexity } from "@partyline/shared";
+import type { Complexity } from "@flimflam/shared";
 
 /**
  * Word bank for Quick Draw, organized by complexity tier.

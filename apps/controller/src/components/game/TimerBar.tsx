@@ -1,6 +1,6 @@
 "use client";
 
-import { haptics } from "@partyline/ui";
+import { haptics } from "@flimflam/ui";
 import { useEffect, useRef, useState } from "react";
 
 interface TimerBarProps {
@@ -62,13 +62,19 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
     <div
       className="fixed inset-x-0 top-0 z-50"
       style={{
-        background: "oklch(0.08 0.02 280 / 0.8)",
+        paddingTop: "env(safe-area-inset-top)",
+        background: "oklch(0.09 0.02 250 / 0.8)",
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
       }}
     >
       <div className="h-1.5 w-full bg-white/[0.06]">
         <div
+          role="progressbar"
+          tabIndex={-1}
+          aria-valuenow={Math.round(progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
           className={`h-full transition-all duration-100 ease-linear ${
             isUrgent ? "animate-timer-pulse" : ""
           }`}
@@ -83,7 +89,7 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
         <div
           className="absolute right-3 top-2.5 rounded-full px-2 py-0.5 font-mono text-xs font-bold text-accent-6"
           style={{
-            background: "oklch(0.08 0.02 280 / 0.85)",
+            background: "oklch(0.09 0.02 250 / 0.85)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
             border: "1px solid oklch(0.65 0.25 25 / 0.3)",

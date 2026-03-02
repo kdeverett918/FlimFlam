@@ -1,6 +1,6 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
-import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@partyline/game-engine";
-import { type Complexity, GAME_MANIFESTS } from "@partyline/shared";
+import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
+import { type Complexity, GAME_MANIFESTS } from "@flimflam/shared";
 import type { Client, Delayed, Room } from "colyseus";
 import {
   type QuickDrawInternalState,
@@ -20,6 +20,12 @@ export class QuickDrawPlugin extends BaseGamePlugin {
   private _roundToken = 0;
   private _delayed: Delayed[] = [];
   private _lastGuessAt = new Map<string, number>();
+
+  // Bonus award tracking
+  private _guesserCorrectCount = new Map<string, number>();
+  private _drawerGuessedCount = new Map<string, number>();
+  private _guesserTotalTime = new Map<string, number>();
+  private _guesserTimedGuesses = new Map<string, number>();
 
   private _broadcastHost(room: Room, state: Schema, payload: Record<string, unknown>): void {
     const s = state as unknown as Record<string, unknown>;
@@ -201,6 +207,21 @@ export class QuickDrawPlugin extends BaseGamePlugin {
         const points = getGuessScore(position);
 
         this.addPoints(state, client.sessionId, points, `Guessed #${position + 1}`);
+
+        // Track for bonus awards
+        this._guesserCorrectCount.set(
+          client.sessionId,
+          (this._guesserCorrectCount.get(client.sessionId) ?? 0) + 1,
+        );
+        const guessTime = Date.now() - this.internal.roundStartTime;
+        this._guesserTotalTime.set(
+          client.sessionId,
+          (this._guesserTotalTime.get(client.sessionId) ?? 0) + guessTime,
+        );
+        this._guesserTimedGuesses.set(
+          client.sessionId,
+          (this._guesserTimedGuesses.get(client.sessionId) ?? 0) + 1,
+        );
 
         const player = players.get(client.sessionId);
         if (player) {
@@ -542,6 +563,13 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     this.clearTimer();
     this.setPhase(state, "word-reveal");
 
+    // Track drawer success for bonus awards
+    this._drawerGuessedCount.set(
+      this.internal.currentDrawerSessionId,
+      (this._drawerGuessedCount.get(this.internal.currentDrawerSessionId) ?? 0) +
+        this.internal.guessedPlayers.size,
+    );
+
     // Award drawer points
     const drawerPoints = getDrawerScore(this.internal.guessedPlayers.size);
     if (drawerPoints > 0) {
@@ -566,11 +594,79 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     });
   }
 
+  private _computeBonusAwards(
+    state: Schema,
+  ): Array<{ title: string; sessionId: string; playerName: string; reason: string }> {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const awards: Array<{ title: string; sessionId: string; playerName: string; reason: string }> =
+      [];
+    const getName = (sid: string) =>
+      ((players.get(sid) as Record<string, unknown> | undefined)?.name as string) ?? "Unknown";
+
+    // Speed Demon: fastest average guess time
+    let fastestAvg = Number.POSITIVE_INFINITY;
+    let speedDemon = "";
+    for (const [sid, count] of this._guesserTimedGuesses) {
+      if (count === 0) continue;
+      const avg = (this._guesserTotalTime.get(sid) ?? 0) / count;
+      if (avg < fastestAvg) {
+        fastestAvg = avg;
+        speedDemon = sid;
+      }
+    }
+    if (speedDemon) {
+      awards.push({
+        title: "Speed Demon",
+        sessionId: speedDemon,
+        playerName: getName(speedDemon),
+        reason: `Avg guess time: ${(fastestAvg / 1000).toFixed(1)}s`,
+      });
+    }
+
+    // Artiste: drawer whose word got most guesses
+    let mostGuessed = 0;
+    let artiste = "";
+    for (const [sid, count] of this._drawerGuessedCount) {
+      if (count > mostGuessed) {
+        mostGuessed = count;
+        artiste = sid;
+      }
+    }
+    if (artiste) {
+      awards.push({
+        title: "Artiste",
+        sessionId: artiste,
+        playerName: getName(artiste),
+        reason: `Drawings guessed ${mostGuessed} time${mostGuessed !== 1 ? "s" : ""}`,
+      });
+    }
+
+    // Lucky Guesser: most correct guesses total
+    let mostCorrect = 0;
+    let luckyGuesser = "";
+    for (const [sid, count] of this._guesserCorrectCount) {
+      if (count > mostCorrect) {
+        mostCorrect = count;
+        luckyGuesser = sid;
+      }
+    }
+    if (luckyGuesser && luckyGuesser !== speedDemon) {
+      awards.push({
+        title: "Lucky Guesser",
+        sessionId: luckyGuesser,
+        playerName: getName(luckyGuesser),
+        reason: `${mostCorrect} correct guess${mostCorrect !== 1 ? "es" : ""}`,
+      });
+    }
+
+    return awards;
+  }
+
   private _advanceAfterReveal(room: Room, state: Schema): void {
     this._clearDelayed();
     if (this.internal.round >= this.internal.totalRounds) {
       this.setPhase(state, "final-scores");
-      this._broadcastHost(room, state, {});
+      this._broadcastHost(room, state, { bonusAwards: this._computeBonusAwards(state) });
     } else {
       this._startRound(room, state);
     }

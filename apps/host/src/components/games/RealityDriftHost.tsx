@@ -1,9 +1,9 @@
 "use client";
 
-import { Scoreboard } from "@/components/game/Scoreboard";
+import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { Timer } from "@/components/game/Timer";
-import type { PlayerData, ScoreEntry } from "@partyline/shared";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import type { PlayerData } from "@flimflam/shared";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
@@ -25,6 +25,7 @@ export function RealityDriftHost({
   players,
   payload,
   timerEndTime,
+  room,
 }: RealityDriftHostProps) {
   switch (phase) {
     case "generating-questions":
@@ -52,7 +53,13 @@ export function RealityDriftHost({
     case "results":
       return <DriftResultsView payload={payload} players={players} />;
     case "final-scores":
-      return <DriftFinalScoresView players={players} />;
+      return (
+        <FinalScoresLayout
+          scores={buildScores(players)}
+          accentColorClass="text-accent-5"
+          room={room}
+        />
+      );
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
@@ -76,7 +83,7 @@ function GeneratingQuestionsView() {
       </motion.div>
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.7 0.2 145 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.70 0.15 210 / 0.4)" }}
       >
         GENERATING HEADLINES...
       </h2>
@@ -129,7 +136,7 @@ function AnsweringView({
 
       <GlassPanel
         glow
-        glowColor="oklch(0.7 0.2 145 / 0.15)"
+        glowColor="oklch(0.70 0.15 210 / 0.15)"
         rounded="2xl"
         className="relative z-10 mb-10 p-8"
       >
@@ -212,7 +219,7 @@ function DriftCheckView({
         >
           <GlassPanel
             glow
-            glowColor="oklch(0.7 0.2 145 / 0.3)"
+            glowColor="oklch(0.70 0.15 210 / 0.3)"
             rounded="2xl"
             className="px-16 py-8"
           >
@@ -296,8 +303,8 @@ function DriftResultsView({
             className="h-full rounded-full"
             style={{
               background:
-                "linear-gradient(90deg, oklch(0.65 0.25 25), oklch(0.75 0.18 85), oklch(0.7 0.2 145))",
-              boxShadow: "0 0 12px oklch(0.7 0.2 145 / 0.4)",
+                "linear-gradient(90deg, oklch(0.68 0.25 20), oklch(0.78 0.18 85), oklch(0.70 0.15 210))",
+              boxShadow: "0 0 12px oklch(0.70 0.15 210 / 0.4)",
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center">
@@ -327,9 +334,9 @@ function DriftResultsView({
                 glow={isPositive || isNegative}
                 glowColor={
                   isPositive
-                    ? "oklch(0.7 0.2 145 / 0.3)"
+                    ? "oklch(0.70 0.15 210 / 0.3)"
                     : isNegative
-                      ? "oklch(0.65 0.25 25 / 0.3)"
+                      ? "oklch(0.68 0.25 20 / 0.3)"
                       : undefined
                 }
                 rounded="2xl"
@@ -353,31 +360,6 @@ function DriftResultsView({
             </motion.div>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-function DriftFinalScoresView({ players }: { players: PlayerData[] }) {
-  const scores: ScoreEntry[] = players
-    .map((p) => ({
-      sessionId: p.sessionId,
-      name: p.name,
-      score: p.score,
-      rank: 0,
-      breakdown: [],
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
-
-  return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <AnimatedBackground variant="subtle" />
-      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-5">
-        FINAL SCORES
-      </h1>
-      <div className="relative z-10 w-full max-w-4xl">
-        <Scoreboard scores={scores} />
       </div>
     </div>
   );

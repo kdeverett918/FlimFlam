@@ -1,5 +1,5 @@
 {
-  "name": "@partyline/controller",
+  "name": "@flimflam/controller",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@partyline/shared": "workspace:*",
-    "@partyline/ui": "workspace:*",
+    "@flimflam/shared": "workspace:*",
+    "@flimflam/ui": "workspace:*",
     "@tailwindcss/postcss": "^4.1.4",
     "colyseus.js": "^0.15.27",
     "framer-motion": "^12.7.3",

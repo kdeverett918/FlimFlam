@@ -3,12 +3,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
-import {
-  COLYSEUS_PORT,
-  GAME_MANIFESTS,
-  ROOM_CODE_CHARS,
-  ROOM_CODE_LENGTH,
-} from "@partyline/shared";
+import { COLYSEUS_PORT, GAME_MANIFESTS, ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@flimflam/shared";
 import cors from "cors";
 import express from "express";
 import { PartyRoom } from "./rooms/PartyRoom";
@@ -199,15 +194,15 @@ function startListening(attempt = 0) {
   ) => {
     isReady = true;
     if (where.kind === "socket") {
-      console.log(`[PartyLine] Server listening on unix socket ${where.value}`);
+      console.log(`[FlimFlam] Server listening on unix socket ${where.value}`);
       console.log(
-        `[PartyLine] Health (via unix socket): curl --unix-socket ${where.value} http://localhost/health`,
+        `[FlimFlam] Health (via unix socket): curl --unix-socket ${where.value} http://localhost/health`,
       );
     } else {
-      console.log(`[PartyLine] Server listening on port ${where.value}`);
-      console.log(`[PartyLine] Health: http://localhost:${where.value}/health`);
+      console.log(`[FlimFlam] Server listening on port ${where.value}`);
+      console.log(`[FlimFlam] Health: http://localhost:${where.value}/health`);
       if (process.env.NODE_ENV !== "production") {
-        console.log(`[PartyLine] Monitor: http://localhost:${where.value}/colyseus`);
+        console.log(`[FlimFlam] Monitor: http://localhost:${where.value}/colyseus`);
       }
     }
 
@@ -224,13 +219,13 @@ function startListening(attempt = 0) {
     if (error.code === "EADDRINUSE" && attempt < MAX_EADDRINUSE_RETRIES) {
       const nextAttempt = attempt + 1;
       console.warn(
-        `[PartyLine] ${target} in use (attempt ${nextAttempt}/${MAX_EADDRINUSE_RETRIES}). Retrying in ${EADDRINUSE_RETRY_MS}ms...`,
+        `[FlimFlam] ${target} in use (attempt ${nextAttempt}/${MAX_EADDRINUSE_RETRIES}). Retrying in ${EADDRINUSE_RETRY_MS}ms...`,
       );
       setTimeout(() => startListening(nextAttempt), EADDRINUSE_RETRY_MS);
       return;
     }
 
-    console.error(`[PartyLine] Failed to start server (${target})`, error);
+    console.error(`[FlimFlam] Failed to start server (${target})`, error);
     process.exit(1);
   };
 
@@ -245,13 +240,13 @@ function startListening(attempt = 0) {
         if (error.code === "EADDRINUSE" && attempt < MAX_EADDRINUSE_RETRIES) {
           const nextAttempt = attempt + 1;
           console.warn(
-            `[PartyLine] Socket ${socketPath} in use (attempt ${nextAttempt}/${MAX_EADDRINUSE_RETRIES}). Retrying in ${EADDRINUSE_RETRY_MS}ms...`,
+            `[FlimFlam] Socket ${socketPath} in use (attempt ${nextAttempt}/${MAX_EADDRINUSE_RETRIES}). Retrying in ${EADDRINUSE_RETRY_MS}ms...`,
           );
           setTimeout(() => startListening(nextAttempt), EADDRINUSE_RETRY_MS);
           return;
         }
 
-        console.error(`[PartyLine] Failed to start server on unix socket ${socketPath}`, error);
+        console.error(`[FlimFlam] Failed to start server on unix socket ${socketPath}`, error);
         process.exit(1);
       });
     return;
@@ -269,11 +264,11 @@ async function shutdown(signal: "SIGINT" | "SIGTERM") {
   shuttingDown = true;
   isReady = false;
 
-  console.log(`[PartyLine] Received ${signal}. Shutting down...`);
+  console.log(`[FlimFlam] Received ${signal}. Shutting down...`);
 
   // If something hangs (open keep-alive sockets, stuck plugin, etc.), avoid an infinite drain.
   const forcedExit = setTimeout(() => {
-    console.error("[PartyLine] Forced shutdown after timeout.");
+    console.error("[FlimFlam] Forced shutdown after timeout.");
     process.exit(1);
   }, 15_000);
   forcedExit.unref?.();
@@ -282,7 +277,7 @@ async function shutdown(signal: "SIGINT" | "SIGTERM") {
     // Stop accepting new connections.
     await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   } catch (error) {
-    console.error("[PartyLine] Error closing HTTP server", error);
+    console.error("[FlimFlam] Error closing HTTP server", error);
   }
 
   try {
@@ -292,7 +287,7 @@ async function shutdown(signal: "SIGINT" | "SIGTERM") {
       await maybeGraceful.call(gameServer);
     }
   } catch (error) {
-    console.error("[PartyLine] Error during Colyseus graceful shutdown", error);
+    console.error("[FlimFlam] Error during Colyseus graceful shutdown", error);
   }
 
   process.exit(0);

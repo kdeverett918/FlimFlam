@@ -26,12 +26,10 @@ async function pollHttpOk(
 }
 
 export default async function globalSetup() {
-  const hostUrl = process.env.PARTYLINE_E2E_HOST_URL ?? "https://partyline-host.onrender.com";
-  const controllerUrl =
-    process.env.PARTYLINE_E2E_CONTROLLER_URL ?? "https://partyline-controller.onrender.com";
+  const hostUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? "https://flimflam.gg";
+  const controllerUrl = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "https://play.flimflam.gg";
   const colyseusHealthUrl =
-    process.env.PARTYLINE_E2E_COLYSEUS_HEALTH_URL ??
-    "https://us-dfw-baad7ee4.colyseus.cloud/health";
+    process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "https://us-dfw-baad7ee4.colyseus.cloud/health";
 
   // Keep this conservative: Render cold starts + DNS propagation can be slow.
   const timeoutMs = 5 * 60_000;

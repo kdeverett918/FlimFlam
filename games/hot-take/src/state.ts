@@ -3,7 +3,7 @@ import type {
   GeneratedHotTakePrompt,
   HotTakePlayerProfile,
   HotTakeRoundHistory,
-} from "@partyline/shared";
+} from "@flimflam/shared";
 
 // ─── In-Memory Game State ───────────────────────────────────────────────
 

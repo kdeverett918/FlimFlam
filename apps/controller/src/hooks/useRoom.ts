@@ -1,12 +1,12 @@
 "use client";
 
 import { getColyseusClient, resolveColyseusHttpUrl } from "@/lib/colyseus-client";
-import { type PlayerData, resolveRoomIdByCode } from "@partyline/shared";
+import { type PlayerData, resolveRoomIdByCode } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const RECONNECT_TOKEN_KEY = "partyline_reconnect_token";
-const ROOM_ID_KEY = "partyline_room_id";
+const RECONNECT_TOKEN_KEY = "flimflam_reconnect_token";
+const ROOM_ID_KEY = "flimflam_room_id";
 const JOIN_MAX_ATTEMPTS = 6;
 const JOIN_RETRY_BASE_DELAY_MS = 250;
 

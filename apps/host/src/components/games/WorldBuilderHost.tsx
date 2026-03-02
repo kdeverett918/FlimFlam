@@ -1,10 +1,14 @@
 "use client";
 
-import { Scoreboard } from "@/components/game/Scoreboard";
+import {
+  type BonusAwardData,
+  FinalScoresLayout,
+  buildScores,
+} from "@/components/game/FinalScoresLayout";
 import { Timer } from "@/components/game/Timer";
 import { TypewriterText } from "@/components/game/TypewriterText";
-import type { PlayerData, ScoreEntry, WorldState } from "@partyline/shared";
-import { AnimatedBackground, GlassPanel } from "@partyline/ui";
+import type { PlayerData, WorldState } from "@flimflam/shared";
+import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "framer-motion";
 import { Award, Globe, Loader2, Star, Zap } from "lucide-react";
@@ -27,6 +31,7 @@ export function WorldBuilderHost({
   players,
   payload,
   timerEndTime,
+  room,
 }: WorldBuilderHostProps) {
   switch (phase) {
     case "generating":
@@ -50,7 +55,7 @@ export function WorldBuilderHost({
     case "reveal":
       return <RevealView payload={payload} players={players} timerEndTime={timerEndTime} />;
     case "final-scores":
-      return <FinalScoresView payload={payload} players={players} />;
+      return <FinalScoresView payload={payload} players={players} room={room} />;
     default:
       return (
         <div className="flex min-h-screen items-center justify-center">
@@ -72,19 +77,19 @@ function GeneratingView() {
           animate={{ rotate: 360 }}
           transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-0 rounded-full border-2 border-accent-2/40"
-          style={{ boxShadow: "0 0 20px oklch(0.7 0.2 330 / 0.2)" }}
+          style={{ boxShadow: "0 0 20px oklch(0.68 0.20 300 / 0.2)" }}
         />
         <motion.div
           animate={{ rotate: -360 }}
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-4 rounded-full border-2 border-accent-2/60"
-          style={{ boxShadow: "0 0 16px oklch(0.7 0.2 330 / 0.3)" }}
+          style={{ boxShadow: "0 0 16px oklch(0.68 0.20 300 / 0.3)" }}
         />
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
           className="absolute inset-8 rounded-full border-2 border-accent-2/80"
-          style={{ boxShadow: "0 0 12px oklch(0.7 0.2 330 / 0.4)" }}
+          style={{ boxShadow: "0 0 12px oklch(0.68 0.20 300 / 0.4)" }}
         />
         <div className="absolute inset-0 flex items-center justify-center">
           <Globe className="h-16 w-16 text-accent-2" />
@@ -93,7 +98,7 @@ function GeneratingView() {
 
       <h2
         className="font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.7 0.2 330 / 0.4)" }}
+        style={{ textShadow: "0 0 30px oklch(0.68 0.20 300 / 0.4)" }}
       >
         BUILDING YOUR WORLD
       </h2>
@@ -131,7 +136,7 @@ function RoleRevealView({
       >
         <GlassPanel
           glow
-          glowColor="oklch(0.7 0.2 330 / 0.25)"
+          glowColor="oklch(0.68 0.20 300 / 0.25)"
           rounded="2xl"
           className="max-w-4xl p-10 text-center"
         >
@@ -314,9 +319,9 @@ function AINarratingView({ round, totalRounds }: { round: number; totalRounds: n
         <motion.div
           animate={{
             boxShadow: [
-              "0 0 20px oklch(0.7 0.2 330 / 0.3)",
-              "0 0 60px oklch(0.7 0.2 330 / 0.5)",
-              "0 0 20px oklch(0.7 0.2 330 / 0.3)",
+              "0 0 20px oklch(0.68 0.20 300 / 0.3)",
+              "0 0 60px oklch(0.68 0.20 300 / 0.5)",
+              "0 0 20px oklch(0.68 0.20 300 / 0.3)",
             ],
           }}
           transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
@@ -328,7 +333,7 @@ function AINarratingView({ round, totalRounds }: { round: number; totalRounds: n
 
       <h2
         className="relative z-10 font-display text-[56px] font-bold text-text-primary"
-        style={{ textShadow: "0 0 30px oklch(0.7 0.2 330 / 0.3)" }}
+        style={{ textShadow: "0 0 30px oklch(0.68 0.20 300 / 0.3)" }}
       >
         THE AI NARRATES
       </h2>
@@ -347,7 +352,7 @@ function NarrationDisplayView({ payload }: { payload: Record<string, unknown> })
       <AnimatedBackground variant="subtle" />
       <GlassPanel
         glow
-        glowColor="oklch(0.7 0.2 330 / 0.15)"
+        glowColor="oklch(0.68 0.20 300 / 0.15)"
         rounded="2xl"
         className="relative z-10 max-w-5xl p-12"
       >
@@ -475,11 +480,13 @@ function RevealView({
 function FinalScoresView({
   payload,
   players,
+  room,
 }: {
   payload: Record<string, unknown>;
   players: PlayerData[];
+  room: Room | null;
 }) {
-  const bonusAwards = payload.bonusAwards as
+  const rawAwards = payload.bonusAwards as
     | {
         bestAction?: { sessionId: string; reason: string; points: number };
         chaosAgent?: { sessionId: string; reason: string; points: number };
@@ -487,96 +494,42 @@ function FinalScoresView({
       }
     | undefined;
 
-  const scores: ScoreEntry[] = players
-    .map((p, i) => ({
-      sessionId: p.sessionId,
-      name: p.name,
-      score: p.score,
-      rank: i + 1,
-      breakdown: [],
-    }))
-    .sort((a, b) => b.score - a.score)
-    .map((s, i) => ({ ...s, rank: i + 1 }));
+  const bonusAwards: BonusAwardData[] = [];
+  if (rawAwards?.bestAction) {
+    bonusAwards.push({
+      title: "Best Action",
+      icon: <Award className="h-8 w-8 text-accent-2" />,
+      playerName:
+        players.find((p) => p.sessionId === rawAwards.bestAction?.sessionId)?.name ?? "Unknown",
+      reason: rawAwards.bestAction.reason,
+      points: rawAwards.bestAction.points,
+    });
+  }
+  if (rawAwards?.chaosAgent) {
+    bonusAwards.push({
+      title: "Chaos Agent",
+      icon: <Zap className="h-8 w-8 text-accent-6" />,
+      playerName:
+        players.find((p) => p.sessionId === rawAwards.chaosAgent?.sessionId)?.name ?? "Unknown",
+      reason: rawAwards.chaosAgent.reason,
+      points: rawAwards.chaosAgent.points,
+    });
+  }
+  if (rawAwards?.mvpMoment) {
+    bonusAwards.push({
+      title: "MVP Moment",
+      icon: <Star className="h-8 w-8 text-accent-4" />,
+      playerName: "",
+      reason: rawAwards.mvpMoment.description,
+    });
+  }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
-      <AnimatedBackground variant="subtle" />
-
-      <h1 className="relative z-10 font-display text-[64px] font-bold text-accent-2">
-        FINAL SCORES
-      </h1>
-
-      <div className="relative z-10 w-full max-w-4xl">
-        <Scoreboard scores={scores} />
-      </div>
-
-      {/* Bonus awards */}
-      {bonusAwards && (
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-          className="relative z-10 flex flex-wrap justify-center gap-6"
-        >
-          {bonusAwards.bestAction && (
-            <BonusCard
-              title="Best Action"
-              icon={<Award className="h-8 w-8 text-accent-2" />}
-              playerName={
-                players.find((p) => p.sessionId === bonusAwards.bestAction?.sessionId)?.name ??
-                "Unknown"
-              }
-              reason={bonusAwards.bestAction.reason}
-              points={bonusAwards.bestAction.points}
-            />
-          )}
-          {bonusAwards.chaosAgent && (
-            <BonusCard
-              title="Chaos Agent"
-              icon={<Zap className="h-8 w-8 text-accent-6" />}
-              playerName={
-                players.find((p) => p.sessionId === bonusAwards.chaosAgent?.sessionId)?.name ??
-                "Unknown"
-              }
-              reason={bonusAwards.chaosAgent.reason}
-              points={bonusAwards.chaosAgent.points}
-            />
-          )}
-          {bonusAwards.mvpMoment && (
-            <GlassPanel glow rounded="2xl" className="flex flex-col items-center gap-2 p-6">
-              <Star className="h-8 w-8 text-accent-4" />
-              <span className="font-display text-[24px] font-bold text-accent-4">MVP Moment</span>
-              <p className="max-w-xs text-center font-body text-[20px] text-text-muted">
-                {bonusAwards.mvpMoment.description}
-              </p>
-            </GlassPanel>
-          )}
-        </motion.div>
-      )}
-    </div>
-  );
-}
-
-function BonusCard({
-  title,
-  icon,
-  playerName,
-  reason,
-  points,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  playerName: string;
-  reason: string;
-  points: number;
-}) {
-  return (
-    <GlassPanel glow rounded="2xl" className="flex flex-col items-center gap-2 p-6">
-      {icon}
-      <span className="font-display text-[24px] font-bold text-accent-2">{title}</span>
-      <span className="font-display text-[28px] font-semibold text-text-primary">{playerName}</span>
-      <p className="max-w-xs text-center font-body text-[20px] text-text-muted">{reason}</p>
-      <span className="font-mono text-[24px] font-bold text-accent-2">+{points} pts</span>
-    </GlassPanel>
+    <FinalScoresLayout
+      scores={buildScores(players)}
+      accentColorClass="text-accent-2"
+      bonusAwards={bonusAwards}
+      room={room}
+    />
   );
 }

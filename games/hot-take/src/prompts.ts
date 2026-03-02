@@ -1,4 +1,4 @@
-import type { Complexity } from "@partyline/shared";
+import type { Complexity } from "@flimflam/shared";
 
 /**
  * Hot Take opinion prompts organized by complexity tier.
