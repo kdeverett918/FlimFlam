@@ -2,6 +2,9 @@
 
 import type { PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
+import { FamilyFeudHost } from "../games/FamilyFeudHost";
+import { JeopardyHost } from "../games/JeopardyHost";
+import { WheelOfFortuneHost } from "../games/WheelOfFortuneHost";
 
 interface GameViewProps {
   gameId: string;
@@ -16,18 +19,36 @@ interface GameViewProps {
 
 export function GameView({
   gameId,
-  phase: _phase,
-  round: _round,
-  totalRounds: _totalRounds,
-  players: _players,
-  gamePayload: _gamePayload,
-  timerEndTime: _timerEndTime,
-  room: _room,
+  phase,
+  round,
+  totalRounds,
+  players,
+  gamePayload,
+  timerEndTime,
+  room,
 }: GameViewProps) {
-  // Game host views will be added here as new games are implemented.
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <p className="font-display text-[48px] text-text-muted">Unknown game: {gameId}</p>
-    </div>
-  );
+  const commonProps = {
+    phase,
+    round,
+    totalRounds,
+    players,
+    payload: gamePayload,
+    timerEndTime,
+    room,
+  };
+
+  switch (gameId) {
+    case "jeopardy":
+      return <JeopardyHost {...commonProps} />;
+    case "wheel-of-fortune":
+      return <WheelOfFortuneHost {...commonProps} />;
+    case "family-feud":
+      return <FamilyFeudHost {...commonProps} />;
+    default:
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="font-display text-[48px] text-text-muted">Unknown game: {gameId}</p>
+        </div>
+      );
+  }
 }

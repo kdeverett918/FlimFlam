@@ -183,7 +183,42 @@ export default function RoomPage() {
 
 function formatPhaseLabel(phase: string): string {
   const labels: Record<string, string> = {
+    // Shared
     "final-scores": "Final Scores",
+
+    // Jeopardy
+    "category-reveal": "Category Reveal",
+    "clue-select": "Pick a Clue",
+    buzzing: "Buzz In!",
+    answering: "Answer Time",
+    "daily-double-wager": "Daily Double!",
+    "daily-double-answer": "Daily Double!",
+    "clue-result": "Result",
+    "final-jeopardy-category": "Final Jeopardy",
+    "final-jeopardy-wager": "Final Jeopardy",
+    "final-jeopardy-answer": "Final Jeopardy",
+    "final-jeopardy-reveal": "Final Reveal",
+
+    // Wheel of Fortune
+    "round-intro": "New Round",
+    spinning: "Spin the Wheel!",
+    "guess-consonant": "Pick a Letter",
+    "buy-vowel": "Buy a Vowel",
+    "solve-attempt": "Solve It!",
+    "letter-result": "Letter Result",
+    "round-result": "Round Over",
+    "bonus-round": "Bonus Round",
+    "bonus-reveal": "Bonus Reveal",
+
+    // Family Feud
+    "question-reveal": "Survey Says...",
+    "face-off": "Face-Off!",
+    guessing: "Guess!",
+    strike: "Strike!",
+    "steal-chance": "Steal!",
+    "answer-reveal": "All Answers",
+    "fast-money": "Fast Money!",
+    "fast-money-reveal": "Fast Money Results",
   };
   return labels[phase] ?? "";
 }

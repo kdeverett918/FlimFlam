@@ -12,7 +12,29 @@ const MESSAGES = [
   "Warming up...",
 ];
 
-const GAME_TIPS: Record<string, string[]> = {};
+const GAME_TIPS: Record<string, string[]> = {
+  jeopardy: [
+    'Phrase your answer as a question: "What is..."',
+    "Buzz quickly -- fastest finger wins!",
+    "Daily Doubles let you wager big for big points",
+    "Wrong answers deduct points (except in Kids mode)",
+    "The board selector picks the next clue",
+  ],
+  "wheel-of-fortune": [
+    "Spin, buy a vowel, or solve -- your choice each turn",
+    "Vowels cost $250 each from your round cash",
+    "Solve the puzzle to bank your round cash",
+    "Bankrupt wipes your round cash -- be careful!",
+    "RSTLNE are free in the bonus round",
+  ],
+  "family-feud": [
+    "Face-off: buzz in fast with the best answer!",
+    "Three strikes and the other team can steal",
+    "Survey says... aim for the #1 answer!",
+    "Fast Money: answer 5 questions as fast as you can",
+    "Hit 200 points in Fast Money for a huge bonus",
+  ],
+};
 
 const FIDGET_MILESTONES: Record<number, string> = {
   10: "Warmed up!",
