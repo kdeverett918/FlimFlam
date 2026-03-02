@@ -3,7 +3,13 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
-import { COLYSEUS_PORT, GAME_MANIFESTS, ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@flimflam/shared";
+import {
+  COLYSEUS_PORT,
+  GAME_MANIFESTS,
+  MAX_NAME_LENGTH,
+  ROOM_CODE_CHARS,
+  ROOM_CODE_LENGTH,
+} from "@flimflam/shared";
 import cors from "cors";
 import express from "express";
 import { PartyRoom } from "./rooms/PartyRoom";
@@ -69,7 +75,14 @@ function rateLimitResolveByIp(
 
 // ─── Health Endpoint ─────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: Date.now() });
+  res.json({
+    status: "ok",
+    timestamp: Date.now(),
+    maxNameLength: MAX_NAME_LENGTH,
+    nodeVersion: process.version,
+    gitSha:
+      process.env.RENDER_GIT_COMMIT ?? process.env.GITHUB_SHA ?? process.env.SOURCE_VERSION ?? null,
+  });
 });
 
 let isReady = false;
