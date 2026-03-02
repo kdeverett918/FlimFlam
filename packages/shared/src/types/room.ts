@@ -13,7 +13,6 @@ export interface RoomMetadata {
   gameName: string;
   complexity: Complexity;
   playerCount: number;
-  hotTakePlayerInputEnabled?: boolean;
 }
 
 export interface GameSettings {

@@ -23,7 +23,7 @@ export class RoomState extends Schema {
   @type("string") phase = "lobby";
   @type("string") selectedGameId = "";
   @type("string") complexity = "standard";
-  @type("boolean") hotTakePlayerInputEnabled = false;
+  @type("string") gameOptions = "";
   @type("string") hostSessionId = "";
   @type({ map: GamePlayerSchema }) players = new MapSchema<GamePlayerSchema>();
   @type("number") timerEndsAt = 0;

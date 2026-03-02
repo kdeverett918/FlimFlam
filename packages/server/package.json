@@ -19,13 +19,6 @@
   "dependencies": {
     "@flimflam/shared": "workspace:*",
     "@flimflam/game-engine": "workspace:*",
-    "@flimflam/ai": "workspace:*",
-    "@flimflam/world-builder": "workspace:*",
-    "@flimflam/bluff-engine": "workspace:*",
-    "@flimflam/quick-draw": "workspace:*",
-    "@flimflam/reality-drift": "workspace:*",
-    "@flimflam/hot-take": "workspace:*",
-    "@flimflam/brain-battle": "workspace:*",
     "colyseus": "^0.15.55",
     "@colyseus/schema": "^2.0.35",
     "@colyseus/monitor": "^0.16.7",

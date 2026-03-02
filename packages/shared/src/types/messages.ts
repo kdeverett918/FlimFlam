@@ -3,15 +3,14 @@ export type ClientMessageType =
   | "player:submit"
   | "player:vote"
   | "player:ready"
-  | "player:draw-stroke"
-  | "player:use-ability"
+  | "player:buzz"
   | "host:select-game"
   | "host:start-game"
   | "host:next-round"
   | "host:skip"
   | "host:end-game"
   | "host:set-complexity"
-  | "host:set-player-input"
+  | "host:set-game-options"
   | "host:restart-game"
   | "player:reaction";
 
@@ -20,27 +19,13 @@ export interface PlayerSubmitMessage {
   content: string;
 }
 
-export interface PlayerTopicSubmitMessage {
-  type: "player:submit";
-  content: string;
-  category?: string;
-}
-
 export interface PlayerVoteMessage {
   type: "player:vote";
   targetIndex: number;
 }
 
-export interface PlayerDrawStrokeMessage {
-  type: "player:draw-stroke";
-  points: { x: number; y: number }[];
-  color: string;
-  size: number;
-}
-
-export interface PlayerUseAbilityMessage {
-  type: "player:use-ability";
-  abilityId: string;
+export interface PlayerBuzzMessage {
+  type: "player:buzz";
 }
 
 export interface HostStartGameMessage {
@@ -53,21 +38,15 @@ export interface HostSelectGameMessage {
   gameId: string;
 }
 
-export interface HostSetPlayerInputMessage {
-  type: "host:set-player-input";
-  enabled: boolean;
-}
-
-export interface SliderVoteMessage {
-  type: "player:vote";
-  value: number; // -2 to +2
+export interface HostSetGameOptionsMessage {
+  type: "host:set-game-options";
+  options: string;
 }
 
 // Server -> Client message types
 export type ServerMessageType =
   | "game-data"
   | "private-data"
-  | "draw-stroke"
   | "error"
   | "phase-change"
   | "timer-sync"
@@ -82,14 +61,6 @@ export interface GameDataMessage {
 export interface PrivateDataMessage {
   type: "private-data";
   payload: Record<string, unknown>;
-}
-
-export interface DrawStrokeBroadcast {
-  type: "draw-stroke";
-  sessionId: string;
-  points: { x: number; y: number }[];
-  color: string;
-  size: number;
 }
 
 export interface ErrorMessage {

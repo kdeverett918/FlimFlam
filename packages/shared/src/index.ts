@@ -11,12 +11,6 @@ export type { PlayerData } from "./types/player";
 
 export type {
   GameManifest,
-  WorldBuilderPhase,
-  BluffEnginePhase,
-  QuickDrawPhase,
-  RealityDriftPhase,
-  HotTakePhase,
-  BrainBattlePhase,
   GamePhase,
   TimerConfig,
   HostViewData,
@@ -28,72 +22,16 @@ export type {
   ClientMessageType,
   ServerMessageType,
   PlayerSubmitMessage,
-  PlayerTopicSubmitMessage,
   PlayerVoteMessage,
-  PlayerDrawStrokeMessage,
-  PlayerUseAbilityMessage,
+  PlayerBuzzMessage,
   HostSelectGameMessage,
   HostStartGameMessage,
-  HostSetPlayerInputMessage,
-  SliderVoteMessage,
+  HostSetGameOptionsMessage,
   GameDataMessage,
   PrivateDataMessage,
-  DrawStrokeBroadcast,
   ErrorMessage,
   PlayerReactionMessage,
 } from "./types/messages";
-
-export type {
-  AIRequestOptions,
-  AIResponse,
-  NPC,
-  WorldState,
-  GeneratedRole,
-  GeneratedScenario,
-  RoundNarrationInput,
-  PlayerOutcome,
-  RoundNarrationResult,
-  BonusJudgingResult,
-  BluffPrompt,
-  TriviaQuestion,
-  HotTakePlayerProfile,
-  HotTakeRoundHistory,
-  GeneratedHotTakePrompt,
-  BrainBattleClue,
-  BrainBattleCategory,
-  GeneratedBoard,
-  AnswerJudgeResult,
-  AppealResult,
-} from "./types/ai";
-
-// Schemas
-export {
-  GeneratedScenarioRawSchema,
-  RoundNarrationRawSchema,
-  BonusJudgingRawSchema,
-  BluffPromptSchema,
-  TriviaQuestionSchema,
-  TriviaBatchSchema,
-  HotTakePromptSchema,
-  HotTakeBatchSchema,
-  GeneratedBoardSchema,
-  AnswerJudgeSchema,
-  AppealResultSchema,
-} from "./schemas/ai-responses";
-
-export type {
-  GeneratedScenarioRaw,
-  RoundNarrationRaw,
-  BonusJudgingRaw,
-  BluffPromptRaw,
-  TriviaQuestionRaw,
-  TriviaBatchRaw,
-  HotTakePromptRaw,
-  HotTakeBatchRaw,
-  GeneratedBoardRaw,
-  AnswerJudgeRaw,
-  AppealResultRaw,
-} from "./schemas/ai-responses";
 
 // Constants
 export {
@@ -107,8 +45,6 @@ export {
   CONTROLLER_PORT,
   RECONNECTION_TIMEOUT_MS,
   ROOM_IDLE_TIMEOUT_MS,
-  AI_REQUEST_TIMEOUT_MS,
-  AI_MAX_RETRIES,
   COMPLEXITY_TIMER_MULTIPLIERS,
   COMPLEXITY_ROUND_COUNTS,
   DEFAULT_PHASE_TIMERS,
@@ -130,3 +66,5 @@ export {
 export type { ResolveRoomIdResult } from "./utils/colyseus";
 
 export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";
+
+export { normalizeAnswer, stringSimilarity, fuzzyMatch } from "./utils/fuzzy-match";

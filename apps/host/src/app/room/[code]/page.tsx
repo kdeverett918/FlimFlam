@@ -137,11 +137,11 @@ export default function RoomPage() {
           players={gameState.playerList}
           selectedGameId={gameState.selectedGameId}
           complexity={gameState.complexity}
-          hotTakePlayerInputEnabled={gameState.hotTakePlayerInputEnabled}
+          gameOptions={gameState.gameOptions}
           playerCount={gameState.playerCount}
           onSelectGame={(gameId) => sendMessage("host:select-game", { gameId })}
           onSetComplexity={(complexity) => sendMessage("host:set-complexity", { complexity })}
-          onSetHotTakePlayerInput={(enabled) => sendMessage("host:set-player-input", { enabled })}
+          onSetGameOptions={(options) => sendMessage("host:set-game-options", { options })}
           onStartGame={() => sendMessage("host:start-game", { gameId: gameState.selectedGameId })}
         />
       )}
@@ -183,26 +183,6 @@ export default function RoomPage() {
 
 function formatPhaseLabel(phase: string): string {
   const labels: Record<string, string> = {
-    generating: "Generating World...",
-    "role-reveal": "Meet Your Character",
-    "action-input": "Choose Your Action",
-    "ai-narrating": "The Story Unfolds...",
-    "narration-display": "What Happened...",
-    reveal: "The Big Reveal",
-    "generating-prompt": "Cooking Up a Question...",
-    "answer-input": "Write Your Bluff",
-    voting: "Time to Vote",
-    results: "Results",
-    "picking-drawer": "Picking the Artist...",
-    drawing: "Draw!",
-    guessing: "Guess the Drawing!",
-    "word-reveal": "The Word Was...",
-    "generating-questions": "Generating Questions...",
-    answering: "Answer Time",
-    "drift-check": "Reality or Drift?",
-    "topic-setup": "Pick Your Topic",
-    "ai-generating": "Generating Hot Takes...",
-    "showing-prompt": "Hot Take Incoming",
     "final-scores": "Final Scores",
   };
   return labels[phase] ?? "";

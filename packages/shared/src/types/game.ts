@@ -13,65 +13,8 @@ export interface GameManifest {
   icon: string;
 }
 
-// Phase types for each game
-export type WorldBuilderPhase =
-  | "generating"
-  | "role-reveal"
-  | "action-input"
-  | "ai-narrating"
-  | "narration-display"
-  | "reveal"
-  | "final-scores";
-
-export type BluffEnginePhase =
-  | "generating-prompt"
-  | "answer-input"
-  | "voting"
-  | "results"
-  | "final-scores";
-
-export type QuickDrawPhase =
-  | "picking-drawer"
-  | "drawing"
-  | "guessing"
-  | "word-reveal"
-  | "final-scores";
-
-export type RealityDriftPhase =
-  | "generating-questions"
-  | "answering"
-  | "drift-check"
-  | "results"
-  | "final-scores";
-
-export type HotTakePhase =
-  | "topic-setup"
-  | "ai-generating"
-  | "showing-prompt"
-  | "voting"
-  | "results"
-  | "final-scores";
-
-export type BrainBattlePhase =
-  | "topic-submit"
-  | "board-generating"
-  | "board-reveal"
-  | "clue-select"
-  | "buzzing"
-  | "answering"
-  | "appeal-window"
-  | "appeal-judging"
-  | "appeal-result"
-  | "clue-result"
-  | "final-scores";
-
-export type GamePhase =
-  | WorldBuilderPhase
-  | BluffEnginePhase
-  | QuickDrawPhase
-  | RealityDriftPhase
-  | HotTakePhase
-  | BrainBattlePhase;
+// Phase types — will be populated as new games are added
+export type GamePhase = string;
 
 export interface TimerConfig {
   durationMs: number;

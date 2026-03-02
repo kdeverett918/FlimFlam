@@ -2,7 +2,7 @@
 
 import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
-import { Cpu, Flame, Paintbrush, Sparkles, Zap } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { useRef } from "react";
 
 interface GameSelectorProps {
@@ -10,21 +10,9 @@ interface GameSelectorProps {
   onSelect: (gameId: string) => void;
 }
 
-const GAME_ICONS: Record<string, React.ReactNode> = {
-  "world-builder": <Sparkles className="h-10 w-10 text-accent-2" />,
-  "bluff-engine": <Zap className="h-10 w-10 text-accent-3" />,
-  "quick-draw": <Paintbrush className="h-10 w-10 text-accent-4" />,
-  "reality-drift": <Cpu className="h-10 w-10 text-accent-5" />,
-  "hot-take": <Flame className="h-10 w-10 text-accent-6" />,
-};
+const GAME_ICONS: Record<string, React.ReactNode> = {};
 
-const GAME_ACCENT_BORDER: Record<string, string> = {
-  "world-builder": "border-accent-2 shadow-[0_0_24px_oklch(0.68_0.20_300/0.25)]",
-  "bluff-engine": "border-accent-3 shadow-[0_0_24px_oklch(0.78_0.18_85/0.25)]",
-  "quick-draw": "border-accent-4 shadow-[0_0_24px_oklch(0.72_0.18_160/0.25)]",
-  "reality-drift": "border-accent-5 shadow-[0_0_24px_oklch(0.70_0.15_210/0.25)]",
-  "hot-take": "border-accent-6 shadow-[0_0_24px_oklch(0.68_0.25_20/0.25)]",
-};
+const GAME_ACCENT_BORDER: Record<string, string> = {};
 
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,21 +69,14 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
 
               {/* Tags */}
               <div className="flex flex-wrap gap-2">
-                {game.aiRequired && (
-                  <span className="rounded-full bg-accent-4/20 px-3 py-1 font-body text-[16px] font-medium text-accent-4">
-                    AI Powered
+                {game.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-white/[0.06] px-3 py-1 font-body text-[16px] text-text-muted"
+                  >
+                    {tag}
                   </span>
-                )}
-                {game.tags
-                  .filter((t) => t !== "ai")
-                  .map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-white/[0.06] px-3 py-1 font-body text-[16px] text-text-muted"
-                    >
-                      {tag}
-                    </span>
-                  ))}
+                ))}
               </div>
             </GlassPanel>
           </button>

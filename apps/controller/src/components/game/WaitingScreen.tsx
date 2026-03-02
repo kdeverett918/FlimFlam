@@ -1,58 +1,18 @@
 "use client";
 
 import { AnimatedBackground, haptics } from "@flimflam/ui";
-import { Brain, Clock, Pencil } from "lucide-react";
+import { Clock } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const MESSAGES = [
-  "The world is forming...",
-  "The story unfolds...",
-  "Something is brewing...",
-  "Crunching the numbers...",
-  "Reading the stars...",
-  "Consulting the oracle...",
-  "Weaving the narrative...",
-  "Shuffling possibilities...",
+  "Hang tight...",
+  "Getting ready...",
+  "Almost there...",
+  "Stay tuned...",
+  "Warming up...",
 ];
 
-const GAME_TIPS: Record<string, string[]> = {
-  "world-builder": [
-    "Describe specific actions -- vague answers get vague results!",
-    "Use your special ability at the right moment for maximum impact.",
-    "Bluff about your secret objective -- don't let others guess it.",
-    "Pay attention to what others do -- it reveals their motives.",
-  ],
-  "bluff-engine": [
-    "Write answers that sound plausible -- that's how you fool people!",
-    "Short, confident answers tend to trick more people.",
-    "Watch how others vote -- it might reveal who's bluffing.",
-    "The real answer is sometimes the most boring one.",
-  ],
-  "quick-draw": [
-    "Start with the outline, then add details.",
-    "Big, simple shapes are easier to guess.",
-    "Guess early and often -- speed matters!",
-    "Don't overthink it -- first instinct is usually right.",
-  ],
-  "reality-drift": [
-    "Real headlines are often stranger than you think.",
-    "Look for specific details -- AI tends to be vague.",
-    "Trust your gut on the drift check!",
-    "Weird-sounding headlines might actually be real.",
-  ],
-  "hot-take": [
-    "The most interesting takes are polarizing!",
-    "Think about what would spark a debate.",
-    "Try to guess where the group average will land.",
-    "Extreme opinions can score big -- or backfire!",
-  ],
-  "brain-battle": [
-    "Buzz in fast, but only if you know the answer!",
-    "Wrong answers lose points -- play it safe sometimes.",
-    "Higher-value clues are harder but worth more.",
-    "Use your appeals wisely -- you only get a few!",
-  ],
-};
+const GAME_TIPS: Record<string, string[]> = {};
 
 const FIDGET_MILESTONES: Record<number, string> = {
   10: "Warmed up!",
@@ -60,20 +20,6 @@ const FIDGET_MILESTONES: Record<number, string> = {
   50: "Tap champion!",
   100: "Legendary fidgeter!",
 };
-
-const AI_PHASES = new Set([
-  "generating",
-  "ai-narrating",
-  "generating-prompt",
-  "generating-questions",
-  "ai-generating",
-  "board-generating",
-  "appeal-judging",
-]);
-
-const DRAWING_PHASES = new Set(["drawing", "picking-drawer"]);
-
-const TIMER_PHASES = new Set(["answering", "voting", "buzzing"]);
 
 interface WaitingScreenProps {
   phase?: string;
@@ -86,7 +32,7 @@ interface WaitingScreenProps {
 }
 
 export function WaitingScreen({
-  phase,
+  phase: _phase,
   score,
   rank,
   totalPlayers,
@@ -131,45 +77,7 @@ export function WaitingScreen({
     });
   }, []);
 
-  // Pick contextual message for known AI phases
-  const contextualMessage = (() => {
-    switch (phase) {
-      case "generating":
-        return "The world is forming";
-      case "ai-narrating":
-        return "The story unfolds";
-      case "generating-prompt":
-        return "Cooking up a question";
-      case "generating-questions":
-        return "Reality is shifting";
-      case "ai-generating":
-        return "AI is crafting hot takes based on your topics";
-      case "picking-drawer":
-        return "Picking the artist";
-      case "drawing":
-        return "Watch the artist draw";
-      case "board-generating":
-        return "The AI is building your custom quiz board...";
-      case "board-reveal":
-        return "Check out the board on the main screen!";
-      case "appeal-judging":
-        return "The AI judge is deliberating...";
-      case "appeal-result":
-        return "The verdict is in! Check the main screen!";
-      case "clue-result":
-        return "See the results on the main screen!";
-      default:
-        return MESSAGES[messageIndex];
-    }
-  })();
-
-  // Phase icon
-  const PhaseIcon = (() => {
-    if (phase && AI_PHASES.has(phase)) return Brain;
-    if (phase && DRAWING_PHASES.has(phase)) return Pencil;
-    if (phase && TIMER_PHASES.has(phase)) return Clock;
-    return null;
-  })();
+  const contextualMessage = MESSAGES[messageIndex];
 
   const getRankSuffix = (r: number): string => {
     if (r % 100 >= 11 && r % 100 <= 13) return "th";
@@ -207,7 +115,7 @@ export function WaitingScreen({
 
       {/* Phase icon + animated dots */}
       <div className="flex items-center gap-4">
-        {PhaseIcon && <PhaseIcon className="h-5 w-5 text-text-muted" />}
+        <Clock className="h-5 w-5 text-text-muted" />
         <div
           className="h-4 w-4 rounded-full animate-dot-pulse"
           style={{ backgroundColor: "oklch(0.72 0.22 25)", animationDelay: "0s" }}

@@ -1,11 +1,5 @@
 "use client";
 
-import { BluffEngineHost } from "@/components/games/BluffEngineHost";
-import { BrainBattleHost } from "@/components/games/BrainBattleHost";
-import { HotTakeHost } from "@/components/games/HotTakeHost";
-import { QuickDrawHost } from "@/components/games/QuickDrawHost";
-import { RealityDriftHost } from "@/components/games/RealityDriftHost";
-import { WorldBuilderHost } from "@/components/games/WorldBuilderHost";
 import type { PlayerData } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 
@@ -22,42 +16,18 @@ interface GameViewProps {
 
 export function GameView({
   gameId,
-  phase,
-  round,
-  totalRounds,
-  players,
-  gamePayload,
-  timerEndTime,
-  room,
+  phase: _phase,
+  round: _round,
+  totalRounds: _totalRounds,
+  players: _players,
+  gamePayload: _gamePayload,
+  timerEndTime: _timerEndTime,
+  room: _room,
 }: GameViewProps) {
-  const commonProps = {
-    phase,
-    round,
-    totalRounds,
-    players,
-    payload: gamePayload,
-    timerEndTime,
-    room,
-  };
-
-  switch (gameId) {
-    case "world-builder":
-      return <WorldBuilderHost {...commonProps} />;
-    case "bluff-engine":
-      return <BluffEngineHost {...commonProps} />;
-    case "quick-draw":
-      return <QuickDrawHost {...commonProps} />;
-    case "reality-drift":
-      return <RealityDriftHost {...commonProps} />;
-    case "hot-take":
-      return <HotTakeHost {...commonProps} />;
-    case "brain-battle":
-      return <BrainBattleHost {...commonProps} />;
-    default:
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <p className="font-display text-[48px] text-text-muted">Unknown game: {gameId}</p>
-        </div>
-      );
-  }
+  // Game host views will be added here as new games are implemented.
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <p className="font-display text-[48px] text-text-muted">Unknown game: {gameId}</p>
+    </div>
+  );
 }
