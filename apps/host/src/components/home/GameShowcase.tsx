@@ -25,28 +25,28 @@ const ACCENT_TEXT: Record<string, string> = {
 
 export function GameShowcase() {
   return (
-    <section className="w-full max-w-[90vw] overflow-hidden">
+    <section className="mx-auto w-full max-w-5xl px-4 sm:px-6">
       <motion.h2
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.8 }}
-        className="mb-8 text-center font-display text-[32px] font-semibold text-text-muted"
+        className="mb-6 text-center font-display text-2xl font-semibold text-text-muted sm:mb-8 sm:text-[32px]"
+        style={{ textShadow: "0 2px 12px oklch(0.09 0.02 250 / 0.8)" }}
       >
         THE GAMES
       </motion.h2>
 
-      <div className="flex gap-6 overflow-x-auto px-4 pb-4 scrollbar-hide">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3 lg:gap-6">
         {GAME_MANIFESTS.map((game, i) => (
           <motion.div
             key={game.id}
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.9 + i * 0.1 }}
-            className="shrink-0"
+            transition={{ duration: 0.4, delay: 0.9 + i * 0.08 }}
           >
             <MotionCard
               glowColor={ACCENT_COLORS[game.id]}
-              className="flex w-[280px] flex-col gap-4 p-6"
+              className="flex h-full flex-col gap-4 bg-bg-dark/85 p-5 hover:bg-bg-dark/95 sm:p-6"
             >
               <div className="flex items-center gap-3">
                 <span className="text-[40px]">{game.icon}</span>

@@ -17,7 +17,7 @@ export default function HomePage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-16 py-16">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-12 px-4 py-16 sm:gap-16 sm:px-6">
       <AnimatedBackground />
 
       {/* Main content */}
@@ -53,7 +53,10 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
           className="font-body text-text-muted"
-          style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
+          style={{
+            fontSize: "clamp(1.25rem, 3.5vw, 2.25rem)",
+            textShadow: "0 2px 12px oklch(0.09 0.02 250 / 0.8)",
+          }}
         >
           Games that get weird.
         </motion.p>
@@ -69,7 +72,7 @@ export default function HomePage() {
           onClick={handleCreateRoom}
           disabled={loading}
           aria-label="Create a new game room"
-          className="group relative h-[72px] overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-16 font-display text-[36px] font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50"
+          className="group relative h-14 overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-10 font-display text-2xl font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50 sm:h-[72px] sm:px-16 sm:text-4xl"
           style={{
             backdropFilter: "blur(16px)",
           }}
@@ -79,7 +82,7 @@ export default function HomePage() {
           <span className="relative flex items-center gap-3">
             {loading ? (
               <>
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <Loader2 className="h-6 w-6 animate-spin sm:h-8 sm:w-8" />
                 CONNECTING...
               </>
             ) : (
@@ -90,17 +93,18 @@ export default function HomePage() {
       </div>
 
       {/* Game showcase */}
-      <div className="relative z-10">
+      <div className="relative z-10 w-full">
         <GameShowcase />
       </div>
 
       {/* Bottom CTA */}
-      <div className="relative z-10 flex flex-col items-center gap-6">
+      <div className="relative z-10 flex flex-col items-center gap-5">
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.5 }}
-          className="font-display text-[32px] font-semibold text-text-muted"
+          className="font-display text-2xl font-semibold text-text-muted sm:text-[32px]"
+          style={{ textShadow: "0 2px 12px oklch(0.09 0.02 250 / 0.8)" }}
         >
           Ready to play?
         </motion.p>
@@ -114,7 +118,7 @@ export default function HomePage() {
           onClick={handleCreateRoom}
           disabled={loading}
           aria-label="Create a new game room"
-          className="group relative h-[64px] overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-12 font-display text-[28px] font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50"
+          className="group relative h-14 overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-10 font-display text-2xl font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50 sm:h-16 sm:px-12 sm:text-[28px]"
           style={{
             backdropFilter: "blur(16px)",
           }}
@@ -136,7 +140,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1.8 }}
-          className="flex flex-col items-center gap-2 text-[24px] text-text-muted"
+          className="flex flex-col items-center gap-1.5 text-base text-text-muted sm:text-xl"
         >
           <p>Display this screen on a shared TV or monitor</p>
           <p>Players join from their phones</p>
