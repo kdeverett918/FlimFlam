@@ -28,6 +28,11 @@
   --color-accent-6: oklch(0.74 0.25 20);
   --color-accent-7: oklch(0.72 0.22 260);
 
+  /* ── Game show accent colors ── */
+  --color-accent-jeopardy: oklch(0.68 0.22 265);
+  --color-accent-wheel: oklch(0.82 0.18 85);
+  --color-accent-feud: oklch(0.74 0.25 25);
+
   /* ── Text (warm white — high contrast) ── */
   --color-text-primary: oklch(0.96 0.01 80);
   --color-text-muted: oklch(0.82 0.015 80);

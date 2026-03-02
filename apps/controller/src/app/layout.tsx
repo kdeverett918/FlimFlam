@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -54,15 +53,6 @@ export default function RootLayout({
     <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-dvh bg-bg-deep font-body text-text-primary antialiased">
         {children}
-        <Script id="sw-register" strategy="afterInteractive">
-          {`
-            if ('serviceWorker' in navigator) {
-              const buildId =
-                (window.__NEXT_DATA__ && window.__NEXT_DATA__.buildId) ? window.__NEXT_DATA__.buildId : 'dev';
-              navigator.serviceWorker.register('/sw.js?v=' + encodeURIComponent(buildId)).catch(() => {});
-            }
-          `}
-        </Script>
       </body>
     </html>
   );
