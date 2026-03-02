@@ -13,6 +13,20 @@ interface FloatingReaction {
 
 const MAX_VISIBLE = 10;
 
+function unitIntervalFromCryptoOrId(id: number): number {
+  const cryptoObj = (globalThis as unknown as { crypto?: Crypto })?.crypto;
+  if (cryptoObj && typeof cryptoObj.getRandomValues === "function") {
+    const buf = new Uint32Array(1);
+    cryptoObj.getRandomValues(buf);
+    // biome-ignore lint/style/noNonNullAssertion: Uint32Array(1) always has index 0
+    return buf[0]! / 0x1_0000_0000;
+  }
+
+  // Deterministic (but non-secure) fallback for environments without WebCrypto.
+  const x = (id * 1664525 + 1013904223) >>> 0;
+  return x / 0x1_0000_0000;
+}
+
 export function ReactionOverlay({ room }: { room: Room | null }) {
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const nextId = useRef(0);
@@ -22,7 +36,7 @@ export function ReactionOverlay({ room }: { room: Room | null }) {
 
     const handler = (data: { emoji: string; playerName: string }) => {
       const id = nextId.current++;
-      const x = 10 + Math.random() * 80; // random horizontal position (10-90%)
+      const x = 10 + unitIntervalFromCryptoOrId(id) * 80; // horizontal position (10-90%)
 
       setReactions((prev) => {
         const next = [...prev, { id, emoji: data.emoji, playerName: data.playerName, x }];

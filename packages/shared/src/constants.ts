@@ -5,7 +5,9 @@ export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_PLAYERS = 8;
 export const MIN_PLAYERS = 3;
-export const MAX_NAME_LENGTH = 12;
+// 12 chars was causing real player names to be silently truncated in the lobby UI.
+// Keep it bounded for layout + abuse prevention, but long enough for typical names/handles.
+export const MAX_NAME_LENGTH = 20;
 
 export const COLYSEUS_PORT = 2567;
 export const HOST_PORT = 3000;

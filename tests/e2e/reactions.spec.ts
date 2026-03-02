@@ -1,49 +1,18 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
-const COLYSEUS_HEALTH_URL =
-  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
+import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Emoji Reaction System", () => {
   test("player sends reaction and it appears on host", async ({ page, browser }) => {
     await page.goto("/");
 
-    // Ensure the Colyseus server is ready.
-    await expect
-      .poll(
-        async () => {
-          try {
-            const res = await page.request.get(COLYSEUS_HEALTH_URL);
-            return res.status();
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(200);
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
 
-    // Create room.
-    await page.getByRole("button", { name: /create room/i }).click();
-    await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
-
-    const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-    expect(match).not.toBeNull();
-    const code = match?.[1] ?? "";
-
-    // Join a controller.
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const controllerPage = await context.newPage();
-    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-
-    await controllerPage.getByLabel("Your Name").fill("ReactionTester");
-    await controllerPage.getByRole("button", { name: /^join$/i }).click();
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 60_000,
+    const { context, controllerPage } = await joinControllerForRoom(browser, page, {
+      code,
+      name: "ReactionTester",
     });
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(page.getByText("ReactionTester")).toBeVisible({ timeout: 30_000 });
 
     // Verify reaction bar is visible on controller (emoji buttons at bottom).
     const reactionButtons = controllerPage.locator('button[aria-label^="React with"]');
@@ -73,38 +42,13 @@ test.describe("Emoji Reaction System", () => {
   test("reaction cooldown suppresses rapid clicks", async ({ page, browser }) => {
     await page.goto("/");
 
-    await expect
-      .poll(
-        async () => {
-          try {
-            const res = await page.request.get(COLYSEUS_HEALTH_URL);
-            return res.status();
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(200);
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
 
-    await page.getByRole("button", { name: /create room/i }).click();
-    await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
-
-    const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-    expect(match).not.toBeNull();
-    const code = match?.[1] ?? "";
-
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const controllerPage = await context.newPage();
-    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-
-    await controllerPage.getByLabel("Your Name").fill("CooldownTest");
-    await controllerPage.getByRole("button", { name: /^join$/i }).click();
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 60_000,
+    const { context, controllerPage } = await joinControllerForRoom(browser, page, {
+      code,
+      name: "CooldownTest",
     });
-    await expect(page.getByText("CooldownTest")).toBeVisible({ timeout: 30_000 });
 
     // Click a reaction.
     const laughButton = controllerPage.getByRole("button", { name: /react with 😂/i });

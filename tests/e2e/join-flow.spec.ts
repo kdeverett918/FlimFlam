@@ -1,64 +1,26 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
-const COLYSEUS_HEALTH_URL =
-  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
+import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test("host creates room and players join", async ({ page, browser }) => {
   await page.goto("/");
 
-  // Ensure the Colyseus server is ready before attempting to create a room.
-  await expect
-    .poll(
-      async () => {
-        try {
-          const res = await page.request.get(COLYSEUS_HEALTH_URL);
-          return res.status();
-        } catch {
-          return 0;
-        }
-      },
-      { timeout: 60_000 },
-    )
-    .toBe(200);
-
-  await page.getByRole("button", { name: /create room/i }).click();
-  await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
+  await waitForColyseusHealthy(page);
+  const { code } = await createRoom(page);
 
   // Production safety: host must persist the server-issued host token to prevent
   // host takeover / reclaim issues. This should be set shortly after join.
   await expect
     .poll(
       async () =>
-        await page.evaluate(() => (sessionStorage.getItem("partyline_host_token") ?? "").length),
+        await page.evaluate(() => (sessionStorage.getItem("flimflam_host_token") ?? "").length),
       { timeout: 10_000 },
     )
     .toBeGreaterThan(0);
 
-  const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-  expect(match).not.toBeNull();
-  const code = match?.[1] ?? "";
-
-  const joinController = async (name: string) => {
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-    const controllerPage = await context.newPage();
-    await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-
-    await controllerPage.getByLabel("Your Name").fill(name);
-    await controllerPage.getByRole("button", { name: /^join$/i }).click();
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-      timeout: 60_000,
-    });
-    await expect(controllerPage).toHaveURL(/\/play$/);
-    await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
-
-    return { context, controllerPage };
-  };
-
-  const c1 = await joinController("Alice");
-  const c2 = await joinController("Bob");
-  const c3 = await joinController("Casey");
+  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
+  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
 
   await expect(page.getByText("Alice")).toBeVisible();
   await expect(page.getByText("Bob")).toBeVisible();

@@ -1,4 +1,4 @@
-import type { BluffPrompt, Complexity } from "@flimflam/shared";
+import { type BluffPrompt, type Complexity, shuffleInPlace } from "@flimflam/shared";
 
 // ─── In-Memory Game State ───────────────────────────────────────────────
 
@@ -68,11 +68,6 @@ export function isTooSimilarToReal(fake: string, real: string): boolean {
  * Shuffle an array in place (Fisher-Yates).
  */
 export function shuffleArray<T>(arr: T[]): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = arr[i] as T;
-    arr[i] = arr[j] as T;
-    arr[j] = temp;
-  }
+  shuffleInPlace(arr);
   return arr;
 }

@@ -12,6 +12,8 @@ import {
   TriviaBatchSchema,
   type TriviaQuestion,
   type TriviaQuestionRaw,
+  randomInt,
+  shuffleInPlace,
 } from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
@@ -484,12 +486,7 @@ function normalizeTriviaQuestion(question: TriviaQuestion): TriviaQuestion | nul
 
 function shuffle<T>(items: T[]): T[] {
   const result = [...items];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const tmp = result[i];
-    result[i] = result[j] as T;
-    result[j] = tmp as T;
-  }
+  shuffleInPlace(result);
   return result;
 }
 
@@ -511,8 +508,8 @@ function buildQuestionDeck(
   const fallbackReal = FALLBACK_TRIVIA_QUESTIONS.filter((q) => !q.isDrift);
   const fallbackDrift = FALLBACK_TRIVIA_QUESTIONS.filter((q) => q.isDrift);
 
-  let realFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackReal.length));
-  let driftFallbackCursor = Math.floor(Math.random() * Math.max(1, fallbackDrift.length));
+  let realFallbackCursor = randomInt(Math.max(1, fallbackReal.length));
+  let driftFallbackCursor = randomInt(Math.max(1, fallbackDrift.length));
 
   const nextFallback = (wantDrift: boolean): TriviaQuestion => {
     const pool = wantDrift ? fallbackDrift : fallbackReal;

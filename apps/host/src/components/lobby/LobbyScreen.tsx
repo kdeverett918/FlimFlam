@@ -169,7 +169,7 @@ function LobbyContent({
                 >
                   {player.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary">
+                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary sm:max-w-[140px] md:max-w-[220px]">
                   {player.name}
                 </span>
                 {player.ready && <span className="font-mono text-[16px] text-accent-5">Ready</span>}

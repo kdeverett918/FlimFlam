@@ -1,61 +1,23 @@
 import { expect, test } from "@playwright/test";
 
-const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
-const COLYSEUS_HEALTH_URL =
-  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:2567/health";
+import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Phase Transitions", () => {
   test("phase transition overlay appears when game starts", async ({ page, browser }) => {
     await page.goto("/");
 
-    // Ensure the Colyseus server is ready.
-    await expect
-      .poll(
-        async () => {
-          try {
-            const res = await page.request.get(COLYSEUS_HEALTH_URL);
-            return res.status();
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(200);
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
 
-    // Create room.
-    await page.getByRole("button", { name: /create room/i }).click();
-    await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
-
-    const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-    expect(match).not.toBeNull();
-    const code = match?.[1] ?? "";
-
-    // Join controllers.
-    const joinController = async (name: string) => {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      const controllerPage = await context.newPage();
-      await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-      await controllerPage.getByLabel("Your Name").fill(name);
-      await controllerPage.getByRole("button", { name: /^join$/i }).click();
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-        timeout: 60_000,
-      });
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
-      return { context, controllerPage };
-    };
-
-    const c1 = await joinController("Alpha");
-    const c2 = await joinController("Beta");
-    const c3 = await joinController("Gamma");
+    const c1 = await joinControllerForRoom(browser, page, { code, name: "Alpha" });
+    const c2 = await joinControllerForRoom(browser, page, { code, name: "Beta" });
+    const c3 = await joinControllerForRoom(browser, page, { code, name: "Gamma" });
 
     // Select Hot Take and start.
     await page.getByRole("button", { name: /hot take/i }).click();
     await page.getByRole("button", { name: /^kids/i }).click();
 
-    const startButton = page.getByRole("button", { name: /start game/i });
+    const startButton = page.getByRole("button", { name: /start the game/i });
     await expect(startButton).toBeEnabled();
 
     // Start the game — a phase transition should appear.
@@ -96,50 +58,17 @@ test.describe("Phase Transitions", () => {
   test("round counter appears during hot take gameplay", async ({ page, browser }) => {
     await page.goto("/");
 
-    await expect
-      .poll(
-        async () => {
-          try {
-            const res = await page.request.get(COLYSEUS_HEALTH_URL);
-            return res.status();
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(200);
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
 
-    await page.getByRole("button", { name: /create room/i }).click();
-    await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
-
-    const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-    expect(match).not.toBeNull();
-    const code = match?.[1] ?? "";
-
-    const joinController = async (name: string) => {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      const controllerPage = await context.newPage();
-      await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-      await controllerPage.getByLabel("Your Name").fill(name);
-      await controllerPage.getByRole("button", { name: /^join$/i }).click();
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-        timeout: 60_000,
-      });
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
-      return { context, controllerPage };
-    };
-
-    const c1 = await joinController("P1");
-    const c2 = await joinController("P2");
-    const c3 = await joinController("P3");
+    const c1 = await joinControllerForRoom(browser, page, { code, name: "P1" });
+    const c2 = await joinControllerForRoom(browser, page, { code, name: "P2" });
+    const c3 = await joinControllerForRoom(browser, page, { code, name: "P3" });
 
     await page.getByRole("button", { name: /hot take/i }).click();
     await page.getByRole("button", { name: /^kids/i }).click();
 
-    const startButton = page.getByRole("button", { name: /start game/i });
+    const startButton = page.getByRole("button", { name: /start the game/i });
     await expect(startButton).toBeEnabled();
     await startButton.click();
 
@@ -173,50 +102,17 @@ test.describe("Phase Transitions", () => {
   test("Skip and End buttons are visible during gameplay", async ({ page, browser }) => {
     await page.goto("/");
 
-    await expect
-      .poll(
-        async () => {
-          try {
-            const res = await page.request.get(COLYSEUS_HEALTH_URL);
-            return res.status();
-          } catch {
-            return 0;
-          }
-        },
-        { timeout: 60_000 },
-      )
-      .toBe(200);
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
 
-    await page.getByRole("button", { name: /create room/i }).click();
-    await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
-
-    const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-    expect(match).not.toBeNull();
-    const code = match?.[1] ?? "";
-
-    const joinController = async (name: string) => {
-      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
-      const controllerPage = await context.newPage();
-      await controllerPage.goto(`${CONTROLLER_URL}/?code=${code}`);
-      await controllerPage.getByLabel("Your Name").fill(name);
-      await controllerPage.getByRole("button", { name: /^join$/i }).click();
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, {
-        timeout: 60_000,
-      });
-      await expect(controllerPage).toHaveURL(/\/play$/);
-      await expect(page.getByText(name)).toBeVisible({ timeout: 30_000 });
-      return { context, controllerPage };
-    };
-
-    const c1 = await joinController("X1");
-    const c2 = await joinController("X2");
-    const c3 = await joinController("X3");
+    const c1 = await joinControllerForRoom(browser, page, { code, name: "X1" });
+    const c2 = await joinControllerForRoom(browser, page, { code, name: "X2" });
+    const c3 = await joinControllerForRoom(browser, page, { code, name: "X3" });
 
     await page.getByRole("button", { name: /hot take/i }).click();
     await page.getByRole("button", { name: /^kids/i }).click();
 
-    const startButton = page.getByRole("button", { name: /start game/i });
+    const startButton = page.getByRole("button", { name: /start the game/i });
     await expect(startButton).toBeEnabled();
     await startButton.click();
 

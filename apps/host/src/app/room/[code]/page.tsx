@@ -152,7 +152,7 @@ export default function RoomPage() {
             room={room}
           />
 
-          <div className="pointer-events-none absolute bottom-8 right-8 flex gap-3">
+          <div className="pointer-events-none absolute bottom-8 right-8 z-50 flex gap-3">
             <button
               type="button"
               onClick={() => sendMessage("host:skip")}
