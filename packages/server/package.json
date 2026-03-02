@@ -27,7 +27,7 @@
     "colyseus": "^0.15.55",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "next": "15.1.0",
+    "next": "16.1.5",
     "tsx": "^4.19.3"
   },
   "devDependencies": {
