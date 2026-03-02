@@ -1,10 +1,10 @@
-import type { GameManifest } from "./types/game";
+import type { GameManifest, GamePreviewContent } from "./types/game";
 import type { Complexity } from "./types/room";
 
 export const ROOM_CODE_LENGTH = 4;
 export const ROOM_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 export const MAX_PLAYERS = 8;
-export const MIN_PLAYERS = 3;
+export const MIN_PLAYERS = 2;
 // 12 chars was causing real player names to be silently truncated in the lobby UI.
 // Keep it bounded for layout + abuse prevention, but long enough for typical names/handles.
 export const MAX_NAME_LENGTH = 20;
@@ -35,28 +35,13 @@ export const COMPLEXITY_ROUND_COUNTS: Record<Complexity, number> = {
 };
 
 export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
-  "role-reveal": 15_000,
-  "action-input": 45_000,
-  "topic-setup": 45_000,
-  "narration-display": 12_000,
-  "answer-input": 30_000,
-  "showing-prompt": 3_000,
-  voting: 20_000,
-  drawing: 60_000,
-  guessing: 60_000,
-  "trivia-answer": 15_000,
-  rating: 20_000,
   "results-display": 8_000,
   reveal: 15_000,
-  // Brain Battle
-  "topic-submit": 45_000,
-  "board-reveal": 4_000,
-  buzzing: 5_000,
-  answering: 15_000,
-  "appeal-window": 12_000,
-  "appeal-result": 5_000,
-  "clue-result": 3_000,
+  // Brain Board
   "clue-select": 30_000,
+  "board-reveal": 4_000,
+  answering: 15_000,
+  "clue-result": 3_000,
 };
 
 export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;
@@ -75,80 +60,107 @@ export const AVATAR_COLORS = [
 
 export const GAME_MANIFESTS: GameManifest[] = [
   {
-    id: "world-builder",
-    name: "World Builder",
+    id: "brain-board",
+    name: "Brain Board",
     description:
-      "AI-powered collaborative storytelling. Take on secret roles and shape the narrative!",
-    minPlayers: 3,
+      "Pick clues from the board, outsmart your rivals, and cash in big with Power Plays!",
+    minPlayers: 2,
     maxPlayers: 8,
     estimatedMinutes: 15,
-    aiRequired: true,
+    aiRequired: false,
     complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["ai", "storytelling", "roles"],
-    icon: "🌍",
+    tags: ["trivia", "buzzer", "classic"],
+    icon: "❓",
   },
   {
-    id: "bluff-engine",
-    name: "Bluff Engine",
-    description:
-      "Fibbage-style bluffing. Write fake answers to obscure trivia and fool your friends!",
-    minPlayers: 3,
+    id: "lucky-letters",
+    name: "Lucky Letters",
+    description: "Spin the wheel, guess the letters, and crack the phrase before anyone else!",
+    minPlayers: 2,
     maxPlayers: 8,
     estimatedMinutes: 12,
-    aiRequired: true,
-    complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["ai", "trivia", "bluffing"],
-    icon: "🎭",
-  },
-  {
-    id: "quick-draw",
-    name: "Quick Draw",
-    description: "Draw and guess! One player draws, everyone else races to guess the word.",
-    minPlayers: 3,
-    maxPlayers: 8,
-    estimatedMinutes: 10,
     aiRequired: false,
     complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["drawing", "guessing", "speed"],
-    icon: "✏️",
+    tags: ["word", "puzzle", "classic"],
+    icon: "🎡",
   },
   {
-    id: "reality-drift",
-    name: "Reality Drift",
+    id: "survey-smash",
+    name: "Survey Smash",
     description:
-      "Headline or Hallucination — fill the blank, then decide if the headline is real or made up.",
-    minPlayers: 3,
-    maxPlayers: 8,
-    estimatedMinutes: 10,
-    aiRequired: true,
-    complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["ai", "trivia", "deception"],
-    icon: "🌀",
-  },
-  {
-    id: "hot-take",
-    name: "Hot Take",
-    description:
-      "Rate spicy opinions on a slider. Player Input mode lets AI craft prompts for your group.",
-    minPlayers: 3,
-    maxPlayers: 8,
-    estimatedMinutes: 8,
-    aiRequired: false,
-    complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["opinions", "social", "ai"],
-    icon: "🔥",
-  },
-  {
-    id: "brain-battle",
-    name: "Brain Battle",
-    description:
-      "AI builds a quiz board from YOUR topics. Buzz in fast, answer smart, and appeal wrong answers to the AI judge!",
-    minPlayers: 3,
+      "Guess what the crowd thinks! Match the top answers and snag points from your rivals!",
+    minPlayers: 2,
     maxPlayers: 8,
     estimatedMinutes: 15,
-    aiRequired: true,
+    aiRequired: false,
     complexityLevels: ["kids", "standard", "advanced"],
-    tags: ["ai", "trivia", "buzzer", "appeals"],
-    icon: "🧠",
+    tags: ["survey", "teams", "classic"],
+    icon: "👨‍👩‍👧‍👦",
+  },
+];
+
+export const GAME_PREVIEW_CONTENT: GamePreviewContent[] = [
+  {
+    gameId: "brain-board",
+    tagline: "Outsmart. Outbuzz. Outplay.",
+    fullDescription:
+      "A trivia showdown where you pick clues from a giant board, buzz in to answer, and use Power Plays to steal the lead. The board has five categories with clues worth 200 to 1000 points — harder clues, bigger payoffs. Finish with an All-In round where everyone wagers on one final question.",
+    howToPlay: [
+      "The host reveals 5 categories on the board, each with 5 clues of increasing difficulty.",
+      "Players take turns picking a clue — harder clues are worth more points.",
+      "Once a clue is revealed, everyone buzzes in on their phone. Fastest finger gets to answer.",
+      "Answer correctly to bank the points. Get it wrong and other players can steal.",
+      "Earn a Power Play to wager bonus points on a clue you're confident about.",
+      "After the board is cleared, the All-In round begins — one final question, everyone wagers.",
+      "Highest score at the end wins!",
+    ],
+    highlights: [
+      "5 categories per board",
+      "Buzz-in speed matters",
+      "Power Play wagers",
+      "All-In finale",
+    ],
+  },
+  {
+    gameId: "lucky-letters",
+    tagline: "Spin. Guess. Solve.",
+    fullDescription:
+      "A word puzzle game where players spin a wheel, guess letters, and race to solve hidden phrases. Buy vowels, call consonants, and avoid the dreaded Bust. The first player to crack the phrase wins the round — or risk it all in the Bonus Round for a huge payoff.",
+    howToPlay: [
+      "A hidden phrase is displayed on screen with blanks for each letter.",
+      "On your turn, spin the wheel to land on a point value (or Bust/Pass).",
+      "Call a consonant — if it's in the phrase, you earn that value for each occurrence.",
+      "You can buy a vowel for 250 points to reveal more letters.",
+      "Solve the phrase at any time on your turn to win the round's points.",
+      "Land on Bust and you lose your turn's earnings. Pass skips to the next player.",
+      "The winner of the final round plays a Bonus Round: solve a tough phrase in 30 seconds!",
+    ],
+    highlights: [
+      "Spin the wheel each turn",
+      "Buy vowels for 250 pts",
+      "Bust loses your turn",
+      "Bonus Round finale",
+    ],
+  },
+  {
+    gameId: "survey-smash",
+    tagline: "Guess What Everyone Thinks.",
+    fullDescription:
+      "A team-based guessing game where you try to match the most popular survey answers. Two teams face off — one player from each team goes head-to-head, then the winning team tries to guess all the top answers. Miss three and the other team can snag your points. End with a Lightning Round for bonus points.",
+    howToPlay: [
+      "Players split into two teams. The host reads a survey question with hidden answers.",
+      "One player from each team faces off — buzz in with the answer you think is #1.",
+      "The team with the higher-ranked answer takes control and tries to guess the remaining answers.",
+      "Each wrong guess earns a strike — three strikes and control passes to the other team.",
+      "The opposing team gets one chance to snag the points by guessing a remaining answer.",
+      "Play through multiple rounds of questions as teams rack up points.",
+      "Finish with a Lightning Round: one player answers 5 rapid-fire questions in 30 seconds!",
+    ],
+    highlights: [
+      "Team-based gameplay",
+      "Face-off buzzer rounds",
+      "Three strikes to lose control",
+      "Lightning Round finale",
+    ],
   },
 ];

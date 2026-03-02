@@ -16,41 +16,23 @@ const MESSAGES = [
 ];
 
 const GAME_TIPS: Record<string, string[]> = {
-  "world-builder": [
-    "Describe specific actions -- vague answers get vague results!",
-    "Use your special ability at the right moment for maximum impact.",
-    "Bluff about your secret objective -- don't let others guess it.",
-    "Pay attention to what others do -- it reveals their motives.",
-  ],
-  "bluff-engine": [
-    "Write answers that sound plausible -- that's how you fool people!",
-    "Short, confident answers tend to trick more people.",
-    "Watch how others vote -- it might reveal who's bluffing.",
-    "The real answer is sometimes the most boring one.",
-  ],
-  "quick-draw": [
-    "Start with the outline, then add details.",
-    "Big, simple shapes are easier to guess.",
-    "Guess early and often -- speed matters!",
-    "Don't overthink it -- first instinct is usually right.",
-  ],
-  "reality-drift": [
-    "Real headlines are often stranger than you think.",
-    "Look for specific details -- AI tends to be vague.",
-    "Trust your gut on the drift check!",
-    "Weird-sounding headlines might actually be real.",
-  ],
-  "hot-take": [
-    "The most interesting takes are polarizing!",
-    "Think about what would spark a debate.",
-    "Try to guess where the group average will land.",
-    "Extreme opinions can score big -- or backfire!",
-  ],
-  "brain-battle": [
-    "Buzz in fast, but only if you know the answer!",
-    "Wrong answers lose points -- play it safe sometimes.",
+  "brain-board": [
+    "Everyone answers each clue -- speed and accuracy both matter!",
+    "Power Plays let you wager big -- risk it or play safe?",
     "Higher-value clues are harder but worth more.",
-    "Use your appeals wisely -- you only get a few!",
+    "Save some score for the All-In Round at the end!",
+  ],
+  "lucky-letters": [
+    "Spin big, guess smart -- consonants earn cash per letter!",
+    "Buying a vowel costs $250 -- make sure it's worth it.",
+    "Solve early if you're confident -- don't let others catch up!",
+    "Watch for BUST and PASS on the wheel!",
+  ],
+  "survey-smash": [
+    "Think popular, not correct -- match what the crowd says!",
+    "Three strikes and the other team gets to snag your points.",
+    "In the Lightning Round, speed is everything!",
+    "Face-off winners get control -- buzz in fast!",
   ],
 };
 

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
-import { clearRoomQueue, costTracker } from "@flimflam/ai";
+// AI module removed — no AI games in this build
 import type { GamePlugin } from "@flimflam/game-engine";
 import { GameRegistry } from "@flimflam/game-engine";
 import {
@@ -503,8 +503,7 @@ export class PartyRoom extends Room<RoomState> {
     if (this._roomCode) {
       unregisterRoomCode(this._roomCode, this.roomId);
     }
-    clearRoomQueue(this.roomId);
-    costTracker.clearRoom(this.roomId);
+    // AI cleanup removed — no AI games in this build
   }
 
   // ─── Transitions ──────────────────────────────────────────────────

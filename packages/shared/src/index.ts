@@ -11,6 +11,7 @@ export type { PlayerData } from "./types/player";
 
 export type {
   GameManifest,
+  GamePreviewContent,
   WorldBuilderPhase,
   BluffEnginePhase,
   QuickDrawPhase,
@@ -116,6 +117,7 @@ export {
   REACTION_COOLDOWN_MS,
   AVATAR_COLORS,
   GAME_MANIFESTS,
+  GAME_PREVIEW_CONTENT,
 } from "./constants";
 
 // Utilities (browser-safe helpers)
@@ -130,3 +132,5 @@ export {
 export type { ResolveRoomIdResult } from "./utils/colyseus";
 
 export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";
+
+export { fuzzyMatch, normalizeAnswer, stringSimilarity } from "./utils/fuzzy-match";

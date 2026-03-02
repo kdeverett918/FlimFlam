@@ -6,14 +6,17 @@ import { ReactionOverlay } from "@/components/game/ReactionOverlay";
 import { VolumeControl } from "@/components/game/VolumeControl";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
-import { useParams, useRouter } from "next/navigation";
+import { GAME_MANIFESTS } from "@flimflam/shared";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRoomContext } from "../RoomProvider";
 
 export default function RoomPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const routeCode = (params.code as string)?.toUpperCase() ?? "";
+  const preselectedGame = useRef(searchParams.get("game"));
   const {
     room,
     state,
@@ -76,6 +79,19 @@ export default function RoomPage() {
     router.replace(`/room/${roomCode}`);
   }, [roomCode, routeCode, router]);
 
+  // Auto-select game from ?game= query param
+  useEffect(() => {
+    if (!connected || !room || !preselectedGame.current) return;
+    const gameId = preselectedGame.current;
+    const valid = GAME_MANIFESTS.some((g) => g.id === gameId);
+    if (valid) {
+      sendMessage("host:select-game", { gameId });
+    }
+    preselectedGame.current = null;
+    // Strip query string from URL
+    router.replace(`/room/${roomCode ?? routeCode}`);
+  }, [connected, room, sendMessage, router, roomCode, routeCode]);
+
   // Phase transition effect
   useEffect(() => {
     if (prevPhase.current !== gameState.phase && gameState.phase !== "lobby") {
@@ -137,11 +153,11 @@ export default function RoomPage() {
           players={gameState.playerList}
           selectedGameId={gameState.selectedGameId}
           complexity={gameState.complexity}
-          hotTakePlayerInputEnabled={gameState.hotTakePlayerInputEnabled}
+          hotTakePlayerInputEnabled={false}
           playerCount={gameState.playerCount}
           onSelectGame={(gameId) => sendMessage("host:select-game", { gameId })}
           onSetComplexity={(complexity) => sendMessage("host:set-complexity", { complexity })}
-          onSetHotTakePlayerInput={(enabled) => sendMessage("host:set-player-input", { enabled })}
+          onSetHotTakePlayerInput={() => {}}
           onStartGame={() => sendMessage("host:start-game", { gameId: gameState.selectedGameId })}
         />
       )}
@@ -183,26 +199,38 @@ export default function RoomPage() {
 
 function formatPhaseLabel(phase: string): string {
   const labels: Record<string, string> = {
-    generating: "Generating World...",
-    "role-reveal": "Meet Your Character",
-    "action-input": "Choose Your Action",
-    "ai-narrating": "The Story Unfolds...",
-    "narration-display": "What Happened...",
-    reveal: "The Big Reveal",
-    "generating-prompt": "Cooking Up a Question...",
-    "answer-input": "Write Your Bluff",
-    voting: "Time to Vote",
-    results: "Results",
-    "picking-drawer": "Picking the Artist...",
-    drawing: "Draw!",
-    guessing: "Guess the Drawing!",
-    "word-reveal": "The Word Was...",
-    "generating-questions": "Generating Questions...",
+    // Brain Board
+    "category-reveal": "Here Are the Categories!",
+    "clue-select": "Pick a Clue",
     answering: "Answer Time",
-    "drift-check": "Reality or Drift?",
-    "topic-setup": "Pick Your Topic",
-    "ai-generating": "Generating Hot Takes...",
-    "showing-prompt": "Hot Take Incoming",
+    "power-play-wager": "Power Play!",
+    "power-play-answer": "Power Play Answer",
+    "clue-result": "Results",
+    "round-transition": "Double Down!",
+    "all-in-category": "All-In Round",
+    "all-in-wager": "Place Your Wager",
+    "all-in-answer": "Final Answer",
+    "all-in-reveal": "All-In Reveal",
+    // Lucky Letters
+    "round-intro": "New Round!",
+    spinning: "Spin the Wheel!",
+    "guess-consonant": "Pick a Consonant",
+    "buy-vowel": "Buying a Vowel",
+    "solve-attempt": "Solving...",
+    "letter-result": "Letter Reveal",
+    "round-result": "Round Complete",
+    "bonus-round": "Bonus Round!",
+    "bonus-reveal": "Bonus Reveal",
+    // Survey Smash
+    "question-reveal": "New Question!",
+    "face-off": "Face Off!",
+    guessing: "Guess an Answer",
+    strike: "Strike!",
+    "steal-chance": "Snag It!",
+    "answer-reveal": "The People Say...",
+    "lightning-round": "Lightning Round!",
+    "lightning-round-reveal": "Lightning Round Results",
+    // Shared
     "final-scores": "Final Scores",
   };
   return labels[phase] ?? "";

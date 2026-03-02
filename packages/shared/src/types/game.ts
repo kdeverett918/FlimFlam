@@ -13,6 +13,14 @@ export interface GameManifest {
   icon: string;
 }
 
+export interface GamePreviewContent {
+  gameId: string;
+  tagline: string;
+  fullDescription: string;
+  howToPlay: string[];
+  highlights: string[];
+}
+
 // Phase types for each game
 export type WorldBuilderPhase =
   | "generating"

@@ -28,9 +28,11 @@ const MotionCard = React.forwardRef<HTMLDivElement, MotionCardProps>(
     const [tilt, setTilt] = React.useState({ rotateX: 0, rotateY: 0 });
     const [highlight, setHighlight] = React.useState({ x: 50, y: 50 });
     const cardRef = React.useRef<HTMLDivElement | null>(null);
+    const [supportsHover, setSupportsHover] = React.useState(false);
 
-    const supportsHover =
-      typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+    React.useEffect(() => {
+      setSupportsHover(window.matchMedia("(hover: hover)").matches);
+    }, []);
 
     const handleMouseMove = React.useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {

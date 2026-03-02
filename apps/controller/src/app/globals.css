@@ -19,19 +19,10 @@
   --color-secondary-hover: oklch(0.8 0.13 185);
   --color-secondary-muted: oklch(0.74 0.15 185 / 0.2);
 
-  /* ── Per-game accent colors (brighter for readability) ── */
-  --color-accent-1: oklch(0.75 0.22 25);
-  --color-accent-2: oklch(0.74 0.2 300);
-  --color-accent-3: oklch(0.84 0.18 85);
-  --color-accent-4: oklch(0.78 0.18 160);
-  --color-accent-5: oklch(0.76 0.15 210);
-  --color-accent-6: oklch(0.74 0.25 20);
-  --color-accent-7: oklch(0.72 0.22 260);
-
-  /* ── Game show accent colors ── */
-  --color-accent-jeopardy: oklch(0.68 0.22 265);
-  --color-accent-wheel: oklch(0.82 0.18 85);
-  --color-accent-feud: oklch(0.74 0.25 25);
+  /* ── Per-game accent colors ── */
+  --color-accent-brainboard: oklch(0.68 0.22 265);
+  --color-accent-luckyletters: oklch(0.82 0.18 85);
+  --color-accent-surveysmash: oklch(0.74 0.25 25);
 
   /* ── Text (warm white — high contrast) ── */
   --color-text-primary: oklch(0.96 0.01 80);
@@ -311,6 +302,111 @@
 }
 .animate-crown-pulse {
   animation: crown-pulse 2s ease-in-out infinite;
+}
+
+/* ── AAA Visual Polish Keyframes ── */
+
+@keyframes cinematic-entrance {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes hover-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(0.5deg);
+  }
+}
+
+@keyframes glass-breathe {
+  0%,
+  100% {
+    border-color: oklch(1 0 0 / 0.15);
+  }
+  50% {
+    border-color: oklch(1 0 0 / 0.28);
+  }
+}
+
+@keyframes spotlight-sweep {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes podium-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  70% {
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes crown-pulse {
+  0%,
+  100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 8px oklch(0.82 0.18 85 / 0.6));
+  }
+  50% {
+    transform: scale(1.15) rotate(3deg);
+    filter: drop-shadow(0 0 16px oklch(0.82 0.18 85 / 0.9));
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  80%,
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-cinematic-entrance {
+  animation: cinematic-entrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-hover-float {
+  animation: hover-float 6s ease-in-out infinite;
+}
+.animate-glass-breathe {
+  animation: glass-breathe 4s ease-in-out infinite;
+}
+.animate-spotlight-sweep {
+  background-size: 200% 100%;
+  animation: spotlight-sweep 3s linear infinite;
+}
+.animate-podium-rise {
+  animation: podium-rise 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.animate-crown-pulse {
+  animation: crown-pulse 2s ease-in-out infinite;
+}
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
 
 /* ── Base styles ── */

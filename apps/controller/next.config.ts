@@ -34,7 +34,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
+  // transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

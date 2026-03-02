@@ -1,0 +1,1001 @@
+import type { MapSchema, Schema } from "@colyseus/schema";
+import { BaseGamePlugin } from "@flimflam/game-engine";
+import type { Complexity, GameManifest } from "@flimflam/shared";
+import { pickRandom, shuffleInPlace } from "@flimflam/shared";
+import type { Client, Room } from "colyseus";
+import { type WheelPuzzle, getPuzzleBank } from "./content/phrase-bank";
+import { type SpinResult, spinWheel } from "./wheel";
+
+// ─── Constants ─────────────────────────────────────────────────────────────
+
+const VOWEL_COST = 250;
+const VOWELS = new Set(["A", "E", "I", "O", "U"]);
+const CONSONANTS = new Set("BCDFGHJKLMNPQRSTVWXYZ".split(""));
+const RSTLNE = new Set(["R", "S", "T", "L", "N", "E"]);
+const BONUS_PRIZE = 25000;
+const _BONUS_SOLVE_TIME_MS = 10000;
+
+const ROUND_INTRO_DELAY_MS = 3000;
+const LETTER_RESULT_DELAY_MS = 2000;
+const ROUND_RESULT_DELAY_MS = 4000;
+const SPIN_ANIMATION_DELAY_MS = 3500;
+const BONUS_REVEAL_DELAY_MS = 5000;
+
+/** How many rounds by complexity. */
+function getRoundsForComplexity(complexity: Complexity): number {
+  switch (complexity) {
+    case "kids":
+      return 3;
+    case "standard":
+      return 4;
+    case "advanced":
+      return 5;
+  }
+}
+
+/** Whether the bonus round is available for this complexity. */
+function hasBonusRound(complexity: Complexity): boolean {
+  return complexity !== "kids";
+}
+
+// ─── Puzzle display helpers ────────────────────────────────────────────────
+
+/**
+ * Build the display string for a puzzle given revealed letters.
+ * Unrevealed letters become underscores. Spaces and punctuation are preserved.
+ */
+export function buildPuzzleDisplay(phrase: string, revealed: Set<string>): string {
+  return phrase
+    .split("")
+    .map((ch) => {
+      const upper = ch.toUpperCase();
+      if (/[A-Z]/.test(upper)) {
+        return revealed.has(upper) ? upper : "_";
+      }
+      // Non-letter characters (spaces, punctuation, hyphens, ampersands) show through
+      return ch;
+    })
+    .join("");
+}
+
+/**
+ * Count how many times a letter appears in a phrase.
+ */
+export function countLetterInPhrase(phrase: string, letter: string): number {
+  const upper = letter.toUpperCase();
+  let count = 0;
+  for (const ch of phrase) {
+    if (ch.toUpperCase() === upper) count++;
+  }
+  return count;
+}
+
+/**
+ * Normalize a solve attempt for comparison.
+ * Strips everything except letters and spaces, then collapses whitespace.
+ */
+export function normalizeSolve(input: string): string {
+  return input
+    .toUpperCase()
+    .replace(/[^A-Z ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Check whether a solve attempt matches the puzzle.
+ */
+export function isSolveCorrect(attempt: string, phrase: string): boolean {
+  return normalizeSolve(attempt) === normalizeSolve(phrase);
+}
+
+/**
+ * Get remaining consonants not yet guessed.
+ */
+export function getConsonantsRemaining(revealed: Set<string>): string[] {
+  const result: string[] = [];
+  for (const c of CONSONANTS) {
+    if (!revealed.has(c)) result.push(c);
+  }
+  return result;
+}
+
+/**
+ * Get remaining vowels not yet guessed.
+ */
+export function getVowelsRemaining(revealed: Set<string>): string[] {
+  const result: string[] = [];
+  for (const v of VOWELS) {
+    if (!revealed.has(v)) result.push(v);
+  }
+  return result;
+}
+
+/**
+ * Check if a puzzle is fully revealed (all letters are in the revealed set).
+ */
+export function isPuzzleFullyRevealed(phrase: string, revealed: Set<string>): boolean {
+  for (const ch of phrase) {
+    const upper = ch.toUpperCase();
+    if (/[A-Z]/.test(upper) && !revealed.has(upper)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ─── Internal state ────────────────────────────────────────────────────────
+
+interface PlayerCash {
+  roundCash: number;
+  totalCash: number;
+}
+
+type WheelPhase =
+  | "round-intro"
+  | "spinning"
+  | "guess-consonant"
+  | "buy-vowel"
+  | "solve-attempt"
+  | "letter-result"
+  | "round-result"
+  | "bonus-round"
+  | "bonus-reveal"
+  | "final-scores";
+
+// ─── Plugin ────────────────────────────────────────────────────────────────
+
+class LuckyLettersPlugin extends BaseGamePlugin {
+  manifest: GameManifest = {
+    id: "lucky-letters",
+    name: "Lucky Letters",
+    description: "Spin the wheel, guess the letters, and crack the phrase before anyone else!",
+    minPlayers: 2,
+    maxPlayers: 8,
+    estimatedMinutes: 12,
+    aiRequired: false,
+    complexityLevels: ["kids", "standard", "advanced"],
+    tags: ["word", "puzzle", "classic"],
+    icon: "\u{1F3A1}",
+  };
+
+  // Game state (not Colyseus Schema -- sent via messages)
+  private complexity: Complexity = "standard";
+  private totalRounds = 4;
+  private currentRound = 0;
+  private phase: WheelPhase = "round-intro";
+
+  private turnOrder: string[] = [];
+  private currentTurnIndex = 0;
+
+  private currentPuzzle: WheelPuzzle | null = null;
+  private revealedLetters: Set<string> = new Set();
+
+  private playerCash: Map<string, PlayerCash> = new Map();
+  private lastSpinResult: SpinResult | null = null;
+  private wildActive = false;
+
+  private usedPuzzleIndices: Set<number> = new Set();
+  private puzzleBank: WheelPuzzle[] = [];
+
+  private bonusPlayerSessionId: string | null = null;
+  private bonusExtraLetters: string[] = [];
+  private bonusSolved = false;
+
+  private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
+
+  createState(): Schema {
+    // We use the shared RoomState from PartyRoom; no custom Schema needed.
+    // All game-specific data is sent via room.broadcast("game-data", ...) and
+    // room.send(client, "private-data", ...).
+    return null as unknown as Schema;
+  }
+
+  onGameStart(room: Room, state: Schema, players: MapSchema, complexity: Complexity): void {
+    this.complexity = complexity;
+    this.totalRounds = getRoundsForComplexity(complexity);
+    this.currentRound = 0;
+    this.phase = "round-intro";
+    this.usedPuzzleIndices.clear();
+    this.playerCash.clear();
+    this.bonusPlayerSessionId = null;
+    this.bonusSolved = false;
+
+    this.puzzleBank = getPuzzleBank(complexity);
+
+    // Build turn order from active (non-host) players
+    this.turnOrder = [];
+    const hostId = this.getHostSessionId(state);
+    players.forEach((player: unknown, key: string) => {
+      const p = player as Record<string, unknown>;
+      if (key !== hostId && p.connected) {
+        this.turnOrder.push(key);
+      }
+    });
+    shuffleInPlace(this.turnOrder);
+
+    // Initialize cash tracking
+    for (const sessionId of this.turnOrder) {
+      this.playerCash.set(sessionId, { roundCash: 0, totalCash: 0 });
+    }
+
+    // Set round info on state
+    this.setStateRound(state, 1, this.totalRounds);
+    this.setPhase(state, "round-intro");
+
+    this.startNextRound(room, state);
+  }
+
+  onPlayerMessage(room: Room, state: Schema, client: Client, type: string, data: unknown): void {
+    const msg = data as Record<string, unknown>;
+
+    switch (type) {
+      case "player:spin":
+        this.handleSpin(room, state, client);
+        break;
+      case "player:guess-consonant":
+        this.handleGuessConsonant(room, state, client, msg);
+        break;
+      case "player:buy-vowel":
+        this.handleBuyVowel(room, state, client, msg);
+        break;
+      case "player:solve":
+        this.handleSolve(room, state, client, msg);
+        break;
+      case "player:choose-action":
+        this.handleChooseAction(room, state, client, msg);
+        break;
+      case "player:bonus-letters":
+        this.handleBonusLetters(room, state, client, msg);
+        break;
+      case "player:bonus-solve":
+        this.handleBonusSolve(room, state, client, msg);
+        break;
+      case "host:skip":
+        this.handleHostSkip(room, state);
+        break;
+    }
+  }
+
+  isGameOver(_state: Schema): boolean {
+    return this.phase === "final-scores";
+  }
+
+  getScores(_state: Schema): Map<string, number> {
+    const scores = new Map<string, number>();
+    for (const [sessionId, cash] of this.playerCash) {
+      scores.set(sessionId, cash.totalCash);
+    }
+    return scores;
+  }
+
+  onPlayerLeave(room: Room, state: Schema, sessionId: string, consented: boolean): void {
+    super.onPlayerLeave(room, state, sessionId, consented);
+
+    // If the current turn player disconnected, advance turn
+    if (
+      this.turnOrder[this.currentTurnIndex] === sessionId &&
+      this.phase !== "final-scores" &&
+      this.phase !== "round-result" &&
+      this.phase !== "bonus-round" &&
+      this.phase !== "bonus-reveal"
+    ) {
+      this.advanceTurn(room, state);
+    }
+  }
+
+  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+    // Re-send full game state to reconnected player
+    this.sendPrivateData(room, state, client.sessionId);
+    this.broadcastGameState(room, state);
+  }
+
+  // ─── Phase Transitions ───────────────────────────────────────────────
+
+  private startNextRound(room: Room, state: Schema): void {
+    this.currentRound++;
+    if (this.currentRound > this.totalRounds) {
+      if (hasBonusRound(this.complexity)) {
+        this.startBonusRound(room, state);
+      } else {
+        this.goToFinalScores(room, state);
+      }
+      return;
+    }
+
+    this.phase = "round-intro";
+    this.currentTurnIndex = (this.currentRound - 1) % this.turnOrder.length;
+    this.revealedLetters.clear();
+    this.wildActive = false;
+    this.lastSpinResult = null;
+
+    // Reset round cash for all players
+    for (const [sessionId, cash] of this.playerCash) {
+      this.playerCash.set(sessionId, { roundCash: 0, totalCash: cash.totalCash });
+    }
+
+    // Pick a puzzle not yet used
+    this.currentPuzzle = this.pickUnusedPuzzle();
+
+    this.setStateRound(state, this.currentRound, this.totalRounds);
+    this.setPhase(state, "round-intro");
+    this.broadcastGameState(room, state);
+
+    // Auto-advance to spinning after a delay
+    this.scheduleDelayed(room, ROUND_INTRO_DELAY_MS, () => {
+      this.phase = "spinning";
+      this.setPhase(state, "spinning");
+      this.broadcastGameState(room, state);
+      this.sendAllPrivateData(room, state);
+    });
+  }
+
+  private handleSpin(room: Room, state: Schema, client: Client): void {
+    if (this.phase !== "spinning") return;
+    if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
+
+    const result = spinWheel();
+    this.lastSpinResult = result;
+
+    // Broadcast spin result to all clients for animation
+    room.broadcast("game-data", {
+      type: "spin-result",
+      segment: result.segment,
+      angle: result.angle,
+    });
+
+    // Process after animation delay
+    this.scheduleDelayed(room, SPIN_ANIMATION_DELAY_MS, () => {
+      this.processSpinResult(room, state, result);
+    });
+  }
+
+  private processSpinResult(room: Room, state: Schema, result: SpinResult): void {
+    const currentPlayer = this.turnOrder[this.currentTurnIndex];
+    if (!currentPlayer) return;
+
+    switch (result.segment.type) {
+      case "bust": {
+        // Lose all round cash
+        const cash = this.playerCash.get(currentPlayer);
+        if (cash) {
+          this.playerCash.set(currentPlayer, { roundCash: 0, totalCash: cash.totalCash });
+        }
+        this.wildActive = false;
+        this.broadcastGameState(room, state);
+        // Show result briefly then advance turn
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.advanceTurn(room, state);
+        });
+        break;
+      }
+      case "pass": {
+        this.wildActive = false;
+        this.broadcastGameState(room, state);
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.advanceTurn(room, state);
+        });
+        break;
+      }
+      case "wild": {
+        this.wildActive = true;
+        this.phase = "guess-consonant";
+        this.setPhase(state, "guess-consonant");
+        this.broadcastGameState(room, state);
+        this.sendAllPrivateData(room, state);
+        break;
+      }
+      case "cash": {
+        this.wildActive = false;
+        this.phase = "guess-consonant";
+        this.setPhase(state, "guess-consonant");
+        this.broadcastGameState(room, state);
+        this.sendAllPrivateData(room, state);
+        break;
+      }
+    }
+  }
+
+  private handleGuessConsonant(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "guess-consonant") return;
+    if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
+    if (!this.currentPuzzle || !this.lastSpinResult) return;
+
+    const letter = (typeof data.letter === "string" ? data.letter : "").toUpperCase().trim();
+    if (letter.length !== 1 || !CONSONANTS.has(letter)) return;
+    if (this.revealedLetters.has(letter)) return;
+
+    this.revealedLetters.add(letter);
+    const count = countLetterInPhrase(this.currentPuzzle.phrase, letter);
+
+    const spinValue = this.lastSpinResult.segment.value;
+
+    this.phase = "letter-result";
+    this.setPhase(state, "letter-result");
+
+    if (count > 0) {
+      // Award cash
+      const currentPlayer = this.turnOrder[this.currentTurnIndex];
+      if (currentPlayer) {
+        const cash = this.playerCash.get(currentPlayer);
+        if (cash) {
+          const earned = count * spinValue;
+          cash.roundCash += earned;
+          this.playerCash.set(currentPlayer, cash);
+        }
+      }
+
+      room.broadcast("game-data", {
+        type: "letter-result",
+        letter,
+        count,
+        inPuzzle: true,
+        earned: count * spinValue,
+        puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
+      });
+
+      // Check if puzzle is fully revealed
+      if (isPuzzleFullyRevealed(this.currentPuzzle.phrase, this.revealedLetters)) {
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.endRound(room, state, this.turnOrder[this.currentTurnIndex] ?? null);
+        });
+      } else {
+        // Player keeps turn -- go to spinning (they choose to spin, buy vowel, or solve)
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.goToPlayerChoice(room, state);
+        });
+      }
+    } else {
+      room.broadcast("game-data", {
+        type: "letter-result",
+        letter,
+        count: 0,
+        inPuzzle: false,
+        earned: 0,
+        puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
+      });
+
+      if (this.wildActive) {
+        // Wild: wrong guess doesn't lose turn
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.goToPlayerChoice(room, state);
+        });
+      } else {
+        // Wrong guess: lose turn
+        this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+          this.advanceTurn(room, state);
+        });
+      }
+    }
+
+    this.wildActive = false;
+    this.broadcastGameState(room, state);
+  }
+
+  private handleBuyVowel(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "buy-vowel") return;
+    if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
+    if (!this.currentPuzzle) return;
+
+    const letter = (typeof data.letter === "string" ? data.letter : "").toUpperCase().trim();
+    if (letter.length !== 1 || !VOWELS.has(letter)) return;
+    if (this.revealedLetters.has(letter)) return;
+
+    const currentPlayer = this.turnOrder[this.currentTurnIndex];
+    if (!currentPlayer) return;
+    const cash = this.playerCash.get(currentPlayer);
+    if (!cash || cash.roundCash < VOWEL_COST) return;
+
+    // Deduct cost
+    cash.roundCash -= VOWEL_COST;
+    this.playerCash.set(currentPlayer, cash);
+
+    this.revealedLetters.add(letter);
+    const count = countLetterInPhrase(this.currentPuzzle.phrase, letter);
+
+    this.phase = "letter-result";
+    this.setPhase(state, "letter-result");
+
+    room.broadcast("game-data", {
+      type: "letter-result",
+      letter,
+      count,
+      inPuzzle: count > 0,
+      earned: 0,
+      vowelCost: VOWEL_COST,
+      puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
+    });
+
+    this.broadcastGameState(room, state);
+
+    if (isPuzzleFullyRevealed(this.currentPuzzle.phrase, this.revealedLetters)) {
+      this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+        this.endRound(room, state, currentPlayer);
+      });
+    } else {
+      // Stay on turn regardless of whether vowel was in puzzle
+      this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+        this.goToPlayerChoice(room, state);
+      });
+    }
+  }
+
+  private handleSolve(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "solve-attempt") return;
+    if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
+    if (!this.currentPuzzle) return;
+
+    const attempt = typeof data.answer === "string" ? data.answer : "";
+
+    if (isSolveCorrect(attempt, this.currentPuzzle.phrase)) {
+      // Correct solve! Player wins the round.
+      room.broadcast("game-data", {
+        type: "solve-result",
+        correct: true,
+        attempt,
+        answer: this.currentPuzzle.phrase,
+      });
+      this.endRound(room, state, client.sessionId);
+    } else {
+      // Wrong solve: turn advances.
+      room.broadcast("game-data", {
+        type: "solve-result",
+        correct: false,
+        attempt,
+      });
+      this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
+        this.advanceTurn(room, state);
+      });
+    }
+  }
+
+  private handleChooseAction(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    // Only the current turn player in the "spinning" phase can choose
+    // This is triggered when a player wants to buy a vowel or solve instead of spinning
+    if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
+    if (this.phase !== "spinning") return;
+
+    const action = typeof data.action === "string" ? data.action : "";
+
+    switch (action) {
+      case "buy-vowel": {
+        const currentPlayer = this.turnOrder[this.currentTurnIndex];
+        if (!currentPlayer) return;
+        const cash = this.playerCash.get(currentPlayer);
+        if (!cash || cash.roundCash < VOWEL_COST) return;
+        if (getVowelsRemaining(this.revealedLetters).length === 0) return;
+
+        this.phase = "buy-vowel";
+        this.setPhase(state, "buy-vowel");
+        this.broadcastGameState(room, state);
+        this.sendAllPrivateData(room, state);
+        break;
+      }
+      case "solve": {
+        this.phase = "solve-attempt";
+        this.setPhase(state, "solve-attempt");
+        this.broadcastGameState(room, state);
+        this.sendAllPrivateData(room, state);
+        break;
+      }
+      // "spin" is the default action -- player just sends player:spin
+    }
+  }
+
+  private handleBonusLetters(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "bonus-round") return;
+    if (client.sessionId !== this.bonusPlayerSessionId) return;
+    if (this.bonusExtraLetters.length > 0) return; // Already submitted
+
+    const consonants = Array.isArray(data.consonants)
+      ? (data.consonants as unknown[])
+          .filter((c): c is string => typeof c === "string")
+          .map((c) => c.toUpperCase().trim())
+          .filter((c) => c.length === 1 && CONSONANTS.has(c) && !this.revealedLetters.has(c))
+      : [];
+    const vowel = (typeof data.vowel === "string" ? data.vowel : "").toUpperCase().trim();
+
+    if (consonants.length !== 3) return;
+    if (!VOWELS.has(vowel) || this.revealedLetters.has(vowel)) return;
+
+    // Ensure consonants are unique
+    const uniqueConsonants = [...new Set(consonants)];
+    if (uniqueConsonants.length !== 3) return;
+
+    this.bonusExtraLetters = [...uniqueConsonants, vowel];
+
+    // Reveal bonus letters
+    for (const letter of this.bonusExtraLetters) {
+      this.revealedLetters.add(letter);
+    }
+
+    // Broadcast updated display
+    if (this.currentPuzzle) {
+      room.broadcast("game-data", {
+        type: "bonus-letters-revealed",
+        letters: this.bonusExtraLetters,
+        puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
+      });
+    }
+
+    this.broadcastGameState(room, state);
+
+    // Start 10-second solve timer
+    this.startPhaseTimer(room, "bonus-solve", this.complexity, () => {
+      // Time is up -- go to bonus reveal
+      this.goToBonusReveal(room, state);
+    });
+  }
+
+  private handleBonusSolve(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "bonus-round") return;
+    if (client.sessionId !== this.bonusPlayerSessionId) return;
+    if (!this.currentPuzzle) return;
+
+    const attempt = typeof data.answer === "string" ? data.answer : "";
+
+    if (isSolveCorrect(attempt, this.currentPuzzle.phrase)) {
+      this.bonusSolved = true;
+      this.clearTimer();
+      // Award bonus prize
+      const cash = this.playerCash.get(client.sessionId);
+      if (cash) {
+        cash.totalCash += BONUS_PRIZE;
+        this.playerCash.set(client.sessionId, cash);
+      }
+    }
+
+    this.goToBonusReveal(room, state);
+  }
+
+  private handleHostSkip(room: Room, state: Schema): void {
+    // Allow host to advance past any waiting phase
+    this.clearPendingTimer();
+    switch (this.phase) {
+      case "round-intro":
+        this.phase = "spinning";
+        this.setPhase(state, "spinning");
+        this.broadcastGameState(room, state);
+        this.sendAllPrivateData(room, state);
+        break;
+      case "letter-result":
+      case "round-result":
+        // These auto-advance, just speed them up
+        break;
+      case "bonus-reveal":
+        this.goToFinalScores(room, state);
+        break;
+      case "final-scores":
+        // Do nothing, game is over
+        break;
+    }
+  }
+
+  // ─── Turn / Round Management ─────────────────────────────────────────
+
+  private advanceTurn(room: Room, state: Schema): void {
+    this.wildActive = false;
+    this.lastSpinResult = null;
+
+    // Find next connected player
+    const _startIndex = this.currentTurnIndex;
+    let attempts = 0;
+    do {
+      this.currentTurnIndex = (this.currentTurnIndex + 1) % this.turnOrder.length;
+      attempts++;
+      const sessionId = this.turnOrder[this.currentTurnIndex];
+      if (sessionId && this.isPlayerConnected(state, sessionId)) {
+        break;
+      }
+    } while (attempts < this.turnOrder.length);
+
+    if (attempts >= this.turnOrder.length) {
+      // No connected players -- end round
+      this.endRound(room, state, null);
+      return;
+    }
+
+    this.phase = "spinning";
+    this.setPhase(state, "spinning");
+    this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
+  }
+
+  private goToPlayerChoice(room: Room, state: Schema): void {
+    // Player has the choice: spin again, buy vowel, or solve
+    this.phase = "spinning";
+    this.setPhase(state, "spinning");
+    this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
+  }
+
+  private endRound(room: Room, state: Schema, winnerId: string | null): void {
+    this.phase = "round-result";
+    this.setPhase(state, "round-result");
+
+    // If someone solved, add their round cash to total cash
+    if (winnerId) {
+      const cash = this.playerCash.get(winnerId);
+      if (cash) {
+        cash.totalCash += cash.roundCash;
+        this.playerCash.set(winnerId, cash);
+      }
+    }
+    // For non-winners, round cash is lost (not added to total)
+
+    // Update scores on schema
+    for (const [sessionId, cash] of this.playerCash) {
+      this.updatePlayerScore(state, sessionId, cash.totalCash);
+    }
+
+    room.broadcast("game-data", {
+      type: "round-result",
+      winnerId,
+      answer: this.currentPuzzle?.phrase ?? "",
+      category: this.currentPuzzle?.category ?? "",
+      roundCashEarned: winnerId ? (this.playerCash.get(winnerId)?.roundCash ?? 0) : 0,
+      standings: this.getStandings(),
+    });
+
+    this.broadcastGameState(room, state);
+
+    this.scheduleDelayed(room, ROUND_RESULT_DELAY_MS, () => {
+      this.startNextRound(room, state);
+    });
+  }
+
+  private startBonusRound(room: Room, state: Schema): void {
+    // Find player with highest totalCash
+    let bestId: string | null = null;
+    let bestCash = -1;
+    for (const [sessionId, cash] of this.playerCash) {
+      if (cash.totalCash > bestCash && this.isPlayerConnected(state, sessionId)) {
+        bestCash = cash.totalCash;
+        bestId = sessionId;
+      }
+    }
+
+    if (!bestId) {
+      this.goToFinalScores(room, state);
+      return;
+    }
+
+    this.bonusPlayerSessionId = bestId;
+    this.bonusSolved = false;
+    this.bonusExtraLetters = [];
+
+    // Pick a new puzzle for the bonus round
+    this.currentPuzzle = this.pickUnusedPuzzle();
+    this.revealedLetters.clear();
+
+    // Auto-reveal RSTLNE
+    for (const letter of RSTLNE) {
+      this.revealedLetters.add(letter);
+    }
+
+    this.phase = "bonus-round";
+    this.setPhase(state, "bonus-round");
+    this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
+  }
+
+  private goToBonusReveal(room: Room, state: Schema): void {
+    this.clearTimer();
+    this.phase = "bonus-reveal";
+    this.setPhase(state, "bonus-reveal");
+
+    room.broadcast("game-data", {
+      type: "bonus-reveal",
+      solved: this.bonusSolved,
+      answer: this.currentPuzzle?.phrase ?? "",
+      bonusPrize: this.bonusSolved ? BONUS_PRIZE : 0,
+      bonusPlayerId: this.bonusPlayerSessionId,
+    });
+
+    this.broadcastGameState(room, state);
+
+    this.scheduleDelayed(room, BONUS_REVEAL_DELAY_MS, () => {
+      this.goToFinalScores(room, state);
+    });
+  }
+
+  private goToFinalScores(room: Room, state: Schema): void {
+    this.phase = "final-scores";
+    this.setPhase(state, "final-scores");
+
+    // Update scores on schema one last time
+    for (const [sessionId, cash] of this.playerCash) {
+      this.updatePlayerScore(state, sessionId, cash.totalCash);
+    }
+
+    room.broadcast("game-data", {
+      type: "final-scores",
+      standings: this.getStandings(),
+    });
+
+    this.broadcastGameState(room, state);
+  }
+
+  // ─── Broadcast Helpers ───────────────────────────────────────────────
+
+  private broadcastGameState(room: Room, _state: Schema): void {
+    const puzzleDisplay = this.currentPuzzle
+      ? buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters)
+      : "";
+
+    room.broadcast("game-data", {
+      type: "game-state",
+      phase: this.phase,
+      round: this.currentRound,
+      totalRounds: this.totalRounds,
+      category: this.currentPuzzle?.category ?? "",
+      hint: this.currentPuzzle?.hint ?? "",
+      puzzleDisplay,
+      currentTurnSessionId: this.turnOrder[this.currentTurnIndex] ?? null,
+      turnOrder: this.turnOrder,
+      standings: this.getStandings(),
+      consonantsRemaining: getConsonantsRemaining(this.revealedLetters),
+      vowelsRemaining: getVowelsRemaining(this.revealedLetters),
+      wildActive: this.wildActive,
+      lastSpinResult: this.lastSpinResult ? { segment: this.lastSpinResult.segment } : null,
+      bonusPlayerSessionId: this.bonusPlayerSessionId,
+      bonusSolved: this.bonusSolved,
+      revealedLetters: [...this.revealedLetters],
+    });
+  }
+
+  private sendPrivateData(room: Room, _state: Schema, sessionId: string): void {
+    const client = this.findClient(room, sessionId);
+    if (!client) return;
+
+    const cash = this.playerCash.get(sessionId);
+    const isMyTurn = this.turnOrder[this.currentTurnIndex] === sessionId;
+    const canBuyVowel =
+      isMyTurn &&
+      (cash?.roundCash ?? 0) >= VOWEL_COST &&
+      getVowelsRemaining(this.revealedLetters).length > 0;
+
+    room.send(client, "private-data", {
+      type: "player-state",
+      roundCash: cash?.roundCash ?? 0,
+      totalCash: cash?.totalCash ?? 0,
+      isMyTurn,
+      canBuyVowel,
+      canSolve: isMyTurn,
+      isBonusPlayer: sessionId === this.bonusPlayerSessionId,
+    });
+  }
+
+  private sendAllPrivateData(room: Room, state: Schema): void {
+    for (const sessionId of this.turnOrder) {
+      this.sendPrivateData(room, state, sessionId);
+    }
+  }
+
+  // ─── Utility Helpers ─────────────────────────────────────────────────
+
+  private getHostSessionId(state: Schema): string {
+    return ((state as unknown as Record<string, unknown>).hostSessionId as string) ?? "";
+  }
+
+  private isPlayerConnected(state: Schema, sessionId: string): boolean {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema | undefined;
+    if (!players) return false;
+    const player = players.get(sessionId);
+    if (!player) return false;
+    return (player as unknown as Record<string, unknown>).connected as boolean;
+  }
+
+  private findClient(room: Room, sessionId: string): Client | undefined {
+    return (room.clients as unknown as Client[]).find((c: Client) => c.sessionId === sessionId);
+  }
+
+  private updatePlayerScore(state: Schema, sessionId: string, score: number): void {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema | undefined;
+    if (!players) return;
+    const player = players.get(sessionId);
+    if (player) {
+      (player as unknown as Record<string, unknown>).score = score;
+    }
+  }
+
+  private setStateRound(state: Schema, round: number, total: number): void {
+    const rec = state as unknown as Record<string, unknown>;
+    rec.round = round;
+    rec.totalRounds = total;
+  }
+
+  private getStandings(): Array<{ sessionId: string; roundCash: number; totalCash: number }> {
+    const standings: Array<{ sessionId: string; roundCash: number; totalCash: number }> = [];
+    for (const [sessionId, cash] of this.playerCash) {
+      standings.push({ sessionId, roundCash: cash.roundCash, totalCash: cash.totalCash });
+    }
+    standings.sort((a, b) => b.totalCash - a.totalCash);
+    return standings;
+  }
+
+  private pickUnusedPuzzle(): WheelPuzzle {
+    const bank = this.puzzleBank;
+    // Find indices not yet used
+    const available: number[] = [];
+    for (let i = 0; i < bank.length; i++) {
+      if (!this.usedPuzzleIndices.has(i)) {
+        available.push(i);
+      }
+    }
+
+    // If all used, reset (wrap around)
+    if (available.length === 0) {
+      this.usedPuzzleIndices.clear();
+      for (let i = 0; i < bank.length; i++) {
+        available.push(i);
+      }
+    }
+
+    const idx = pickRandom(available) ?? 0;
+    this.usedPuzzleIndices.add(idx);
+    return bank[idx] ?? bank[0] ?? { phrase: "", category: "", hint: "" };
+  }
+
+  /**
+   * Schedule a delayed callback using the room clock.
+   * Clears any previous pending delayed timer.
+   */
+  private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
+    this.clearPendingTimer();
+    const delayed = room.clock.setTimeout(callback, delayMs);
+    this.pendingTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
+  }
+
+  private clearPendingTimer(): void {
+    if (this.pendingTimerId !== null) {
+      try {
+        const delayed = this.pendingTimerId as unknown as { clear?: () => void };
+        if (typeof delayed.clear === "function") {
+          delayed.clear();
+        }
+      } catch {
+        // Ignore -- timer may have already fired
+      }
+      this.pendingTimerId = null;
+    }
+  }
+}
+
+/** Factory function to create a Lucky Letters game plugin. */
+export function createLuckyLettersPlugin(): LuckyLettersPlugin {
+  return new LuckyLettersPlugin();
+}
+
+// Re-export constants for testing
+export { VOWEL_COST, BONUS_PRIZE, VOWELS, CONSONANTS, RSTLNE };

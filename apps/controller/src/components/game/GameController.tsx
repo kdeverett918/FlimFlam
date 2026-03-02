@@ -28,21 +28,21 @@ interface GameControllerProps {
 }
 
 const GAME_THEME_MAP: Record<string, GameTheme> = {
-  jeopardy: "jeopardy",
-  "wheel-of-fortune": "wheel-of-fortune",
-  "family-feud": "family-feud",
+  "brain-board": "brain-board",
+  "lucky-letters": "lucky-letters",
+  "survey-smash": "survey-smash",
 };
 
 const GAME_DISPLAY_NAMES: Record<string, string> = {
-  jeopardy: "Jeopardy",
-  "wheel-of-fortune": "Wheel of Fortune",
-  "family-feud": "Family Feud",
+  "brain-board": "Brain Board",
+  "lucky-letters": "Lucky Letters",
+  "survey-smash": "Survey Smash",
 };
 
 const GAME_ACCENT_CLASSES: Record<string, string> = {
-  jeopardy: "text-accent-jeopardy bg-accent-jeopardy/15",
-  "wheel-of-fortune": "text-accent-wheel bg-accent-wheel/15",
-  "family-feud": "text-accent-feud bg-accent-feud/15",
+  "brain-board": "text-accent-brainboard bg-accent-brainboard/15",
+  "lucky-letters": "text-accent-luckyletters bg-accent-luckyletters/15",
+  "survey-smash": "text-accent-surveysmash bg-accent-surveysmash/15",
 };
 
 export function GameController({
@@ -104,42 +104,42 @@ export function GameController({
     [sendMessage],
   );
 
-  const handleJeopardyAnswer = useCallback(
+  const handleBrainBoardAnswer = useCallback(
     (text: string) => {
       sendMessage("player:answer", { answer: text });
     },
     [sendMessage],
   );
 
-  const handleDailyDoubleWager = useCallback(
+  const handlePowerPlayWager = useCallback(
     (wager: number) => {
-      sendMessage("player:daily-double-wager", { wager });
+      sendMessage("player:power-play-wager", { wager });
     },
     [sendMessage],
   );
 
-  const handleDailyDoubleAnswer = useCallback(
+  const handlePowerPlayAnswer = useCallback(
     (text: string) => {
-      sendMessage("player:daily-double-answer", { answer: text });
+      sendMessage("player:power-play-answer", { answer: text });
     },
     [sendMessage],
   );
 
-  const handleFinalWager = useCallback(
+  const handleAllInWager = useCallback(
     (wager: number) => {
-      sendMessage("player:final-wager", { wager });
+      sendMessage("player:all-in-wager", { wager });
     },
     [sendMessage],
   );
 
-  const handleFinalAnswer = useCallback(
+  const handleAllInAnswer = useCallback(
     (text: string) => {
-      sendMessage("player:final-answer", { answer: text });
+      sendMessage("player:all-in-answer", { answer: text });
     },
     [sendMessage],
   );
 
-  // ─── Wheel of Fortune action chooser helpers ──────────────────────
+  // ─── Lucky Letters action chooser helpers ──────────────────────
 
   const handleChooseBuyVowel = useCallback(() => {
     sendMessage("player:choose-action", { action: "buy-vowel" });
@@ -153,13 +153,14 @@ export function GameController({
 
   const themeKey = GAME_THEME_MAP[gameId] ?? "default";
   const gameName = GAME_DISPLAY_NAMES[gameId] ?? gameId;
-  const accentClass = GAME_ACCENT_CLASSES[gameId] ?? "text-accent-1 bg-accent-1/15";
+  const accentClass =
+    GAME_ACCENT_CLASSES[gameId] ?? "text-accent-brainboard bg-accent-brainboard/15";
 
   // ─── Private data as typed helpers ────────────────────────────────
 
   const pd = privateData ?? {};
 
-  // Build used letters set for WoF from revealedLetters broadcast
+  // Build used letters set for Lucky Letters from revealedLetters broadcast
   const usedLetters = useMemo(() => {
     const letters = Array.isArray(pd.revealedLetters) ? pd.revealedLetters : [];
     return new Set(letters.filter((l): l is string => typeof l === "string"));
@@ -170,14 +171,14 @@ export function GameController({
   let content: React.ReactNode;
 
   switch (gameId) {
-    case "jeopardy":
-      content = renderJeopardy(phase);
+    case "brain-board":
+      content = renderBrainBoard(phase);
       break;
-    case "wheel-of-fortune":
-      content = renderWheelOfFortune(phase);
+    case "lucky-letters":
+      content = renderLuckyLetters(phase);
       break;
-    case "family-feud":
-      content = renderFamilyFeud(phase);
+    case "survey-smash":
+      content = renderSurveySmash(phase);
       break;
     default:
       content = renderGenericPhase(phase);
@@ -205,10 +206,10 @@ export function GameController({
   );
 
   // ────────────────────────────────────────────────────────────────────
-  // JEOPARDY
+  // BRAIN BOARD
   // ────────────────────────────────────────────────────────────────────
 
-  function renderJeopardy(currentPhase: string): React.ReactNode {
+  function renderBrainBoard(currentPhase: string): React.ReactNode {
     switch (currentPhase) {
       case "category-reveal":
         return (
@@ -221,7 +222,6 @@ export function GameController({
 
       case "clue-select": {
         if (pd.isSelector) {
-          // Build categories and answered clues from broadcast game-data
           const categories = Array.isArray(pd.categories)
             ? pd.categories.filter((c): c is string => typeof c === "string")
             : [];
@@ -258,7 +258,7 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             {clueCat && (
-              <div className="mx-4 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-jeopardy">
+              <div className="mx-4 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-brainboard">
                 {clueCat} — ${clueVal}
               </div>
             )}
@@ -269,48 +269,48 @@ export function GameController({
             )}
             <TextInput
               prompt="Your answer:"
-              placeholder="What is..."
-              onSubmit={handleJeopardyAnswer}
+              placeholder="Answer..."
+              onSubmit={handleBrainBoardAnswer}
               resetNonce={errorNonce}
             />
           </div>
         );
       }
 
-      case "daily-double-wager": {
-        if (pd.isDailyDoublePlayer) {
+      case "power-play-wager": {
+        if (pd.isPowerPlayPlayer) {
           const maxWager = typeof pd.score === "number" ? Math.max(pd.score, 1000) : 1000;
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <NumberInput
                 min={5}
                 max={maxWager}
-                label="Daily Double! Set your wager:"
-                onSubmit={handleDailyDoubleWager}
+                label="Power Play! Set your wager:"
+                onSubmit={handlePowerPlayWager}
               />
             </div>
           );
         }
-        return renderWatchScreen("Daily Double!");
+        return renderWatchScreen("Power Play!");
       }
 
-      case "daily-double-answer": {
-        if (pd.isDailyDoublePlayer) {
+      case "power-play-answer": {
+        if (pd.isPowerPlayPlayer) {
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <TextInput
-                prompt="Daily Double answer:"
-                placeholder="What is..."
-                onSubmit={handleDailyDoubleAnswer}
+                prompt="Power Play answer:"
+                placeholder="Answer..."
+                onSubmit={handlePowerPlayAnswer}
                 resetNonce={errorNonce}
               />
             </div>
           );
         }
-        return renderWatchScreen("Waiting for the Daily Double answer...");
+        return renderWatchScreen("Waiting for the Power Play answer...");
       }
 
-      case "final-jeopardy-wager": {
+      case "all-in-wager": {
         if (pd.canWagerFinal) {
           const playerScore = typeof pd.score === "number" ? pd.score : 0;
           return (
@@ -318,34 +318,34 @@ export function GameController({
               <NumberInput
                 min={0}
                 max={playerScore}
-                label="Final Jeopardy! Set your wager:"
-                onSubmit={handleFinalWager}
+                label="All-In Round! Set your wager:"
+                onSubmit={handleAllInWager}
               />
             </div>
           );
         }
-        return renderWatchScreen("Final Jeopardy wagers being placed...");
+        return renderWatchScreen("All-In wagers being placed...");
       }
 
-      case "final-jeopardy-answer": {
+      case "all-in-answer": {
         if (pd.canAnswerFinal) {
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <TextInput
-                prompt="Final Jeopardy answer:"
-                placeholder="What is..."
-                onSubmit={handleFinalAnswer}
+                prompt="All-In answer:"
+                placeholder="Answer..."
+                onSubmit={handleAllInAnswer}
                 resetNonce={errorNonce}
               />
             </div>
           );
         }
-        return renderWatchScreen("Final Jeopardy answers being submitted...");
+        return renderWatchScreen("All-In answers being submitted...");
       }
 
       case "clue-result":
-      case "final-jeopardy-category":
-      case "final-jeopardy-reveal":
+      case "all-in-category":
+      case "all-in-reveal":
         return renderWatchScreen("Watch the main screen!");
 
       case "final-scores":
@@ -363,10 +363,10 @@ export function GameController({
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // WHEEL OF FORTUNE
+  // LUCKY LETTERS
   // ────────────────────────────────────────────────────────────────────
 
-  function renderWheelOfFortune(currentPhase: string): React.ReactNode {
+  function renderLuckyLetters(currentPhase: string): React.ReactNode {
     const isMyTurn = pd.isMyTurn === true;
     const canBuyVowel = pd.canBuyVowel === true;
     const isBonusPlayer = pd.isBonusPlayer === true;
@@ -383,9 +383,9 @@ export function GameController({
                   <button
                     type="button"
                     onClick={handleChooseBuyVowel}
-                    className="min-h-[48px] rounded-xl border border-accent-wheel/40 bg-accent-wheel/15 px-5 py-2 font-display text-sm font-bold text-accent-wheel uppercase tracking-wider transition-all active:scale-95"
+                    className="min-h-[48px] rounded-xl border border-accent-luckyletters/40 bg-accent-luckyletters/15 px-5 py-2 font-display text-sm font-bold text-accent-luckyletters uppercase tracking-wider transition-all active:scale-95"
                   >
-                    Buy Vowel ($250)
+                    Buy a Vowel ($250)
                   </button>
                 )}
                 <button
@@ -470,9 +470,6 @@ export function GameController({
                 mode="bonus"
                 usedLetters={usedLetters}
                 onPick={(letter) => {
-                  // In bonus round, the player picks 3 consonants + 1 vowel
-                  // This is handled via the bonus-letters message type
-                  // For simplicity, we forward individual picks via consonant/vowel
                   sendMessage("player:bonus-pick", { letter });
                 }}
               />
@@ -512,19 +509,18 @@ export function GameController({
   }
 
   // ────────────────────────────────────────────────────────────────────
-  // FAMILY FEUD
+  // SURVEY SMASH
   // ────────────────────────────────────────────────────────────────────
 
-  function renderFamilyFeud(currentPhase: string): React.ReactNode {
-    // Check private-data flags based on what the plugin sends
+  function renderSurveySmash(currentPhase: string): React.ReactNode {
     const isFaceOffPlayer =
       pd.action === "face-off-your-turn" ||
       (Array.isArray(pd.faceOffPlayers) &&
         typeof pd.yourSessionId === "string" &&
         (pd.faceOffPlayers as unknown[]).includes(pd.yourSessionId));
     const isCurrentGuesser = pd.action === "your-turn-to-guess";
-    const isStealTeam = pd.action === "steal-your-turn";
-    const isFastMoneyPlayer = pd.action === "fast-money-question";
+    const isSnagTeam = pd.action === "snag-your-turn";
+    const isLightningPlayer = pd.action === "lightning-question";
 
     switch (currentPhase) {
       case "face-off": {
@@ -532,7 +528,6 @@ export function GameController({
           return (
             <BuzzButton
               onBuzz={() => {
-                // Face-off: buzz then submit answer via TextInput on next render
                 handleBuzz();
               }}
             />
@@ -559,32 +554,32 @@ export function GameController({
       }
 
       case "steal-chance": {
-        if (isStealTeam) {
+        if (isSnagTeam) {
           const question =
-            typeof pd.question === "string" ? pd.question : "Steal! Name an answer...";
+            typeof pd.question === "string" ? pd.question : "Snag it! Name an answer...";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <TextInput
-                prompt={`Steal! ${question}`}
-                placeholder="Type your steal answer..."
+                prompt={`Snag it! ${question}`}
+                placeholder="Type your snag answer..."
                 onSubmit={handleTextSubmit}
                 resetNonce={errorNonce}
               />
             </div>
           );
         }
-        return renderWatchScreen("Other team is trying to steal...");
+        return renderWatchScreen("Other team is trying to snag...");
       }
 
-      case "fast-money": {
-        if (isFastMoneyPlayer) {
+      case "lightning-round": {
+        if (isLightningPlayer) {
           const question = typeof pd.question === "string" ? pd.question : "Quick!";
           const qIndex = typeof pd.questionIndex === "number" ? pd.questionIndex + 1 : "?";
           const totalQ = typeof pd.totalQuestions === "number" ? pd.totalQuestions : "?";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <div className="flex justify-center">
-                <span className="rounded-full bg-accent-feud/15 px-3 py-1 font-mono text-xs font-bold text-accent-feud">
+                <span className="rounded-full bg-accent-surveysmash/15 px-3 py-1 font-mono text-xs font-bold text-accent-surveysmash">
                   {qIndex}/{totalQ}
                 </span>
               </div>
@@ -597,14 +592,14 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Fast Money round!");
+        return renderWatchScreen("Lightning Round!");
       }
 
       case "question-reveal":
       case "strike":
       case "answer-reveal":
       case "round-result":
-      case "fast-money-reveal":
+      case "lightning-round-reveal":
         return renderWatchScreen("Watch the main screen!");
 
       case "final-scores":
