@@ -1,4 +1,4 @@
-import type { Complexity } from "@flimflam/shared";
+import { type Complexity, shuffleInPlace } from "@flimflam/shared";
 
 /**
  * Hot Take opinion prompts organized by complexity tier.
@@ -344,12 +344,7 @@ export function pickRandomPrompts(
     .filter(({ index }) => !usedIndices.has(index));
 
   // Shuffle available
-  for (let i = available.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    const temp = available[i] as (typeof available)[number];
-    available[i] = available[j] as (typeof available)[number];
-    available[j] = temp;
-  }
+  shuffleInPlace(available);
 
   const picked = available.slice(0, count);
 
@@ -359,12 +354,7 @@ export function pickRandomPrompts(
     const remaining = allPrompts
       .map((prompt, index) => ({ prompt, index }))
       .filter(({ index }) => !picked.some((p) => p.index === index));
-    for (let i = remaining.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = remaining[i] as (typeof remaining)[number];
-      remaining[i] = remaining[j] as (typeof remaining)[number];
-      remaining[j] = temp;
-    }
+    shuffleInPlace(remaining);
     picked.push(...remaining.slice(0, count - picked.length));
   }
 

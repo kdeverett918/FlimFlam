@@ -75,7 +75,10 @@ async function waitForColyseusHealth(page: Page) {
 async function createRoomOnHost(page: Page): Promise<string> {
   await page.goto("/");
   await waitForColyseusHealth(page);
-  await page.getByRole("button", { name: /create room/i }).click();
+  await page
+    .getByRole("button", { name: /create a new game room/i })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
   const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
   expect(match).not.toBeNull();
@@ -132,7 +135,7 @@ test.describe("Host Homepage — Mobile Responsiveness", () => {
         const page = await context.newPage();
         await page.goto("/");
 
-        const createBtn = page.getByRole("button", { name: /create room/i });
+        const createBtn = page.getByRole("button", { name: /create a new game room/i }).first();
         await expect(createBtn).toBeVisible({ timeout: 10_000 });
 
         // Button should be tappable (>= 48px height)
@@ -325,8 +328,10 @@ test.describe("Controller Game UI — Mobile Responsiveness", () => {
         timeout: 60_000,
       });
 
-      // Verify lobby waiting state renders (should show "You're in!" or waiting text)
-      await expect(controllerPage.getByText(/you're in|waiting/i)).toBeVisible({ timeout: 15_000 });
+      // Verify lobby waiting state renders.
+      await expect(controllerPage.getByRole("heading", { name: /^you're in!$/i })).toBeVisible({
+        timeout: 15_000,
+      });
 
       // No horizontal overflow
       await checkNoHorizontalOverflow(controllerPage);
@@ -373,8 +378,8 @@ test.describe("Controller WaitingScreen — Mobile Responsiveness", () => {
       timeout: 60_000,
     });
 
-    // In lobby state we see "You're in!" or "Waiting for the host"
-    await expect(controllerPage.getByText(/you're in|waiting for the host/i)).toBeVisible({
+    // In lobby state we see "You're in!"
+    await expect(controllerPage.getByRole("heading", { name: /^you're in!$/i })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -399,7 +404,10 @@ test.describe("Host Lobby — Desktop Responsiveness", () => {
       await page.goto("/");
 
       await waitForColyseusHealth(page);
-      await page.getByRole("button", { name: /create room/i }).click();
+      await page
+        .getByRole("button", { name: /create a new game room/i })
+        .first()
+        .click();
       await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
       // Room code is displayed with mono font and is centered
@@ -428,7 +436,7 @@ test.describe("Host Lobby — Desktop Responsiveness", () => {
       await expect(page.getByRole("button", { name: /advanced/i })).toBeVisible();
 
       // Player section heading is visible
-      await expect(page.getByText("PLAYERS")).toBeVisible();
+      await expect(page.getByRole("heading", { name: /^PLAYERS$/ })).toBeVisible();
 
       // Start/waiting button is visible
       const startOrWait = page

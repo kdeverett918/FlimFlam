@@ -1,6 +1,7 @@
 "use client";
 
 import { GameController } from "@/components/game/GameController";
+import { ReactionBar } from "@/components/game/ReactionBar";
 import { ScoreBadge } from "@/components/game/ScoreBadge";
 import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
@@ -95,6 +96,7 @@ export default function PlayPage() {
             ))}
           </div>
         </GlassPanel>
+        <ReactionBar sendMessage={sendMessage} />
       </main>
     );
   }
@@ -112,6 +114,7 @@ export default function PlayPage() {
             The host is picking the next game.
           </p>
         </GlassPanel>
+        <ReactionBar sendMessage={sendMessage} />
       </main>
     );
   }

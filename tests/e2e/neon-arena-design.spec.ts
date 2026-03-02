@@ -22,10 +22,10 @@ test.describe("Neon Arena Design System", () => {
     expect(fontFamily.toLowerCase()).toMatch(/bricolage[ _-]?grotesque/);
 
     // Verify tagline is present
-    await expect(page.getByText("Party games. Reimagined.")).toBeVisible();
+    await expect(page.getByText("Games that get weird.")).toBeVisible();
 
     // Verify "CREATE ROOM" button exists
-    const createBtn = page.getByRole("button", { name: /create room/i });
+    const createBtn = page.getByRole("button", { name: /create a new game room/i }).first();
     await expect(createBtn).toBeVisible();
 
     // Verify AnimatedBackground is present (the noise SVG)
@@ -87,7 +87,10 @@ test.describe("Neon Arena Design System", () => {
       )
       .toBe(200);
 
-    await page.getByRole("button", { name: /create room/i }).click();
+    await page
+      .getByRole("button", { name: /create a new game room/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
     // Verify room code is displayed with mono font
@@ -129,7 +132,10 @@ test.describe("Neon Arena Design System", () => {
       )
       .toBe(200);
 
-    await page.getByRole("button", { name: /create room/i }).click();
+    await page
+      .getByRole("button", { name: /create a new game room/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
 
     const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);

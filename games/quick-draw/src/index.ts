@@ -1,6 +1,6 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
 import { BaseGamePlugin, ScoringEngine, getRoundCount } from "@flimflam/game-engine";
-import { type Complexity, GAME_MANIFESTS } from "@flimflam/shared";
+import { type Complexity, GAME_MANIFESTS, shuffleInPlace } from "@flimflam/shared";
 import type { Client, Delayed, Room } from "colyseus";
 import {
   type QuickDrawInternalState,
@@ -66,12 +66,7 @@ export class QuickDrawPlugin extends BaseGamePlugin {
     const keys: string[] = [];
     players.forEach((_: unknown, key: string) => keys.push(key));
     // Shuffle for random order
-    for (let i = keys.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const temp = keys[i] as string;
-      keys[i] = keys[j] as string;
-      keys[j] = temp;
-    }
+    shuffleInPlace(keys);
     this.internal.drawerOrder = keys;
     this.internal.drawerIndex = 0;
 

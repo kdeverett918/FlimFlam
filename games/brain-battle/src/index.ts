@@ -15,6 +15,8 @@ import {
   GAME_MANIFESTS,
   type GeneratedBoard,
   GeneratedBoardSchema,
+  randomInt,
+  shuffleInPlace,
 } from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { SCORING } from "./scoring";
@@ -78,12 +80,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     });
 
     // Shuffle player order for turn rotation
-    for (let i = playerIds.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      const tmp = playerIds[i];
-      playerIds[i] = playerIds[j] as string;
-      playerIds[j] = tmp as string;
-    }
+    shuffleInPlace(playerIds);
     this.internal.turnOrder = playerIds;
     this.internal.selectorSessionId = playerIds[0] ?? "";
 
@@ -384,7 +381,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       this.internal.board = assignClueIds(result.parsed as unknown as GeneratedBoard);
     } catch (error) {
       console.warn("[BrainBattle] AI board generation failed, using fallback:", error);
-      const fallbackIndex = Math.floor(Math.random() * FALLBACK_BOARDS.length);
+      const fallbackIndex = randomInt(FALLBACK_BOARDS.length);
       const fallback = FALLBACK_BOARDS[fallbackIndex];
       if (fallback) {
         this.internal.board = assignClueIds(structuredClone(fallback));
@@ -470,7 +467,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       return;
     }
     // biome-ignore lint/style/noNonNullAssertion: unclaimed length checked above
-    const randomId = unclaimed[Math.floor(Math.random() * unclaimed.length)]!;
+    const randomId = unclaimed[randomInt(unclaimed.length)]!;
     this._startBuzzing(room, state, randomId);
   }
 

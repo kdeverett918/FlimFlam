@@ -59,10 +59,11 @@ test.describe("Homepage Game Showcase", () => {
     await expect(page.locator("h1")).toBeVisible({ timeout: 10_000 });
 
     // Spot-check some game tags.
-    await expect(page.getByText("storytelling")).toBeVisible();
-    await expect(page.getByText("bluffing")).toBeVisible();
-    await expect(page.getByText("drawing")).toBeVisible();
-    await expect(page.getByText("buzzer")).toBeVisible();
+    // Use exact text to avoid matching tag + description copies simultaneously.
+    await expect(page.getByText("storytelling", { exact: true })).toBeVisible();
+    await expect(page.getByText("bluffing", { exact: true })).toBeVisible();
+    await expect(page.getByText("drawing", { exact: true })).toBeVisible();
+    await expect(page.getByText("buzzer", { exact: true })).toBeVisible();
   });
 
   test("CREATE ROOM CTA buttons work", async ({ page }) => {
