@@ -95,217 +95,265 @@ function LobbyContent({
   const codeChars = roomCode.split("");
 
   return (
-    <div className="relative flex min-h-screen flex-col p-8 lg:p-10">
+    <div className="relative flex min-h-screen flex-col overflow-x-hidden">
       <AnimatedBackground variant="subtle" />
 
-      {/* Top section: Room code + QR */}
-      <div className="relative z-10 flex flex-wrap items-start justify-between gap-8">
-        {/* Room Code */}
-        <div className="flex flex-col gap-3">
-          <p className="font-body text-[24px] tracking-widest text-text-muted">
-            JOIN AT{" "}
-            <span className="text-accent-4">
-              {controllerUrl ? controllerUrl.replace(/^https?:\/\//, "") : "(missing URL)"}
-            </span>
-          </p>
-          <div className="flex gap-3">
-            {codeChars.map((char, i) => (
-              <motion.span
-                // biome-ignore lint/suspicious/noArrayIndexKey: Character positions in code are stable
-                key={`code-${char}-${i}`}
-                initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 400,
-                  damping: 20,
-                  delay: 0.2 + i * 0.08,
-                }}
-                className="flex items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-lg"
-                style={{
-                  width: "clamp(60px, 12vw, 96px)",
-                  height: "clamp(72px, 14vw, 110px)",
-                  boxShadow:
-                    "inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 20px oklch(0.75 0.22 25 / 0.15)",
-                }}
-              >
-                <span
-                  className="font-mono font-bold leading-none text-text-primary"
-                  style={{ fontSize: "clamp(48px, 10vw, 80px)" }}
+      {/* Main container with max-width for consistent AAA feel */}
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-12 p-6 sm:p-10 md:p-16">
+        
+        {/* Top section: Room code + QR */}
+        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-12">
+          {/* Room Code */}
+          <div className="flex flex-col items-center lg:items-start gap-4 text-center lg:text-left">
+            <p className="font-body text-[20px] sm:text-[24px] tracking-[0.2em] text-text-muted uppercase">
+              JOIN AT{" "}
+              <span className="text-accent-4 font-bold">
+                {controllerUrl ? controllerUrl.replace(/^https?:\/\//, "") : "(missing URL)"}
+              </span>
+            </p>
+            <div className="flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-4">
+              {codeChars.map((char, i) => (
+                <motion.span
+                  // biome-ignore lint/suspicious/noArrayIndexKey: Character positions in code are stable
+                  key={`code-${char}-${i}`}
+                  initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 20,
+                    delay: 0.2 + i * 0.08,
+                  }}
+                  className="flex items-center justify-center rounded-2xl border-2 border-white/15 bg-white/10 backdrop-blur-xl"
+                  style={{
+                    width: "clamp(64px, 15vw, 100px)",
+                    height: "clamp(80px, 18vw, 120px)",
+                    boxShadow: "0 0 30px oklch(0.75 0.22 25 / 0.15)",
+                  }}
                 >
-                  {char}
-                </span>
-              </motion.span>
-            ))}
+                  <span
+                    className="font-mono font-black leading-none text-text-primary"
+                    style={{ fontSize: "clamp(48px, 10vw, 84px)" }}
+                  >
+                    {char}
+                  </span>
+                </motion.span>
+              ))}
+            </div>
+            <p className="font-body text-[20px] sm:text-[24px] text-text-muted/80">
+              Enter this code on your mobile device
+            </p>
           </div>
-          <p className="font-body text-[24px] text-text-muted">Enter this code on your phone</p>
+
+          {/* QR Code */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="group relative">
+              {/* Decorative glow behind QR */}
+              <div className="absolute -inset-4 rounded-3xl bg-primary/20 blur-2xl transition-opacity group-hover:opacity-100 opacity-60" />
+              <GlassPanel rounded="2xl" className="relative p-5 border-2 border-white/20 bg-white/10">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="QR code to join the game" className="h-[180px] w-[180px] sm:h-[220px] sm:w-[220px]" />
+                ) : (
+                  <div className="h-[220px] w-[220px] animate-pulse bg-white/5 rounded-xl" />
+                )}
+              </GlassPanel>
+            </div>
+            <p className="font-body text-[20px] sm:text-[24px] font-medium text-text-muted uppercase tracking-wider">Scan to join</p>
+          </div>
         </div>
 
-        {/* QR Code */}
-        <div className="flex flex-col items-center gap-3">
-          <GlassPanel rounded="2xl" className="p-4">
-            {qrDataUrl && (
-              <img src={qrDataUrl} alt="QR code to join the game" className="h-[200px] w-[200px]" />
-            )}
-          </GlassPanel>
-          <p className="font-body text-[24px] text-text-muted">Scan to join</p>
-        </div>
-      </div>
+        {/* Player list section */}
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">PLAYERS</h2>
+            </div>
+            <div className="flex items-center gap-3 rounded-full bg-white/5 border border-white/10 px-6 py-2">
+              <span className="font-mono text-[24px] sm:text-[32px] font-bold text-text-primary leading-none">{playerCount}</span>
+              <span className="text-text-muted/50 text-2xl">/</span>
+              <span className="font-mono text-[24px] sm:text-[32px] text-text-muted leading-none">8</span>
+            </div>
+          </div>
 
-      {/* Player list */}
-      <div className="relative z-10 my-6">
-        <div className="mb-4 flex items-center gap-4">
-          <div className="h-[3px] w-8 rounded-full bg-primary" />
-          <h2 className="font-display text-[36px] font-bold text-text-primary">PLAYERS</h2>
-          <span className="font-mono text-[28px] text-text-muted">{playerCount} / 8</span>
           {playerCount < MIN_PLAYERS && (
-            <span className="font-body text-[22px] text-accent-3">
-              (need {MIN_PLAYERS - playerCount} more)
-            </span>
+            <div className="flex items-center gap-3 text-accent-3 animate-pulse">
+              <div className="h-2 w-2 rounded-full bg-accent-3" />
+              <span className="font-body text-[20px] sm:text-[22px] font-medium">
+                Wait for {MIN_PLAYERS - playerCount} more player{MIN_PLAYERS - playerCount > 1 ? 's' : ''} to start
+              </span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-8 py-4">
+            <AnimatePresence mode="popLayout">
+              {players.map((player, index) => (
+                <motion.div
+                  key={player.sessionId}
+                  initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 20,
+                    delay: index * 0.05,
+                  }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <div className="relative group">
+                    <div
+                      className="flex h-[90px] w-[90px] sm:h-[110px] sm:w-[110px] items-center justify-center rounded-full text-[40px] sm:text-[50px] font-black text-bg-deep border-4 border-white/20 transition-transform duration-300 group-hover:scale-110"
+                      style={{
+                        backgroundColor: player.avatarColor,
+                        boxShadow: `0 0 30px ${player.avatarColor}60`,
+                      }}
+                    >
+                      {player.name.charAt(0).toUpperCase()}
+                    </div>
+                    {/* Pulsing ring for ready players */}
+                    {player.ready && (
+                      <div
+                        className="absolute -inset-2 rounded-full animate-pulse-ring"
+                        style={{
+                          border: `3px solid ${player.avatarColor}`,
+                        }}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
+                  <span className="w-full text-center truncate font-display text-[22px] sm:text-[26px] font-bold text-text-primary leading-tight">
+                    {player.name}
+                  </span>
+                  {player.ready && (
+                    <span className="rounded-full bg-accent-5/20 border border-accent-5/30 px-3 py-0.5 font-mono text-[14px] font-bold text-accent-5 uppercase">
+                      Ready
+                    </span>
+                  )}
+                </motion.div>
+              ))}
+
+              {/* Empty slots placeholders */}
+              {Array.from({ length: Math.max(0, 8 - playerCount) }, (_, i) => (
+                <motion.div
+                  key={`empty-${i + 1}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 0.4 }}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <div className="flex h-[90px] w-[90px] sm:h-[110px] sm:w-[110px] items-center justify-center rounded-full border-4 border-dashed border-text-dim/30 text-[40px] text-text-dim/30">
+                    ?
+                  </div>
+                  <div className="h-6 w-24 bg-white/5 rounded-full" />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Game selection section */}
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+            <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">SELECT GAME</h2>
+          </div>
+          <GameSelector selectedGameId={selectedGameId} onSelect={onSelectGame} />
+        </div>
+
+        {/* Configuration section */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-12">
+          {/* Difficulty */}
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center gap-4">
+              <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+              <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">DIFFICULTY</h2>
+            </div>
+            <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
+          </div>
+
+          {/* AI Settings */}
+          {showHotTakeToggle && (
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center gap-4">
+                <div className="h-2 w-8 rounded-full bg-primary shadow-[0_0_12px_var(--color-primary)]" />
+                <h2 className="font-display text-[32px] sm:text-[42px] font-black text-text-primary tracking-tight">AI SETTINGS</h2>
+              </div>
+              <GlassPanel glow rounded="2xl" className="p-8 border-2 border-white/10">
+                <div className="flex items-center justify-between gap-8 mb-4">
+                  <div>
+                    <h3 className="font-display text-[26px] sm:text-[30px] font-bold text-text-primary">AI PLAYER INPUT</h3>
+                    <p className="font-body text-[18px] sm:text-[20px] text-text-muted leading-snug">
+                      Players submit custom topics for AI to build into the game.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={hotTakeToggleDisabled}
+                    onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
+                    className={`relative h-14 w-28 shrink-0 rounded-full border-2 transition-all duration-300 ${
+                      effectiveHotTakePlayerInputEnabled
+                        ? "border-accent-5 bg-accent-5/30 shadow-[0_0_20px_oklch(0.76_0.15_210/0.4)]"
+                        : "border-text-dim bg-bg-dark"
+                    } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-105 active:scale-95"}`}
+                    aria-pressed={effectiveHotTakePlayerInputEnabled}
+                  >
+                    <div
+                      className={`absolute top-1/2 h-10 w-10 -translate-y-1/2 rounded-full transition-all duration-300 ${
+                        effectiveHotTakePlayerInputEnabled ? "left-[60px] bg-accent-5" : "left-2 bg-text-dim"
+                      }`}
+                    />
+                  </button>
+                </div>
+                <p className="font-body text-[16px] sm:text-[18px] text-text-muted/70 italic border-t border-white/10 pt-4 mt-4">
+                  {complexity === "advanced" && "Always enabled in Advanced mode."}
+                  {complexity === "kids" && "Always disabled in Kids mode."}
+                  {complexity === "standard" &&
+                    (effectiveHotTakePlayerInputEnabled
+                      ? "Custom group topics enabled."
+                      : "Using standard game prompts.")}
+                </p>
+              </GlassPanel>
+            </div>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-6">
-          <AnimatePresence mode="popLayout">
-            {players.map((player, index) => (
-              <motion.div
-                key={player.sessionId}
-                initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 20,
-                  delay: index * 0.1,
-                }}
-                className="flex flex-col items-center gap-2"
-              >
-                <div className="relative">
-                  <div
-                    className="flex h-[80px] w-[80px] items-center justify-center rounded-full text-[36px] font-bold text-bg-deep"
-                    style={{
-                      backgroundColor: player.avatarColor,
-                      boxShadow: `0 0 20px ${player.avatarColor}50, 0 0 40px ${player.avatarColor}20`,
-                    }}
-                  >
-                    {player.name.charAt(0).toUpperCase()}
-                  </div>
-                  {/* Pulsing ring for ready players */}
-                  {player.ready && (
-                    <div
-                      className="absolute inset-0 rounded-full animate-pulse-ring"
-                      style={{
-                        border: `2px solid ${player.avatarColor}`,
-                        opacity: 0.6,
-                      }}
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-                <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary sm:max-w-[140px] md:max-w-[220px]">
-                  {player.name}
-                </span>
-                {player.ready && <span className="font-mono text-[16px] text-accent-5">Ready</span>}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {/* Empty slots */}
-          {Array.from({ length: Math.max(0, MIN_PLAYERS - playerCount) }, (_, i) => (
-            <motion.div
-              key={`empty-${i + 1}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 + i * 0.1 }}
-              className="flex flex-col items-center gap-2"
-            >
-              <div className="flex h-[80px] w-[80px] animate-glow-breathe items-center justify-center rounded-full border-2 border-dashed border-text-dim text-[36px] text-text-dim">
-                ?
-              </div>
-              <span className="font-body text-[20px] text-text-dim">Waiting...</span>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* Game selection */}
-      <div className="relative z-10 mb-4">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="h-[3px] w-8 rounded-full bg-primary" />
-          <h2 className="font-display text-[36px] font-bold text-text-primary">SELECT GAME</h2>
-        </div>
-        <GameSelector selectedGameId={selectedGameId} onSelect={onSelectGame} />
-      </div>
-
-      {/* Complexity picker */}
-      <div className="relative z-10 mb-4">
-        <div className="mb-3 flex items-center gap-3">
-          <div className="h-[3px] w-8 rounded-full bg-primary" />
-          <h2 className="font-display text-[36px] font-bold text-text-primary">DIFFICULTY</h2>
-        </div>
-        <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
-      </div>
-
-      {showHotTakeToggle && (
-        <GlassPanel glow rounded="2xl" className="relative z-10 mb-4 p-6">
-          <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-            <div>
-              <h3 className="font-display text-[24px] sm:text-[28px] font-bold text-text-primary">
-                AI PLAYER INPUT
-              </h3>
-              <p className="font-body text-[16px] sm:text-[20px] text-text-muted">
-                Players submit topics and AI tailors prompts to the group.
-              </p>
-            </div>
-            <button
+        {/* Start game button section */}
+        <div className="mt-8 flex flex-col items-center gap-6 pb-12">
+          <div className="relative w-full max-w-3xl">
+            {/* Animated background glow for start button */}
+            {canStart && (
+              <div className="absolute -inset-4 bg-primary/20 blur-3xl animate-glow-breathe rounded-full" />
+            )}
+            
+            <motion.button
+              whileHover={canStart ? { scale: 1.02, y: -4 } : {}}
+              whileTap={canStart ? { scale: 0.98 } : {}}
               type="button"
-              disabled={hotTakeToggleDisabled}
-              onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
-              className={`relative h-14 w-28 shrink-0 rounded-full border-2 transition-all ${
-                effectiveHotTakePlayerInputEnabled
-                  ? "border-accent-5 bg-accent-5/30"
-                  : "border-text-dim bg-bg-dark"
-              } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-[1.03]"}`}
-              aria-pressed={effectiveHotTakePlayerInputEnabled}
-              aria-label="Toggle Hot Take player input mode"
+              onClick={onStartGame}
+              disabled={!canStart}
+              className={`relative w-full rounded-3xl border-4 py-8 font-display text-[32px] sm:text-[48px] font-black tracking-wider transition-all duration-500 shadow-2xl ${
+                canStart 
+                  ? "border-primary text-primary bg-primary/10 cursor-pointer shadow-primary/20" 
+                  : "border-white/10 text-white/20 bg-white/5 cursor-not-allowed"
+              }`}
+              style={{
+                backdropFilter: "blur(20px)",
+                textShadow: canStart ? "0 0 20px oklch(0.75 0.22 25 / 0.5)" : "none"
+              }}
             >
-              <span
-                className={`absolute top-1/2 h-10 w-10 -translate-y-1/2 rounded-full bg-text-primary transition-all ${
-                  effectiveHotTakePlayerInputEnabled ? "left-[52px]" : "left-2"
-                }`}
-              />
-            </button>
+              {canStart ? (
+                <div className="flex items-center justify-center gap-4">
+                  <span className="animate-pulse">START GAME</span>
+                </div>
+              ) : (
+                "WAITING FOR PLAYERS..."
+              )}
+            </motion.button>
           </div>
-          <p className="font-body text-[16px] sm:text-[18px] text-text-muted">
-            {complexity === "advanced" && "Advanced mode always enables player input."}
-            {complexity === "kids" && "Kids mode always uses static prompts."}
-            {complexity === "standard" &&
-              (effectiveHotTakePlayerInputEnabled
-                ? "Enabled for this game."
-                : "Disabled - Hot Take will use static prompts.")}
+          <p className="font-body text-[20px] sm:text-[24px] font-medium text-text-muted/60 uppercase tracking-widest">
+            {playerCount < MIN_PLAYERS ? `Min ${MIN_PLAYERS} Players` : "All set!"}
           </p>
-        </GlassPanel>
-      )}
-
-      {/* Start game button */}
-      <div className="relative z-10 mt-auto flex justify-center pb-6">
-        <motion.button
-          whileHover={canStart ? { scale: 1.03 } : {}}
-          whileTap={canStart ? { scale: 0.97 } : {}}
-          type="button"
-          onClick={onStartGame}
-          disabled={!canStart}
-          aria-label="Start the game"
-          className={`w-full max-w-2xl rounded-2xl border-2 border-primary/70 bg-primary/15 px-6 sm:px-20 py-4 sm:py-6 font-display text-[28px] sm:text-[42px] font-bold text-primary transition-all duration-300 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none ${
-            canStart ? "animate-glass-breathe" : ""
-          }`}
-          style={{
-            backdropFilter: "blur(16px)",
-          }}
-        >
-          {canStart ? "START GAME" : "WAITING FOR PLAYERS..."}
-        </motion.button>
+        </div>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ const GAME_ACCENT_GRADIENT: Record<string, string> = {
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
   return (
     <div className="relative w-full">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-2 py-4">
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-2 py-6">
         {GAME_MANIFESTS.map((game) => {
           const isSelected = game.id === selectedGameId;
           const icon = GAME_ICONS[game.id];
@@ -50,12 +50,12 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
               onClick={() => onSelect(game.id)}
               aria-label={game.name}
               aria-pressed={isSelected}
-              className="relative flex flex-col rounded-2xl transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
+              className="group relative flex h-full flex-col rounded-2xl transition-all duration-300 hover:-translate-y-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
             >
               {/* Gradient border wrapper for selected card */}
               {isSelected && accentGradient && (
                 <div
-                  className="absolute -inset-[3px] rounded-[18px]"
+                  className="absolute -inset-[3px] rounded-[18px] z-0"
                   style={{ background: accentGradient }}
                   aria-hidden="true"
                 />
@@ -67,33 +67,35 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                  className="absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg"
+                  className="absolute -right-3 -top-3 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-primary shadow-lg border-2 border-bg-deep"
                 >
-                  <Check className="h-5 w-5 text-white" strokeWidth={3} />
+                  <Check className="h-6 w-6 text-white" strokeWidth={4} />
                 </motion.div>
               )}
 
               <GlassPanel
                 glow={isSelected}
                 rounded="2xl"
-                className={`relative flex h-full w-full flex-col gap-3 border-2 p-6 transition-all duration-300 text-left ${
+                className={`relative z-10 flex h-full w-full flex-col gap-4 border-2 p-6 transition-all duration-300 text-left ${
                   isSelected
                     ? (GAME_ACCENT_BORDER[game.id] ?? "border-primary")
-                    : "border-white/[0.15] hover:border-white/[0.25]"
+                    : "border-white/[0.15] group-hover:border-white/[0.25]"
                 }`}
               >
                 {/* Icon + Name row */}
                 <div className="flex items-center gap-4">
-                  {icon ?? <Sparkles className="h-10 w-10 text-text-muted shrink-0" />}
+                  <div className="transition-transform duration-300 group-hover:scale-110">
+                    {icon ?? <Sparkles className="h-10 w-10 text-text-muted shrink-0" />}
+                  </div>
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="font-display text-[24px] sm:text-[28px] font-semibold text-text-primary truncate w-full">
+                    <span className="font-display text-[26px] sm:text-[30px] font-bold text-text-primary truncate w-full leading-tight">
                       {game.name}
                     </span>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         {game.minPlayers}-{game.maxPlayers} players
                       </span>
-                      <span className="text-[14px] text-text-muted hidden sm:inline">|</span>
+                      <span className="text-[14px] text-text-muted hidden sm:inline opacity-50">|</span>
                       <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         ~{game.estimatedMinutes}min
                       </span>
@@ -102,14 +104,14 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                 </div>
 
                 {/* Description */}
-                <p className="flex-1 text-left font-body text-[18px] sm:text-[20px] leading-relaxed text-text-muted">
+                <p className="flex-1 text-left font-body text-[18px] leading-relaxed text-text-muted/90">
                   {game.description}
                 </p>
 
                 {/* Tags */}
-                <div className="flex flex-wrap gap-2 mt-auto pt-2">
+                <div className="flex flex-wrap gap-2 mt-auto pt-4">
                   {game.aiRequired && (
-                    <span className="rounded-full bg-accent-4/20 px-3 py-1 font-body text-[14px] sm:text-[16px] font-medium text-accent-4">
+                    <span className="rounded-full bg-accent-4/20 border border-accent-4/30 px-3 py-1 font-body text-[14px] font-semibold text-accent-4 uppercase tracking-wider">
                       AI Powered
                     </span>
                   )}
@@ -118,7 +120,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                     .map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[14px] sm:text-[16px] text-text-primary/70"
+                        className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[14px] text-text-primary/70 uppercase tracking-wider"
                       >
                         {tag}
                       </span>
