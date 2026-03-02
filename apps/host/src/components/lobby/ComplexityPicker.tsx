@@ -87,7 +87,9 @@ export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps
               >
                 {opt.label}
               </span>
-              <span className="font-body text-[14px] sm:text-[18px] md:text-[22px] text-text-muted text-center whitespace-nowrap sm:whitespace-normal">{opt.description}</span>
+              <span className="font-body text-[14px] sm:text-[18px] md:text-[22px] text-text-muted text-center whitespace-nowrap sm:whitespace-normal">
+                {opt.description}
+              </span>
             </button>
           );
         })}

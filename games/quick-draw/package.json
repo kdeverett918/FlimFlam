@@ -13,9 +13,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@flimflam/shared": "workspace:*",
-    "@flimflam/game-engine": "workspace:*",
     "@colyseus/schema": "^2.0.35",
-    "colyseus": "^0.15.55"
+    "@flimflam/game-engine": "workspace:*",
+    "@flimflam/shared": "workspace:*",
+    "colyseus": "^0.15.55",
+    "next": "15.1.0"
   }
 }

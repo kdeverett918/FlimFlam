@@ -10,6 +10,7 @@
     "./test-utils": "./src/test-utils/index.ts"
   },
   "dependencies": {
+    "next": "15.1.0",
     "zod": "^3.24.2"
   }
 }

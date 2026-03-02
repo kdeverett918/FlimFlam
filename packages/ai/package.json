@@ -13,8 +13,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@flimflam/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.39.0",
+    "@flimflam/shared": "workspace:*",
+    "next": "15.1.0",
     "zod": "^3.24.2"
   }
 }

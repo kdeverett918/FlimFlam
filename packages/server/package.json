@@ -17,27 +17,28 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@flimflam/shared": "workspace:*",
-    "@flimflam/game-engine": "workspace:*",
+    "@colyseus/monitor": "^0.16.7",
+    "@colyseus/schema": "^2.0.35",
     "@flimflam/ai": "workspace:*",
-    "@flimflam/world-builder": "workspace:*",
     "@flimflam/bluff-engine": "workspace:*",
+    "@flimflam/brain-battle": "workspace:*",
+    "@flimflam/family-feud": "workspace:*",
+    "@flimflam/game-engine": "workspace:*",
+    "@flimflam/hot-take": "workspace:*",
+    "@flimflam/jeopardy": "workspace:*",
     "@flimflam/quick-draw": "workspace:*",
     "@flimflam/reality-drift": "workspace:*",
-    "@flimflam/hot-take": "workspace:*",
-    "@flimflam/brain-battle": "workspace:*",
-    "@flimflam/jeopardy": "workspace:*",
+    "@flimflam/shared": "workspace:*",
     "@flimflam/wheel-of-fortune": "workspace:*",
-    "@flimflam/family-feud": "workspace:*",
+    "@flimflam/world-builder": "workspace:*",
     "colyseus": "^0.15.55",
-    "@colyseus/schema": "^2.0.35",
-    "@colyseus/monitor": "^0.16.7",
-    "express": "^4.21.2",
     "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "next": "15.1.0",
     "tsx": "^4.19.3"
   },
   "devDependencies": {
-    "@types/express": "^5.0.1",
-    "@types/cors": "^2.8.17"
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.1"
   }
 }
