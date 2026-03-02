@@ -65,10 +65,13 @@ interface JeopardyGameState {
   currentClueQuestion: string | null;
   currentCategoryName: string;
   isDailyDouble: boolean;
-  buzzWinnerSessionId: string | null;
   standings: Standing[];
   finalJeopardyCategory: string | null;
   finalJeopardyQuestion: string | null;
+  answeredCount: number;
+  totalPlayerCount: number;
+  currentRound: number;
+  doubleJeopardyValues: boolean;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -141,8 +144,6 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
       setFinalReveal(data as unknown as FinalRevealData);
     } else if (type === "daily-double-wager-set") {
       setDailyDoubleWager((data.wager as number) ?? null);
-    } else if (type === "buzz-winner") {
-      // Already tracked via game-state
     }
   }, []);
 
@@ -170,7 +171,7 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
           animate={{ opacity: 1, scale: 1 }}
           className="font-display text-[clamp(48px,6vw,72px)] font-bold text-accent-jeopardy"
         >
-          JEOPARDY!
+          {gameState.currentRound === 2 ? "DOUBLE JEOPARDY!" : "JEOPARDY!"}
         </motion.h1>
         <div className="flex flex-wrap justify-center gap-4">
           {gameState.board.map((cat, i) => (
@@ -201,7 +202,9 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
     const revealedSet = new Set(gameState.revealedClues);
     const selectorName = getPlayerName(players, gameState.selectorSessionId);
     const selectorColor = getPlayerColor(players, gameState.selectorSessionId);
-    const values = [200, 400, 600, 800, 1000];
+    const values = gameState.doubleJeopardyValues
+      ? [400, 800, 1200, 1600, 2000]
+      : [200, 400, 600, 800, 1000];
 
     return (
       <div className="flex min-h-screen flex-col items-center p-4">
@@ -278,11 +281,13 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
     );
   }
 
-  // ── Buzzing ─────────────────────────────────────────────────────────────
-  if (phase === "buzzing") {
+  // ── Answering (all players simultaneously) ────────────────────────────
+  if (phase === "answering") {
+    const answered = gameState.answeredCount ?? 0;
+    const total = gameState.totalPlayerCount ?? 0;
+
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-        {/* Category + clue */}
         <span className="font-display text-[clamp(20px,2.5vw,32px)] text-accent-jeopardy uppercase tracking-wider">
           {gameState.currentCategoryName} &mdash; ${gameState.currentClueValue}
         </span>
@@ -296,56 +301,58 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
         )}
 
         <motion.h2
-          animate={{ scale: [1, 1.08, 1] }}
-          transition={{ duration: 1.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-          className="font-display text-[clamp(48px,7vw,80px)] font-black text-accent-jeopardy"
-          style={{
-            textShadow: "0 0 30px oklch(0.55 0.25 265 / 0.6), 0 0 60px oklch(0.55 0.25 265 / 0.3)",
-          }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
+          className="font-display text-[clamp(36px,4.5vw,56px)] font-bold text-text-muted"
         >
-          WHO KNOWS?!
+          Everyone is answering...
         </motion.h2>
 
-        {timerEndTime && <Timer endTime={timerEndTime} size={120} />}
+        {/* Progress bar showing how many have answered */}
+        {total > 0 && (
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-3 w-64 overflow-hidden rounded-full bg-bg-surface/40">
+              <motion.div
+                className="h-full rounded-full bg-accent-jeopardy"
+                initial={{ width: 0 }}
+                animate={{ width: `${(answered / total) * 100}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+            <span className="font-mono text-[clamp(16px,2vw,24px)] text-text-muted">
+              {answered} / {total} answered
+            </span>
+          </div>
+        )}
+
+        {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
       </div>
     );
   }
 
-  // ── Answering ───────────────────────────────────────────────────────────
-  if (phase === "answering") {
-    const winnerName = getPlayerName(players, gameState.buzzWinnerSessionId);
-    const winnerColor = getPlayerColor(players, gameState.buzzWinnerSessionId);
-
+  // ── Round Transition ──────────────────────────────────────────────────
+  if (phase === "round-transition") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-        <span className="font-display text-[clamp(20px,2.5vw,32px)] text-accent-jeopardy uppercase tracking-wider">
-          {gameState.currentCategoryName} &mdash; ${gameState.currentClueValue}
-        </span>
-
-        {gameState.currentClueQuestion && (
-          <GlassPanel className="max-w-4xl px-12 py-6">
-            <p className="text-center font-body text-[clamp(24px,3vw,40px)] leading-snug text-text-primary">
-              {gameState.currentClueQuestion}
-            </p>
-          </GlassPanel>
-        )}
-
-        <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", stiffness: 200, damping: 15 }}
-          className="flex flex-col items-center gap-4"
+        <motion.h1
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 100 }}
+          className="font-display text-[clamp(56px,8vw,96px)] font-black text-accent-jeopardy"
+          style={{
+            textShadow: "0 0 40px oklch(0.55 0.25 265 / 0.6), 0 0 80px oklch(0.55 0.25 265 / 0.3)",
+          }}
         >
-          <PlayerAvatar name={winnerName} color={winnerColor} size={96} />
-          <span className="font-display text-[clamp(36px,4.5vw,56px)] font-bold text-text-primary">
-            {winnerName}
-          </span>
-          <span className="font-body text-[clamp(20px,2.5vw,28px)] text-text-muted">
-            is answering...
-          </span>
-        </motion.div>
-
-        {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
+          DOUBLE JEOPARDY!
+        </motion.h1>
+        <motion.span
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="font-body text-[clamp(24px,3vw,36px)] text-text-muted"
+        >
+          Values are doubled!
+        </motion.span>
       </div>
     );
   }

@@ -4,6 +4,7 @@ import {
   CATEGORIES_PER_BOARD,
   CLUES_PER_CATEGORY,
   CLUE_VALUES,
+  DOUBLE_JEOPARDY_VALUES,
   FUZZY_THRESHOLD,
   KIDS_BOARDS,
   STANDARD_BOARDS,
@@ -88,27 +89,58 @@ describe("board generation", () => {
   });
 });
 
+// ─── Double Jeopardy Values ──────────────────────────────────────────────
+
+describe("Double Jeopardy values", () => {
+  it("DOUBLE_JEOPARDY_VALUES are exactly double the Round 1 values", () => {
+    expect(DOUBLE_JEOPARDY_VALUES).toEqual([400, 800, 1200, 1600, 2000]);
+    for (let i = 0; i < CLUE_VALUES.length; i++) {
+      expect(DOUBLE_JEOPARDY_VALUES[i]).toBe((CLUE_VALUES[i] ?? 0) * 2);
+    }
+  });
+
+  it("both value arrays have 5 entries (one per clue row)", () => {
+    expect(CLUE_VALUES).toHaveLength(CLUES_PER_CATEGORY);
+    expect(DOUBLE_JEOPARDY_VALUES).toHaveLength(CLUES_PER_CATEGORY);
+  });
+
+  it("Round 1 values range from $200 to $1000", () => {
+    expect(CLUE_VALUES[0]).toBe(200);
+    expect(CLUE_VALUES[4]).toBe(1000);
+  });
+
+  it("Round 2 values range from $400 to $2000", () => {
+    expect(DOUBLE_JEOPARDY_VALUES[0]).toBe(400);
+    expect(DOUBLE_JEOPARDY_VALUES[4]).toBe(2000);
+  });
+});
+
 // ─── Daily Double Placement Tests ─────────────────────────────────────────
 
 describe("placeDailyDoubles", () => {
-  it("places 1 daily double for kids", () => {
+  it("places 1 daily double for kids (Round 1)", () => {
     const count = getDailyDoubleCount("kids");
     expect(count).toBe(1);
     const dd = placeDailyDoubles(count, CATEGORIES_PER_BOARD, CLUES_PER_CATEGORY);
     expect(dd.size).toBe(1);
   });
 
-  it("places 2 daily doubles for standard", () => {
+  it("places 1 daily double for standard (legacy, Round 1 count)", () => {
     const count = getDailyDoubleCount("standard");
-    expect(count).toBe(2);
+    expect(count).toBe(1);
     const dd = placeDailyDoubles(count, CATEGORIES_PER_BOARD, CLUES_PER_CATEGORY);
-    expect(dd.size).toBe(2);
+    expect(dd.size).toBe(1);
   });
 
-  it("places 2 daily doubles for advanced", () => {
+  it("places 1 daily double for advanced (legacy, Round 1 count)", () => {
     const count = getDailyDoubleCount("advanced");
-    expect(count).toBe(2);
+    expect(count).toBe(1);
     const dd = placeDailyDoubles(count, CATEGORIES_PER_BOARD, CLUES_PER_CATEGORY);
+    expect(dd.size).toBe(1);
+  });
+
+  it("can place 2 daily doubles (for Round 2)", () => {
+    const dd = placeDailyDoubles(2, CATEGORIES_PER_BOARD, CLUES_PER_CATEGORY);
     expect(dd.size).toBe(2);
   });
 
@@ -148,8 +180,6 @@ describe("placeDailyDoubles", () => {
     }
   });
 });
-
-// ─── Buzz Resolution Tests ────────────────────────────────────────────────
 
 // ─── Fuzzy Matching / Answer Judging Tests ────────────────────────────────
 
@@ -227,6 +257,15 @@ describe("validateDailyDoubleWager", () => {
   it("rejects non-finite wagers", () => {
     expect(validateDailyDoubleWager(Number.NaN, 1000)).toBe(false);
     expect(validateDailyDoubleWager(Number.POSITIVE_INFINITY, 1000)).toBe(false);
+  });
+
+  it("allows wager up to 2000 in Double Jeopardy when player score is low", () => {
+    // With highestClueValue=2000, max wager = max(score, 2000)
+    expect(validateDailyDoubleWager(2000, 200, 2000)).toBe(true);
+  });
+
+  it("rejects wager above 2000 in Double Jeopardy when score is low", () => {
+    expect(validateDailyDoubleWager(2001, 200, 2000)).toBe(false);
   });
 });
 
@@ -320,6 +359,15 @@ describe("scoring mechanics", () => {
     const newScore = score - wager;
     expect(newScore).toBe(2000);
   });
+
+  it("Double Jeopardy values are used in Round 2 scoring (conceptual)", () => {
+    // In Round 2, a row-0 clue is worth $400 instead of $200
+    const round2Value = DOUBLE_JEOPARDY_VALUES[0];
+    expect(round2Value).toBe(400);
+    const score = 1000;
+    const newScore = score + (round2Value ?? 0);
+    expect(newScore).toBe(1400);
+  });
 });
 
 // ─── Final Jeopardy Eligibility Tests ─────────────────────────────────────
@@ -363,7 +411,7 @@ describe("clue board tracking", () => {
     expect(revealed.size).toBe(3);
   });
 
-  it("all clues revealed triggers final jeopardy (conceptual)", () => {
+  it("all clues revealed triggers end of round (conceptual)", () => {
     const revealed = new Set<string>();
     for (let c = 0; c < CATEGORIES_PER_BOARD; c++) {
       for (let r = 0; r < CLUES_PER_CATEGORY; r++) {
@@ -374,32 +422,104 @@ describe("clue board tracking", () => {
     const allRevealed = revealed.size >= CATEGORIES_PER_BOARD * CLUES_PER_CATEGORY;
     expect(allRevealed).toBe(true);
   });
+
+  it("revealed clues reset between rounds (conceptual)", () => {
+    const revealed = new Set<string>();
+    // Fill Round 1
+    for (let c = 0; c < CATEGORIES_PER_BOARD; c++) {
+      for (let r = 0; r < CLUES_PER_CATEGORY; r++) {
+        revealed.add(`${c},${r}`);
+      }
+    }
+    expect(revealed.size).toBe(30);
+    // Round transition clears revealed
+    revealed.clear();
+    expect(revealed.size).toBe(0);
+  });
 });
 
-// ─── Selector Advancement Tests ───────────────────────────────────────────
+// ─── Round-Robin Selector Rotation Tests ──────────────────────────────────
 
-describe("selector advancement", () => {
-  it("correct answerer becomes next selector (conceptual)", () => {
-    const _playerOrder = ["p1", "p2", "p3"];
-    // p2 answers correctly, so p2 picks next
-    const lastCorrectId = "p2";
-    const newSelector = lastCorrectId;
-    expect(newSelector).toBe("p2");
-  });
+describe("round-robin selector rotation", () => {
+  it("selector advances to next player after each clue (conceptual)", () => {
+    const playerOrder = ["p1", "p2", "p3", "p4"];
+    let selectorIndex = 0; // p1 starts
 
-  it("round-robin advances when no one gets it right (conceptual)", () => {
-    const playerOrder = ["p1", "p2", "p3"];
-    let selectorIndex = 0; // p1 is current
-    // No one correct, advance round-robin
+    // After first clue, advance to p2
     selectorIndex = (selectorIndex + 1) % playerOrder.length;
     expect(playerOrder[selectorIndex]).toBe("p2");
+
+    // After second clue, advance to p3
+    selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    expect(playerOrder[selectorIndex]).toBe("p3");
+
+    // After third clue, advance to p4
+    selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    expect(playerOrder[selectorIndex]).toBe("p4");
   });
 
-  it("round-robin wraps around (conceptual)", () => {
+  it("selector wraps around to first player after last (conceptual)", () => {
     const playerOrder = ["p1", "p2", "p3"];
     let selectorIndex = 2; // p3 is current
+
     selectorIndex = (selectorIndex + 1) % playerOrder.length;
     expect(playerOrder[selectorIndex]).toBe("p1");
+  });
+
+  it("selector skips disconnected players (conceptual)", () => {
+    const playerOrder = ["p1", "p2", "p3", "p4"];
+    const connected = new Set(["p1", "p3", "p4"]); // p2 disconnected
+    let selectorIndex = 0; // p1 is current
+
+    // Advance to next connected player
+    for (let i = 1; i <= playerOrder.length; i++) {
+      const idx = (selectorIndex + i) % playerOrder.length;
+      const candidate = playerOrder[idx];
+      if (candidate && connected.has(candidate)) {
+        selectorIndex = idx;
+        break;
+      }
+    }
+
+    // Should skip p2, land on p3
+    expect(playerOrder[selectorIndex]).toBe("p3");
+  });
+
+  it("full rotation gives every player a turn before repeating (conceptual)", () => {
+    const playerOrder = ["p1", "p2", "p3"];
+    const selectors: string[] = [];
+    let selectorIndex = 0;
+
+    // Simulate 6 clue selections (2 full rotations)
+    for (let clue = 0; clue < 6; clue++) {
+      selectors.push(playerOrder[selectorIndex] ?? "");
+      selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    }
+
+    expect(selectors).toEqual(["p1", "p2", "p3", "p1", "p2", "p3"]);
+  });
+
+  it("selector rotation is independent of who answered correctly (conceptual)", () => {
+    // In the rewritten logic, rotation is always round-robin regardless of correctness
+    const playerOrder = ["p1", "p2", "p3"];
+    let selectorIndex = 0;
+
+    // p1 selects, p2 answers correctly — does NOT matter, next selector is p2
+    selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    expect(playerOrder[selectorIndex]).toBe("p2");
+
+    // p2 selects, nobody answers correctly — still advances to p3
+    selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    expect(playerOrder[selectorIndex]).toBe("p3");
+  });
+
+  it("daily double does not break rotation — still advances after (conceptual)", () => {
+    const playerOrder = ["p1", "p2", "p3"];
+    let selectorIndex = 1; // p2 is selector, hits a Daily Double
+
+    // After Daily Double resolves, selector still advances to p3
+    selectorIndex = (selectorIndex + 1) % playerOrder.length;
+    expect(playerOrder[selectorIndex]).toBe("p3");
   });
 });
 

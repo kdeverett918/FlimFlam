@@ -17,11 +17,11 @@ export interface GameManifest {
 export type JeopardyPhase =
   | "category-reveal"
   | "clue-select"
-  | "buzzing"
   | "answering"
   | "daily-double-wager"
   | "daily-double-answer"
   | "clue-result"
+  | "round-transition"
   | "final-jeopardy-category"
   | "final-jeopardy-wager"
   | "final-jeopardy-answer"

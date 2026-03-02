@@ -8,6 +8,7 @@ import { type JeopardyBoard, type JeopardyClue, getClueBank } from "./content/cl
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 const CLUE_VALUES = [200, 400, 600, 800, 1000];
+const DOUBLE_JEOPARDY_VALUES = [400, 800, 1200, 1600, 2000];
 const CATEGORIES_PER_BOARD = 6;
 const CLUES_PER_CATEGORY = 5;
 
@@ -15,21 +16,22 @@ const CATEGORY_REVEAL_DELAY_MS = 5000;
 const CLUE_RESULT_DELAY_MS = 6000;
 const ANSWER_TIMEOUT_MS = 20000;
 const DAILY_DOUBLE_WAGER_TIMEOUT_MS = 20000;
+const ROUND_TRANSITION_DELAY_MS = 4000;
+const FINAL_JEOPARDY_CATEGORY_DELAY_MS = 5000;
 const FINAL_JEOPARDY_WAGER_TIMEOUT_MS = 30000;
 const FINAL_JEOPARDY_ANSWER_TIMEOUT_MS = 30000;
 const FINAL_JEOPARDY_REVEAL_DELAY_MS = 8000;
 
 const FUZZY_THRESHOLD = 0.85;
 
-/** How many daily doubles by complexity. */
-function getDailyDoubleCount(complexity: Complexity): number {
-  switch (complexity) {
-    case "kids":
-      return 1;
-    case "standard":
-    case "advanced":
-      return 2;
-  }
+/** Daily double counts per round. Round 1 always has 1, Round 2 always has 2. */
+function getDailyDoubleCount(_complexity: Complexity, round: number): number {
+  return round === 1 ? 1 : 2;
+}
+
+/** Legacy overload kept for backward compatibility — returns count for Round 1. */
+function getDailyDoubleCountLegacy(complexity: Complexity): number {
+  return getDailyDoubleCount(complexity, 1);
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -41,6 +43,7 @@ type JeopardyPhase =
   | "daily-double-answer"
   | "answering"
   | "clue-result"
+  | "round-transition"
   | "final-jeopardy-category"
   | "final-jeopardy-wager"
   | "final-jeopardy-answer"
@@ -88,10 +91,15 @@ export function placeDailyDoubles(
 
 /**
  * Validate a wager for daily double.
+ * Min $5, max = max(playerScore, highest clue value on the current board).
  */
-export function validateDailyDoubleWager(wager: number, playerScore: number): boolean {
+export function validateDailyDoubleWager(
+  wager: number,
+  playerScore: number,
+  highestClueValue = 1000,
+): boolean {
   if (!Number.isFinite(wager) || wager < 5) return false;
-  const maxWager = Math.max(playerScore, 1000);
+  const maxWager = Math.max(playerScore, highestClueValue);
   return wager <= maxWager;
 }
 
@@ -133,7 +141,11 @@ class JeopardyPlugin extends BaseGamePlugin {
   private complexity: Complexity = "standard";
   private phase: JeopardyPhase = "category-reveal";
 
+  /** Current round: 1 = Jeopardy, 2 = Double Jeopardy */
+  private currentRound = 1;
   private board: JeopardyBoard | null = null;
+  private round1Board: JeopardyBoard | null = null;
+  private round2Board: JeopardyBoard | null = null;
   private dailyDoubles: Set<string> = new Set();
   private revealedClues: Set<string> = new Set();
 
@@ -151,6 +163,9 @@ class JeopardyPlugin extends BaseGamePlugin {
   // All-answer tracking: every player submits, then we resolve
   private playerAnswers: Map<string, string> = new Map();
 
+  // Daily double wager stored separately so we don't mutate clue objects
+  private dailyDoubleWager = 5;
+
   private finalJeopardy: FinalJeopardyData | null = null;
 
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -162,11 +177,13 @@ class JeopardyPlugin extends BaseGamePlugin {
   onGameStart(room: Room, state: Schema, players: MapSchema, complexity: Complexity): void {
     this.complexity = complexity;
     this.phase = "category-reveal";
+    this.currentRound = 1;
     this.revealedClues.clear();
     this.playerScores.clear();
     this.playerOrder = [];
     this.selectorIndex = 0;
     this.playerAnswers.clear();
+    this.dailyDoubleWager = 5;
 
     // Build player order (exclude host)
     const hostId = this.getHostSessionId(state);
@@ -182,18 +199,24 @@ class JeopardyPlugin extends BaseGamePlugin {
       this.playerScores.set(sessionId, 0);
     }
 
-    // Pick a random board for this complexity
+    // Pick two DIFFERENT boards for Round 1 and Round 2
     const banks = getClueBank(complexity);
-    this.board = pickRandom(banks) ?? banks[0] ?? null;
+    const shuffledBanks = [...banks];
+    shuffleInPlace(shuffledBanks);
+    this.round1Board = shuffledBanks[0] ?? banks[0] ?? null;
+    this.round2Board = shuffledBanks[1] ?? shuffledBanks[0] ?? banks[0] ?? null;
 
-    // Place daily doubles
+    // Start with Round 1 board
+    this.board = this.round1Board;
+
+    // Place daily doubles for Round 1 (always 1)
     this.dailyDoubles = placeDailyDoubles(
-      getDailyDoubleCount(complexity),
+      getDailyDoubleCount(complexity, 1),
       CATEGORIES_PER_BOARD,
       CLUES_PER_CATEGORY,
     );
 
-    // First selector is the first player in turn order
+    // First selector is a random player (first in shuffled order)
     this.selectorSessionId = this.playerOrder[0] ?? null;
 
     this.setPhase(state, "category-reveal");
@@ -246,7 +269,7 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     // If the selector left during clue-select, advance selector
     if (this.phase === "clue-select" && this.selectorSessionId === sessionId) {
-      this.advanceSelector();
+      this.advanceSelector(state);
       this.broadcastGameState(room, state);
       this.sendAllPrivateData(room, state);
     }
@@ -279,6 +302,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.currentCluePosition = null;
     this.isDailyDouble = false;
     this.playerAnswers.clear();
+    this.dailyDoubleWager = 5;
 
     this.setPhase(state, "clue-select");
     this.broadcastGameState(room, state);
@@ -310,7 +334,11 @@ class JeopardyPlugin extends BaseGamePlugin {
     const clue = category.clues[clueIndex];
     if (!clue) return;
 
-    this.currentClue = clue;
+    // Apply Double Jeopardy values if in round 2
+    const effectiveValue =
+      this.currentRound === 2 ? (DOUBLE_JEOPARDY_VALUES[clueIndex] ?? clue.value) : clue.value;
+
+    this.currentClue = { ...clue, value: effectiveValue };
     this.currentCluePosition = { categoryIndex, clueIndex };
     this.currentCategoryName = category.name;
     this.isDailyDouble = this.dailyDoubles.has(posKey);
@@ -366,6 +394,9 @@ class JeopardyPlugin extends BaseGamePlugin {
     // Mark as submitted on schema
     this.markSubmitted(state, client.sessionId);
 
+    // Update broadcast so host sees progress
+    this.broadcastGameState(room, state);
+
     this.checkAllAnswered(room, state);
   }
 
@@ -398,8 +429,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       delta: number;
     }> = [];
 
-    let firstCorrectId: string | null = null;
-
     for (const sessionId of this.playerOrder) {
       const answer = this.playerAnswers.get(sessionId) ?? "";
       const isCorrect = answer.length > 0 && judgeAnswer(answer, this.currentClue.answer);
@@ -407,7 +436,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       let delta = 0;
       if (isCorrect) {
         delta = value;
-        if (!firstCorrectId) firstCorrectId = sessionId;
       } else if (answer.length > 0 && this.complexity !== "kids") {
         // Only penalize if they actually submitted a wrong answer (not blank)
         delta = -value;
@@ -418,11 +446,6 @@ class JeopardyPlugin extends BaseGamePlugin {
       }
 
       results.push({ sessionId, answer, correct: isCorrect, delta });
-    }
-
-    // Next selector: first correct answerer, else round-robin
-    if (firstCorrectId) {
-      this.selectorSessionId = firstCorrectId;
     }
 
     this.goToClueResult(room, state, results);
@@ -441,8 +464,9 @@ class JeopardyPlugin extends BaseGamePlugin {
 
     const wager = typeof data.wager === "number" ? Math.floor(data.wager) : 5;
     const playerScore = this.playerScores.get(client.sessionId) ?? 0;
+    const highestClueValue = this.currentRound === 2 ? 2000 : 1000;
 
-    if (!validateDailyDoubleWager(wager, playerScore)) return;
+    if (!validateDailyDoubleWager(wager, playerScore, highestClueValue)) return;
 
     this.processDailyDoubleWager(room, state, wager);
   }
@@ -450,9 +474,7 @@ class JeopardyPlugin extends BaseGamePlugin {
   private processDailyDoubleWager(room: Room, state: Schema, wager: number): void {
     this.clearPendingTimer();
 
-    if (this.currentClue) {
-      (this.currentClue as JeopardyClue & { wager?: number }).wager = wager;
-    }
+    this.dailyDoubleWager = wager;
 
     this.phase = "daily-double-answer";
     this.setPhase(state, "daily-double-answer");
@@ -496,7 +518,7 @@ class JeopardyPlugin extends BaseGamePlugin {
   ): void {
     this.clearPendingTimer();
 
-    const wager = (this.currentClue as JeopardyClue & { wager?: number })?.wager ?? 5;
+    const wager = this.dailyDoubleWager;
     const sessionId = this.selectorSessionId;
 
     if (sessionId) {
@@ -552,31 +574,67 @@ class JeopardyPlugin extends BaseGamePlugin {
   }
 
   private advanceAfterClue(room: Room, state: Schema): void {
-    // Selector stays the same (first correct answerer already set in resolveAllAnswers)
-    // or advance round-robin if no one got it right
-    if (!this.playerOrder.includes(this.selectorSessionId ?? "")) {
-      this.advanceSelector();
-    }
+    // ALWAYS rotate selector to next player in round-robin order
+    this.advanceSelector(state);
 
-    // Check if all clues answered
+    // Check if all clues on current board are answered
     if (this.allCluesRevealed()) {
-      this.startFinalJeopardy(room, state);
+      // If Round 1 is done and not kids mode, go to Round 2
+      if (this.currentRound === 1 && this.complexity !== "kids") {
+        this.startRoundTransition(room, state);
+      } else {
+        // Kids mode after Round 1, or Round 2 done -> Final Jeopardy
+        this.startFinalJeopardy(room, state);
+      }
     } else {
       this.goToClueSelect(room, state);
     }
   }
 
+  // ─── Round Transition ─────────────────────────────────────────────────
+
+  private startRoundTransition(room: Room, state: Schema): void {
+    this.phase = "round-transition";
+    this.setPhase(state, "round-transition");
+    this.broadcastGameState(room, state);
+
+    this.scheduleDelayed(room, ROUND_TRANSITION_DELAY_MS, () => {
+      this.startRound2(room, state);
+    });
+  }
+
+  private startRound2(room: Room, state: Schema): void {
+    this.currentRound = 2;
+    this.revealedClues.clear();
+
+    // Switch to the Round 2 board
+    this.board = this.round2Board;
+
+    // Place daily doubles for Round 2 (always 2)
+    this.dailyDoubles = placeDailyDoubles(
+      getDailyDoubleCount(this.complexity, 2),
+      CATEGORIES_PER_BOARD,
+      CLUES_PER_CATEGORY,
+    );
+
+    // Category reveal for new board
+    this.phase = "category-reveal";
+    this.setPhase(state, "category-reveal");
+    this.broadcastGameState(room, state);
+
+    this.scheduleDelayed(room, CATEGORY_REVEAL_DELAY_MS, () => {
+      this.goToClueSelect(room, state);
+    });
+  }
+
   // ─── Final Jeopardy ─────────────────────────────────────────────────
 
   private startFinalJeopardy(room: Room, state: Schema): void {
-    if (!this.board) {
-      this.goToFinalScores(room, state);
-      return;
-    }
-
+    // Find a category from a board NOT used in either round
     const banks = getClueBank(this.complexity);
-    const otherBoards = banks.filter((b) => b !== this.board);
-    const sourceBoard = pickRandom(otherBoards) ?? banks[0];
+    const usedBoards = new Set([this.round1Board, this.round2Board]);
+    const otherBoards = banks.filter((b) => !usedBoards.has(b));
+    const sourceBoard = pickRandom(otherBoards) ?? pickRandom(banks) ?? banks[0];
     if (!sourceBoard) {
       this.goToFinalScores(room, state);
       return;
@@ -604,7 +662,7 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    this.scheduleDelayed(room, CATEGORY_REVEAL_DELAY_MS, () => {
+    this.scheduleDelayed(room, FINAL_JEOPARDY_CATEGORY_DELAY_MS, () => {
       this.goToFinalWager(room, state);
     });
   }
@@ -770,6 +828,9 @@ class JeopardyPlugin extends BaseGamePlugin {
       case "daily-double-answer":
         this.processDailyDoubleAnswer(room, state, "", false);
         break;
+      case "round-transition":
+        this.startRound2(room, state);
+        break;
       case "final-jeopardy-category":
         this.goToFinalWager(room, state);
         break;
@@ -790,11 +851,14 @@ class JeopardyPlugin extends BaseGamePlugin {
   // ─── Broadcast / Private Data ────────────────────────────────────────
 
   private broadcastGameState(room: Room, _state: Schema): void {
+    const isDoubleJeopardy = this.currentRound === 2;
+    const clueValues = isDoubleJeopardy ? DOUBLE_JEOPARDY_VALUES : CLUE_VALUES;
+
     const boardData = this.board
       ? this.board.categories.map((cat) => ({
           name: cat.name,
-          clues: cat.clues.map((clue) => ({
-            value: clue.value,
+          clues: cat.clues.map((_clue, i) => ({
+            value: clueValues[i] ?? 0,
           })),
         }))
       : [];
@@ -823,6 +887,9 @@ class JeopardyPlugin extends BaseGamePlugin {
       // Show how many have answered
       answeredCount: this.playerAnswers.size,
       totalPlayerCount: this.playerOrder.length,
+      // Round info
+      currentRound: this.currentRound,
+      doubleJeopardyValues: isDoubleJeopardy,
     });
   }
 
@@ -923,9 +990,28 @@ class JeopardyPlugin extends BaseGamePlugin {
     this.updatePlayerScore(state, sessionId, newScore);
   }
 
-  private advanceSelector(): void {
-    const startIndex = this.playerOrder.indexOf(this.selectorSessionId ?? "");
-    const start = startIndex >= 0 ? startIndex : this.selectorIndex;
+  /**
+   * Advance selector to the next player in round-robin order.
+   * Skips disconnected players.
+   */
+  private advanceSelector(state: Schema): void {
+    if (this.playerOrder.length === 0) return;
+
+    const currentIndex = this.playerOrder.indexOf(this.selectorSessionId ?? "");
+    const start = currentIndex >= 0 ? currentIndex : this.selectorIndex;
+
+    // Try each player in order, wrapping around
+    for (let i = 1; i <= this.playerOrder.length; i++) {
+      const idx = (start + i) % this.playerOrder.length;
+      const candidate = this.playerOrder[idx];
+      if (candidate && this.isPlayerConnected(state, candidate)) {
+        this.selectorSessionId = candidate;
+        this.selectorIndex = idx;
+        return;
+      }
+    }
+
+    // Fallback: if no one connected, just advance numerically
     const idx = (start + 1) % this.playerOrder.length;
     this.selectorSessionId = this.playerOrder[idx] ?? this.playerOrder[0] ?? null;
     this.selectorIndex = idx;
@@ -982,10 +1068,11 @@ export function createJeopardyPlugin(): JeopardyPlugin {
 // Re-export helpers and constants for testing
 export {
   CLUE_VALUES,
+  DOUBLE_JEOPARDY_VALUES,
   CATEGORIES_PER_BOARD,
   CLUES_PER_CATEGORY,
   FUZZY_THRESHOLD,
-  getDailyDoubleCount,
+  getDailyDoubleCountLegacy as getDailyDoubleCount,
 };
 
 // Re-export content types

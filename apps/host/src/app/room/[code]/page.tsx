@@ -189,8 +189,8 @@ function formatPhaseLabel(phase: string): string {
     // Jeopardy
     "category-reveal": "Category Reveal",
     "clue-select": "Pick a Clue",
-    buzzing: "Buzz In!",
     answering: "Answer Time",
+    "round-transition": "Double Jeopardy!",
     "daily-double-wager": "Daily Double!",
     "daily-double-answer": "Daily Double!",
     "clue-result": "Result",

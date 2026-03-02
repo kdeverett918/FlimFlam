@@ -35,11 +35,11 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   // Jeopardy
   "category-reveal": 5_000,
   "clue-select": 30_000,
-  buzzing: 5_000,
   answering: 15_000,
   "daily-double-wager": 20_000,
   "daily-double-answer": 15_000,
   "clue-result": 4_000,
+  "round-transition": 4_000,
   "final-jeopardy-category": 5_000,
   "final-jeopardy-wager": 30_000,
   "final-jeopardy-answer": 30_000,
