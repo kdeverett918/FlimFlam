@@ -65,7 +65,7 @@ export function AbilityButton({
           <button
             type="button"
             onClick={handleCancel}
-            className="h-12 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] font-body font-medium text-text-muted transition-all active:scale-95"
+            className="h-12 flex-1 rounded-xl border border-white/[0.15] bg-white/[0.10] font-body font-medium text-text-primary transition-all active:scale-95"
             style={{
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -93,7 +93,7 @@ export function AbilityButton({
       <GlassPanel
         glow
         glowColor="oklch(0.72 0.22 25 / 0.3)"
-        className="flex flex-col items-center gap-2 p-6 transition-all animate-glow-breathe active:scale-95"
+        className="flex flex-col items-center gap-2 p-6 transition-all animate-hover-float active:scale-95"
       >
         <Zap className="h-6 w-6 text-primary" />
         <span className="font-display text-xl text-primary">{abilityName}</span>

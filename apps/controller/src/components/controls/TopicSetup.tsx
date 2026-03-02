@@ -63,7 +63,7 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4 pb-16 pt-4">
+    <div className="flex flex-col gap-6 px-4 pb-16 pt-4 animate-cinematic-entrance">
       <h2 className="text-center font-display text-xl font-bold text-text-primary">
         Pick a topic for Hot Take
       </h2>
@@ -82,8 +82,8 @@ export function TopicSetup({ categories, onSubmit }: TopicSetupProps) {
               }}
               className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all active:scale-[0.98] ${
                 isSelected
-                  ? "border-primary/50 bg-white/[0.08] shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)]"
-                  : "border-white/[0.08] bg-white/[0.04]"
+                  ? "border-primary/60 bg-white/[0.12] shadow-[0_0_12px_oklch(0.75_0.22_25_/_0.2)]"
+                  : "border-white/[0.15] bg-white/[0.08]"
               }`}
               style={{
                 backdropFilter: "blur(8px)",

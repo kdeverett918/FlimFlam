@@ -104,8 +104,8 @@ export default function RoomPage() {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center bg-bg-dark">
         <div className="flex flex-col items-center gap-6">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/30 border-t-primary" />
-          <p className="font-display text-[36px] text-text-muted">{label}</p>
+          <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary/40 border-t-primary" />
+          <p className="font-display text-[36px] text-text-primary">{label}</p>
           {error && <p className="text-[24px] text-accent-6">{error}</p>}
         </div>
       </main>
@@ -163,14 +163,14 @@ export default function RoomPage() {
             <button
               type="button"
               onClick={() => sendMessage("host:skip")}
-              className="pointer-events-auto h-12 rounded-xl border border-text-muted/20 bg-bg-surface/80 px-5 font-display text-sm text-text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-bg-surface active:scale-95"
+              className="pointer-events-auto h-12 rounded-xl border-2 border-white/20 bg-bg-surface/90 px-5 font-display text-sm text-text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-bg-surface active:scale-95"
             >
               Skip
             </button>
             <button
               type="button"
               onClick={() => sendMessage("host:end-game")}
-              className="pointer-events-auto h-12 rounded-xl border border-primary/30 bg-primary/10 px-5 font-display text-sm text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-primary/15 active:scale-95"
+              className="pointer-events-auto h-12 rounded-xl border-2 border-primary/40 bg-primary/15 px-5 font-display text-sm text-primary uppercase tracking-wider backdrop-blur transition-all hover:bg-primary/25 active:scale-95"
             >
               End
             </button>

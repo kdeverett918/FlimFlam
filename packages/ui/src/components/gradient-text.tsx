@@ -18,8 +18,8 @@ const GradientText = React.forwardRef<HTMLSpanElement, GradientTextProps>(
   (
     {
       direction = "to right",
-      from = "oklch(0.72 0.22 25)",
-      to = "oklch(0.70 0.15 185)",
+      from = "oklch(0.78 0.22 25)",
+      to = "oklch(0.76 0.15 185)",
       as: Component = "span",
       animated = false,
       className,

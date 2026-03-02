@@ -1,28 +1,19 @@
 "use client";
 
-import { AbilityButton } from "@/components/controls/AbilityButton";
-import { BrainBattleTopicSubmit } from "@/components/controls/BrainBattleTopicSubmit";
 import { BuzzButton } from "@/components/controls/BuzzButton";
-import { DrawCanvas } from "@/components/controls/DrawCanvas";
-import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
-import { Slider } from "@/components/controls/Slider";
+import { ClueGrid } from "@/components/controls/ClueGrid";
+import { LetterPicker } from "@/components/controls/LetterPicker";
+import { NumberInput } from "@/components/controls/NumberInput";
+import { SpinButton } from "@/components/controls/SpinButton";
 import { TextInput } from "@/components/controls/TextInput";
-import { TopicSetup } from "@/components/controls/TopicSetup";
-import { VoteGrid } from "@/components/controls/VoteGrid";
-import { GameThemeProvider, GlassPanel, haptics } from "@flimflam/ui";
+import { GameThemeProvider, GlassPanel } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
-import { Check, Monitor, Trophy } from "lucide-react";
-import { useCallback } from "react";
+import { Monitor, Trophy } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import { ReactionBar } from "./ReactionBar";
-import { RoleCard } from "./RoleCard";
 import { WaitingScreen } from "./WaitingScreen";
 
 interface PrivateData {
-  role?: string;
-  publicIdentity?: string;
-  secretObjective?: string;
-  specialAbility?: string;
-  abilityId?: string;
   [key: string]: unknown;
 }
 
@@ -37,30 +28,21 @@ interface GameControllerProps {
 }
 
 const GAME_THEME_MAP: Record<string, GameTheme> = {
-  "world-builder": "world-builder",
-  "bluff-engine": "bluff-engine",
-  "quick-draw": "quick-draw",
-  "reality-drift": "reality-drift",
-  "hot-take": "hot-take",
-  "brain-battle": "brain-battle",
+  jeopardy: "jeopardy",
+  "wheel-of-fortune": "wheel-of-fortune",
+  "family-feud": "family-feud",
 };
 
 const GAME_DISPLAY_NAMES: Record<string, string> = {
-  "world-builder": "World Builder",
-  "bluff-engine": "Bluff Engine",
-  "quick-draw": "Quick Draw",
-  "reality-drift": "Reality Drift",
-  "hot-take": "Hot Take",
-  "brain-battle": "Brain Battle",
+  jeopardy: "Jeopardy",
+  "wheel-of-fortune": "Wheel of Fortune",
+  "family-feud": "Family Feud",
 };
 
 const GAME_ACCENT_CLASSES: Record<string, string> = {
-  "world-builder": "text-accent-2 bg-accent-2/15",
-  "bluff-engine": "text-accent-3 bg-accent-3/15",
-  "quick-draw": "text-accent-4 bg-accent-4/15",
-  "reality-drift": "text-accent-5 bg-accent-5/15",
-  "hot-take": "text-accent-6 bg-accent-6/15",
-  "brain-battle": "text-accent-7 bg-accent-7/15",
+  jeopardy: "text-accent-jeopardy bg-accent-jeopardy/15",
+  "wheel-of-fortune": "text-accent-wheel bg-accent-wheel/15",
+  "family-feud": "text-accent-feud bg-accent-feud/15",
 };
 
 export function GameController({
@@ -72,6 +54,8 @@ export function GameController({
   errorNonce,
   sendMessage,
 }: GameControllerProps) {
+  // ─── Common message handlers ──────────────────────────────────────
+
   const handleTextSubmit = useCallback(
     (text: string) => {
       sendMessage("player:submit", { content: text });
@@ -79,100 +63,121 @@ export function GameController({
     [sendMessage],
   );
 
-  const handleVoteConfirm = useCallback(
-    (targetIndex: number) => {
-      sendMessage("player:vote", { targetIndex });
-    },
-    [sendMessage],
-  );
-
-  const handleDrawStroke = useCallback(
-    (stroke: { points: { x: number; y: number }[]; color: string; size: number }) => {
-      sendMessage("player:draw-stroke", stroke);
-    },
-    [sendMessage],
-  );
-
-  const handleDrawUndo = useCallback(() => {
-    sendMessage("player:draw-undo");
+  const handleBuzz = useCallback(() => {
+    sendMessage("player:buzz", { timestamp: Date.now() });
   }, [sendMessage]);
 
-  const handleDrawClear = useCallback(() => {
-    sendMessage("player:draw-clear");
+  const handleClueSelect = useCallback(
+    (clueId: string) => {
+      const [catStr, clueStr] = clueId.split(",");
+      const categoryIndex = Number(catStr);
+      const clueIndex = Number(clueStr);
+      if (!Number.isNaN(categoryIndex) && !Number.isNaN(clueIndex)) {
+        sendMessage("player:select-clue", { categoryIndex, clueIndex });
+      }
+    },
+    [sendMessage],
+  );
+
+  const handleSpin = useCallback(() => {
+    sendMessage("player:spin");
   }, [sendMessage]);
 
-  const handleSliderSubmit = useCallback(
-    (value: number) => {
-      sendMessage("player:vote", { value });
+  const handleConsonantPick = useCallback(
+    (letter: string) => {
+      sendMessage("player:guess-consonant", { letter });
     },
     [sendMessage],
   );
 
-  const handleAbilityUse = useCallback(
-    (abilityId: string) => {
-      sendMessage("player:use-ability", { abilityId });
+  const handleVowelPick = useCallback(
+    (letter: string) => {
+      sendMessage("player:buy-vowel", { letter });
     },
     [sendMessage],
   );
 
-  // AI generation / waiting phases
-  const isWaitingPhase =
-    phase === "generating" ||
-    phase === "ai-narrating" ||
-    phase === "generating-prompt" ||
-    phase === "generating-questions" ||
-    phase === "picking-drawer" ||
-    phase === "ai-generating" ||
-    phase === "board-generating" ||
-    phase === "appeal-judging";
+  const handleSolveSubmit = useCallback(
+    (text: string) => {
+      sendMessage("player:solve", { answer: text });
+    },
+    [sendMessage],
+  );
 
-  if (isWaitingPhase) {
-    return (
-      <>
-        <WaitingScreen
-          phase={phase}
-          score={typeof privateData?.score === "number" ? privateData.score : undefined}
-          rank={typeof privateData?.rank === "number" ? privateData.rank : undefined}
-          totalPlayers={
-            typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : undefined
-          }
-          submittedCount={
-            typeof privateData?.submittedCount === "number" ? privateData.submittedCount : undefined
-          }
-          totalCount={
-            typeof privateData?.totalCount === "number" ? privateData.totalCount : undefined
-          }
-          gameId={gameId}
-        />
-        <ReactionBar sendMessage={sendMessage} />
-      </>
-    );
-  }
+  const handleJeopardyAnswer = useCallback(
+    (text: string) => {
+      sendMessage("player:answer", { answer: text });
+    },
+    [sendMessage],
+  );
+
+  const handleDailyDoubleWager = useCallback(
+    (wager: number) => {
+      sendMessage("player:daily-double-wager", { wager });
+    },
+    [sendMessage],
+  );
+
+  const handleDailyDoubleAnswer = useCallback(
+    (text: string) => {
+      sendMessage("player:daily-double-answer", { answer: text });
+    },
+    [sendMessage],
+  );
+
+  const handleFinalWager = useCallback(
+    (wager: number) => {
+      sendMessage("player:final-wager", { wager });
+    },
+    [sendMessage],
+  );
+
+  const handleFinalAnswer = useCallback(
+    (text: string) => {
+      sendMessage("player:final-answer", { answer: text });
+    },
+    [sendMessage],
+  );
+
+  // ─── Wheel of Fortune action chooser helpers ──────────────────────
+
+  const handleChooseBuyVowel = useCallback(() => {
+    sendMessage("player:choose-action", { action: "buy-vowel" });
+  }, [sendMessage]);
+
+  const handleChooseSolve = useCallback(() => {
+    sendMessage("player:choose-action", { action: "solve" });
+  }, [sendMessage]);
+
+  // ─── Theme / display ─────────────────────────────────────────────
 
   const themeKey = GAME_THEME_MAP[gameId] ?? "default";
   const gameName = GAME_DISPLAY_NAMES[gameId] ?? gameId;
   const accentClass = GAME_ACCENT_CLASSES[gameId] ?? "text-accent-1 bg-accent-1/15";
 
-  // Render based on game + phase
+  // ─── Private data as typed helpers ────────────────────────────────
+
+  const pd = privateData ?? {};
+
+  // Build used letters set for WoF from revealedLetters broadcast
+  const usedLetters = useMemo(() => {
+    const letters = Array.isArray(pd.revealedLetters) ? pd.revealedLetters : [];
+    return new Set(letters.filter((l): l is string => typeof l === "string"));
+  }, [pd.revealedLetters]);
+
+  // ─── Render game-specific content ─────────────────────────────────
+
   let content: React.ReactNode;
+
   switch (gameId) {
-    case "world-builder":
-      content = renderWorldBuilder(phase);
+    case "jeopardy":
+      content = renderJeopardy(phase);
       break;
-    case "bluff-engine":
-      content = renderBluffEngine(phase);
+    case "wheel-of-fortune":
+      content = renderWheelOfFortune(phase);
       break;
-    case "quick-draw":
-      content = renderQuickDraw(phase);
-      break;
-    case "reality-drift":
-      content = renderRealityDrift(phase);
-      break;
-    case "hot-take":
-      content = renderHotTake(phase);
-      break;
-    case "brain-battle":
-      content = renderBrainBattle(phase);
+    case "family-feud":
+      content = renderFamilyFeud(phase);
       break;
     default:
       content = renderGenericPhase(phase);
@@ -199,412 +204,409 @@ export function GameController({
     </GameThemeProvider>
   );
 
-  function renderWorldBuilder(currentPhase: string) {
+  // ────────────────────────────────────────────────────────────────────
+  // JEOPARDY
+  // ────────────────────────────────────────────────────────────────────
+
+  function renderJeopardy(currentPhase: string): React.ReactNode {
     switch (currentPhase) {
-      case "role-reveal":
+      case "category-reveal":
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            {privateData?.role ? (
-              <RoleCard
-                roleName={privateData.role as string}
-                publicIdentity={(privateData.publicIdentity as string) ?? "Unknown"}
-                secretObjective={(privateData.secretObjective as string) ?? "None assigned"}
-                specialAbility={privateData.specialAbility as string | undefined}
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.score === "number" ? pd.score : undefined}
+          />
+        );
+
+      case "clue-select": {
+        if (pd.isSelector) {
+          // Build categories and answered clues from broadcast game-data
+          const categories = Array.isArray(pd.categories)
+            ? pd.categories.filter((c): c is string => typeof c === "string")
+            : [];
+          const answeredClues = Array.isArray(pd.answeredClues)
+            ? pd.answeredClues.filter((c): c is string => typeof c === "string")
+            : [];
+
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <ClueGrid
+                categories={categories}
+                answeredClues={answeredClues}
+                onSelect={handleClueSelect}
               />
-            ) : (
-              <WaitingScreen phase="generating" />
-            )}
-            <div className="px-4">
-              <button
-                type="button"
-                onClick={() => {
-                  haptics.confirm();
-                  sendMessage("player:ready");
-                }}
-                className="h-14 w-full rounded-xl bg-accent-2 font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95"
-                style={{
-                  boxShadow: "0 0 16px oklch(0.68 0.20 300 / 0.25)",
-                }}
-              >
-                Ready
-              </button>
             </div>
-          </div>
-        );
-      case "action-input":
+          );
+        }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            {privateData?.role && (
-              <RoleCard
-                roleName={privateData.role as string}
-                publicIdentity={(privateData.publicIdentity as string) ?? "Unknown"}
-                secretObjective={(privateData.secretObjective as string) ?? "None assigned"}
-                specialAbility={privateData.specialAbility as string | undefined}
-              />
-            )}
-            <TextInput
-              prompt={`Round ${round}/${totalRounds} -- What does your character do?`}
-              placeholder="Describe your action..."
-              onSubmit={handleTextSubmit}
-            />
-            {privateData?.specialAbility && privateData.abilityId && (
-              <AbilityButton
-                abilityName="Special Ability"
-                abilityDescription={privateData.specialAbility as string}
-                abilityId={privateData.abilityId as string}
-                onUse={handleAbilityUse}
-              />
-            )}
-          </div>
-        );
-      case "narration-display":
-        return renderWatchScreen("Watch the story unfold on the main screen...");
-      case "reveal":
-        return renderWatchScreen("Check the main screen for results!");
-      case "final-scores":
-        return renderFinalScoresCard();
-      default:
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
-    }
-  }
-
-  function renderBluffEngine(currentPhase: string) {
-    const question =
-      typeof privateData?.question === "string" ? (privateData.question as string) : "";
-    const category =
-      typeof privateData?.category === "string" ? (privateData.category as string) : "";
-
-    switch (currentPhase) {
-      case "answer-input":
-        return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            {category && (
-              <div className="mx-4 rounded-full bg-accent-3/15 px-3 py-1 text-center font-body text-xs font-medium uppercase tracking-wider text-accent-3">
-                {category}
-              </div>
-            )}
-            {question && (
-              <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
-                {question}
-              </p>
-            )}
-            <TextInput
-              prompt={`Round ${round}/${totalRounds} -- Write a convincing fake answer!`}
-              placeholder="Write your bluff..."
-              onSubmit={handleTextSubmit}
-              maxChars={80}
-              resetNonce={errorNonce}
-            />
-          </div>
-        );
-      case "voting": {
-        const options = (privateData?.voteOptions as { index: number; label: string }[]) ?? [];
-        const disallowedVoteIndex =
-          typeof privateData?.disallowedVoteIndex === "number"
-            ? (privateData.disallowedVoteIndex as number)
-            : null;
-        return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            {question && (
-              <p className="px-4 text-center font-body text-base font-medium text-text-primary">
-                {question}
-              </p>
-            )}
-            <VoteGrid
-              prompt="Which answer do you think is real? (You can't vote for your own answer.)"
-              options={options.map((opt) => ({
-                index: opt.index,
-                label: opt.label,
-                disabled: disallowedVoteIndex === opt.index,
-              }))}
-              onConfirm={handleVoteConfirm}
-              resetNonce={errorNonce}
-            />
-          </div>
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.score === "number" ? pd.score : undefined}
+          />
         );
       }
-      case "results":
-        return renderWatchScreen("Check the main screen for results!");
-      case "final-scores":
-        return renderFinalScoresCard();
-      default:
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
-    }
-  }
 
-  function renderQuickDraw(currentPhase: string) {
-    const isDrawer = Boolean(privateData?.isDrawer);
-    const word = typeof privateData?.word === "string" ? (privateData.word as string) : null;
-    const guessedCorrectly = Boolean(privateData?.qdCorrect);
-
-    if ((currentPhase === "drawing" || currentPhase === "guessing") && isDrawer) {
-      return (
-        <div className="flex flex-col gap-4 pb-16 pt-4">
-          {word && (
-            <GlassPanel className="mx-4 border-accent-4/30 px-4 py-3 text-center">
-              <div className="font-body text-xs font-medium uppercase tracking-wider text-accent-4">
-                Your Word
-              </div>
-              <div className="font-display text-2xl font-bold text-text-primary">
-                {word.toUpperCase()}
-              </div>
-            </GlassPanel>
-          )}
-          <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
-            Draw the word -- be quick!
-          </p>
-          <DrawCanvas
-            onStrokeSend={handleDrawStroke}
-            onUndoSend={handleDrawUndo}
-            onClearSend={handleDrawClear}
-          />
-        </div>
-      );
-    }
-
-    switch (currentPhase) {
-      case "drawing":
-        return <WaitingScreen phase="drawing" />;
-      case "guessing":
-        return guessedCorrectly ? (
-          renderSuccessCard("You got it!", "Keep watching the main screen...")
-        ) : (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            <QuickGuessInput
-              prompt="What is being drawn?"
-              placeholder="Type your guess..."
-              onSubmit={handleTextSubmit}
-            />
-          </div>
-        );
-      case "word-reveal":
-        return guessedCorrectly
-          ? renderSuccessCard("You got it!", "Keep watching the main screen...")
-          : renderWatchScreen("Check the main screen for the reveal!");
-      case "final-scores":
-        return renderFinalScoresCard();
-      default:
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
-    }
-  }
-
-  function renderRealityDrift(currentPhase: string) {
-    switch (currentPhase) {
       case "answering": {
-        const options = (privateData?.answerOptions as { index: number; label: string }[]) ?? [];
-        if (options.length > 0) {
-          return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
-              <VoteGrid
-                key={`reality-drift-answering-${round}`}
-                prompt={`Round ${round}/${totalRounds} -- Fill the blank`}
-                options={options.map((opt) => ({
-                  index: opt.index,
-                  label: opt.label,
-                }))}
-                onConfirm={handleVoteConfirm}
-              />
-            </div>
-          );
+        if (pd.hasAnswered) {
+          return renderWatchScreen("Answer submitted! Waiting for others...");
         }
-        // Options not yet received (e.g. reconnecting mid-round) — show waiting state.
-        return <WaitingScreen phase="answering" />;
-      }
-      case "drift-check":
+        const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
+        const clueCat = typeof pd.clueCategory === "string" ? pd.clueCategory : "";
+        const clueVal = typeof pd.clueValue === "number" ? pd.clueValue : 0;
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
-            <VoteGrid
-              key={`reality-drift-drift-check-${round}`}
-              prompt="Is this headline real or made up?"
-              options={[
-                { index: 0, label: "Real -- this actually happened" },
-                { index: 1, label: "Hallucination -- completely made up" },
-              ]}
-              onConfirm={handleVoteConfirm}
+            {clueCat && (
+              <div className="mx-4 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-jeopardy">
+                {clueCat} — ${clueVal}
+              </div>
+            )}
+            {clueQ && (
+              <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
+                {clueQ}
+              </p>
+            )}
+            <TextInput
+              prompt="Your answer:"
+              placeholder="What is..."
+              onSubmit={handleJeopardyAnswer}
+              resetNonce={errorNonce}
             />
           </div>
         );
-      case "results":
-        return renderWatchScreen("Check the main screen for results!");
-      case "final-scores":
-        return renderFinalScoresCard();
-      default:
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
-    }
-  }
+      }
 
-  function renderHotTake(currentPhase: string) {
-    switch (currentPhase) {
-      case "topic-setup":
-        return (
-          <TopicSetup
-            categories={((privateData?.categories as string[]) ?? []).filter(
-              (category): category is string => typeof category === "string" && category.length > 0,
-            )}
-            onSubmit={(topic, category) => {
-              sendMessage("player:submit", { content: topic, category });
-            }}
-          />
-        );
-      case "ai-generating":
-        return <WaitingScreen phase="ai-generating" />;
-      case "showing-prompt":
-        return renderWatchScreen("Read the statement on the main screen...");
-      case "voting":
-        return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
-            <Slider prompt="How do you feel about this?" onSubmit={handleSliderSubmit} />
-          </div>
-        );
-      case "results":
-        return renderWatchScreen("Check the main screen for results!");
-      case "final-scores":
-        return renderFinalScoresCard();
-      default:
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
-    }
-  }
-
-  function renderBrainBattle(currentPhase: string) {
-    switch (currentPhase) {
-      case "topic-submit":
-        return <BrainBattleTopicSubmit sendMessage={sendMessage} />;
-
-      case "board-generating":
-      case "board-reveal":
-        return <WaitingScreen phase={currentPhase} />;
-
-      case "clue-select":
-        if (privateData?.isSelector) {
-          const board =
-            (privateData?.board as Array<{
-              name: string;
-              clues: Array<{ id: string; value: number; answered: boolean }>;
-            }>) ?? [];
-          const categories = board.map((cat) => cat.name);
-          const answeredClues = (privateData?.answeredClues as string[]) ?? [];
-          const values = [200, 400, 600, 800, 1000];
-          return (
-            <div className="flex flex-col gap-3 px-2 pb-16 pt-4">
-              <p className="text-center font-display text-lg font-bold text-text-primary">
-                Pick a clue!
-              </p>
-              {/* Mini-board grid */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr>
-                      {categories.map((cat) => (
-                        <th
-                          key={cat}
-                          className="px-1 py-1 text-center font-display text-xs font-bold text-accent-7 uppercase tracking-wider"
-                        >
-                          {cat.length > 8 ? `${cat.slice(0, 8)}...` : cat}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {values.map((val, rowIdx) => (
-                      <tr key={val}>
-                        {categories.map((_cat, colIdx) => {
-                          const clueId = `cat${colIdx}_clue${rowIdx}`;
-                          const isAnswered = answeredClues.includes(clueId);
-                          return (
-                            <td key={clueId} className="p-0.5">
-                              <button
-                                type="button"
-                                disabled={isAnswered}
-                                onClick={() => {
-                                  haptics.tap();
-                                  sendMessage("player:select-clue", { clueId });
-                                }}
-                                className="h-12 w-full rounded-lg font-display text-sm font-bold transition-all active:scale-95 disabled:opacity-30 disabled:active:scale-100"
-                                style={{
-                                  backgroundColor: isAnswered
-                                    ? "rgba(255,255,255,0.03)"
-                                    : "rgba(255,255,255,0.08)",
-                                  color: isAnswered
-                                    ? "rgba(255,255,255,0.2)"
-                                    : "var(--color-accent-7, #818cf8)",
-                                }}
-                              >
-                                ${val}
-                              </button>
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        }
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Waiting for {(privateData?.selectorName as string) ?? "selector"} to pick a clue...
-            </p>
-          </div>
-        );
-
-      case "buzzing":
-        return (
-          <BuzzButton
-            onBuzz={() => sendMessage("player:buzz")}
-            playerColor={(privateData?.avatarColor as string) ?? undefined}
-          />
-        );
-
-      case "answering":
-        if (privateData?.isBuzzWinner) {
+      case "daily-double-wager": {
+        if (pd.isDailyDoublePlayer) {
+          const maxWager = typeof pd.score === "number" ? Math.max(pd.score, 1000) : 1000;
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <TextInput
-                prompt='Your answer -- start with "What is..."'
-                placeholder="What is...?"
-                maxChars={100}
-                onSubmit={handleTextSubmit}
+              <NumberInput
+                min={5}
+                max={maxWager}
+                label="Daily Double! Set your wager:"
+                onSubmit={handleDailyDoubleWager}
               />
             </div>
           );
         }
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">
-              Waiting for {(privateData?.buzzWinnerName as string) ?? "player"}&apos;s answer...
-            </p>
-          </div>
-        );
+        return renderWatchScreen("Daily Double!");
+      }
 
-      case "appeal-window":
-        if (privateData?.canAppeal) {
+      case "daily-double-answer": {
+        if (pd.isDailyDoublePlayer) {
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <div className="text-center text-sm text-text-muted">
-                Appeals remaining: {(privateData?.appealsRemaining as number) ?? 0}
-              </div>
               <TextInput
-                prompt="Make your case to the judge!"
-                placeholder="I believe my answer is correct because..."
-                maxChars={140}
-                onSubmit={handleTextSubmit}
+                prompt="Daily Double answer:"
+                placeholder="What is..."
+                onSubmit={handleDailyDoubleAnswer}
+                resetNonce={errorNonce}
               />
             </div>
           );
         }
-        return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8">
-            <p className="text-center text-lg text-text-muted">Waiting for the appeal...</p>
-          </div>
-        );
+        return renderWatchScreen("Waiting for the Daily Double answer...");
+      }
 
-      case "appeal-judging":
-      case "appeal-result":
+      case "final-jeopardy-wager": {
+        if (pd.canWagerFinal) {
+          const playerScore = typeof pd.score === "number" ? pd.score : 0;
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <NumberInput
+                min={0}
+                max={playerScore}
+                label="Final Jeopardy! Set your wager:"
+                onSubmit={handleFinalWager}
+              />
+            </div>
+          );
+        }
+        return renderWatchScreen("Final Jeopardy wagers being placed...");
+      }
+
+      case "final-jeopardy-answer": {
+        if (pd.canAnswerFinal) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt="Final Jeopardy answer:"
+                placeholder="What is..."
+                onSubmit={handleFinalAnswer}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        return renderWatchScreen("Final Jeopardy answers being submitted...");
+      }
+
       case "clue-result":
-        return renderWatchScreen("Check the main screen!");
+      case "final-jeopardy-category":
+      case "final-jeopardy-reveal":
+        return renderWatchScreen("Watch the main screen!");
+
+      case "final-scores":
+        return renderFinalScoresCard();
+
+      default:
+        return (
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.score === "number" ? pd.score : undefined}
+          />
+        );
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // WHEEL OF FORTUNE
+  // ────────────────────────────────────────────────────────────────────
+
+  function renderWheelOfFortune(currentPhase: string): React.ReactNode {
+    const isMyTurn = pd.isMyTurn === true;
+    const canBuyVowel = pd.canBuyVowel === true;
+    const isBonusPlayer = pd.isBonusPlayer === true;
+
+    switch (currentPhase) {
+      case "spinning": {
+        if (isMyTurn) {
+          return (
+            <div className="flex flex-col items-center gap-4 pb-16">
+              <SpinButton onSpin={handleSpin} />
+              {/* Action chooser: buy vowel / solve */}
+              <div className="flex items-center gap-3 px-4">
+                {canBuyVowel && (
+                  <button
+                    type="button"
+                    onClick={handleChooseBuyVowel}
+                    className="min-h-[48px] rounded-xl border border-accent-wheel/40 bg-accent-wheel/15 px-5 py-2 font-display text-sm font-bold text-accent-wheel uppercase tracking-wider transition-all active:scale-95"
+                  >
+                    Buy Vowel ($250)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleChooseSolve}
+                  className="min-h-[48px] rounded-xl border border-primary/40 bg-primary/15 px-5 py-2 font-display text-sm font-bold text-primary uppercase tracking-wider transition-all active:scale-95"
+                >
+                  Solve
+                </button>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
+          />
+        );
+      }
+
+      case "guess-consonant": {
+        if (isMyTurn) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <LetterPicker
+                mode="consonant"
+                usedLetters={usedLetters}
+                onPick={handleConsonantPick}
+              />
+            </div>
+          );
+        }
+        return (
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
+          />
+        );
+      }
+
+      case "buy-vowel": {
+        if (isMyTurn) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <LetterPicker mode="vowel" usedLetters={usedLetters} onPick={handleVowelPick} />
+            </div>
+          );
+        }
+        return (
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
+          />
+        );
+      }
+
+      case "solve-attempt": {
+        if (isMyTurn) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt="Solve the puzzle:"
+                placeholder="Type the full phrase..."
+                onSubmit={handleSolveSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        return renderWatchScreen("Watching a solve attempt...");
+      }
+
+      case "bonus-round": {
+        if (isBonusPlayer) {
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <LetterPicker
+                mode="bonus"
+                usedLetters={usedLetters}
+                onPick={(letter) => {
+                  // In bonus round, the player picks 3 consonants + 1 vowel
+                  // This is handled via the bonus-letters message type
+                  // For simplicity, we forward individual picks via consonant/vowel
+                  sendMessage("player:bonus-pick", { letter });
+                }}
+              />
+              <div className="px-4">
+                <TextInput
+                  prompt="Solve the bonus puzzle:"
+                  placeholder="Type the full phrase..."
+                  onSubmit={(text) => {
+                    sendMessage("player:bonus-solve", { answer: text });
+                  }}
+                />
+              </div>
+            </div>
+          );
+        }
+        return renderWatchScreen("Watching the bonus round...");
+      }
+
+      case "round-intro":
+      case "letter-result":
+      case "round-result":
+      case "bonus-reveal":
+        return renderWatchScreen("Watch the main screen!");
+
+      case "final-scores":
+        return renderFinalScoresCard();
+
+      default:
+        return (
+          <WaitingScreen
+            phase={currentPhase}
+            gameId={gameId}
+            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
+          />
+        );
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // FAMILY FEUD
+  // ────────────────────────────────────────────────────────────────────
+
+  function renderFamilyFeud(currentPhase: string): React.ReactNode {
+    // Check private-data flags based on what the plugin sends
+    const isFaceOffPlayer =
+      pd.action === "face-off-your-turn" ||
+      (Array.isArray(pd.faceOffPlayers) &&
+        typeof pd.yourSessionId === "string" &&
+        (pd.faceOffPlayers as unknown[]).includes(pd.yourSessionId));
+    const isCurrentGuesser = pd.action === "your-turn-to-guess";
+    const isStealTeam = pd.action === "steal-your-turn";
+    const isFastMoneyPlayer = pd.action === "fast-money-question";
+
+    switch (currentPhase) {
+      case "face-off": {
+        if (isFaceOffPlayer) {
+          return (
+            <BuzzButton
+              onBuzz={() => {
+                // Face-off: buzz then submit answer via TextInput on next render
+                handleBuzz();
+              }}
+            />
+          );
+        }
+        return renderWatchScreen("Face-off happening...");
+      }
+
+      case "guessing": {
+        if (isCurrentGuesser) {
+          const question = typeof pd.question === "string" ? pd.question : "Name something...";
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt={question}
+                placeholder="Type your answer..."
+                onSubmit={handleTextSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
+      }
+
+      case "steal-chance": {
+        if (isStealTeam) {
+          const question =
+            typeof pd.question === "string" ? pd.question : "Steal! Name an answer...";
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt={`Steal! ${question}`}
+                placeholder="Type your steal answer..."
+                onSubmit={handleTextSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        return renderWatchScreen("Other team is trying to steal...");
+      }
+
+      case "fast-money": {
+        if (isFastMoneyPlayer) {
+          const question = typeof pd.question === "string" ? pd.question : "Quick!";
+          const qIndex = typeof pd.questionIndex === "number" ? pd.questionIndex + 1 : "?";
+          const totalQ = typeof pd.totalQuestions === "number" ? pd.totalQuestions : "?";
+          return (
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <div className="flex justify-center">
+                <span className="rounded-full bg-accent-feud/15 px-3 py-1 font-mono text-xs font-bold text-accent-feud">
+                  {qIndex}/{totalQ}
+                </span>
+              </div>
+              <TextInput
+                prompt={question}
+                placeholder="Quick! Type your answer..."
+                onSubmit={handleTextSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        return renderWatchScreen("Fast Money round!");
+      }
+
+      case "question-reveal":
+      case "strike":
+      case "answer-reveal":
+      case "round-result":
+      case "fast-money-reveal":
+        return renderWatchScreen("Watch the main screen!");
+
       case "final-scores":
         return renderFinalScoresCard();
 
@@ -612,6 +614,10 @@ export function GameController({
         return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
   }
+
+  // ────────────────────────────────────────────────────────────────────
+  // GENERIC / SHARED RENDERERS
+  // ────────────────────────────────────────────────────────────────────
 
   function renderGenericPhase(currentPhase: string) {
     if (
@@ -628,20 +634,13 @@ export function GameController({
     if (currentPhase.includes("vote") || currentPhase.includes("voting")) {
       return renderWatchScreen("Waiting for vote options...");
     }
-    if (currentPhase.includes("draw")) {
-      return (
-        <div className="flex flex-col gap-4 pb-16 pt-4">
-          <DrawCanvas onStrokeSend={handleDrawStroke} />
-        </div>
-      );
-    }
     return renderWatchScreen("Watch the main screen...");
   }
 
   function renderFinalScoresCard() {
-    const playerScore = typeof privateData?.score === "number" ? privateData.score : null;
-    const playerRank = typeof privateData?.rank === "number" ? privateData.rank : null;
-    const total = typeof privateData?.totalPlayers === "number" ? privateData.totalPlayers : null;
+    const playerScore = typeof pd.score === "number" ? pd.score : null;
+    const playerRank = typeof pd.rank === "number" ? pd.rank : null;
+    const total = typeof pd.totalPlayers === "number" ? pd.totalPlayers : null;
 
     const getRankSuffix = (r: number): string => {
       if (r % 100 >= 11 && r % 100 <= 13) return "th";
@@ -690,20 +689,6 @@ export function GameController({
         <GlassPanel className="flex flex-col items-center gap-3 px-8 py-6">
           <Monitor className="h-6 w-6 text-text-muted" />
           <p className="text-center font-body text-lg text-text-muted">{message}</p>
-        </GlassPanel>
-      </div>
-    );
-  }
-
-  function renderSuccessCard(title: string, subtitle: string) {
-    return (
-      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-10 animate-fade-in-up">
-        <GlassPanel glow className="flex flex-col items-center gap-4 px-8 py-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent-5/15">
-            <Check className="h-7 w-7 text-accent-5" strokeWidth={3} />
-          </div>
-          <p className="font-display text-xl font-bold text-accent-5">{title}</p>
-          <p className="text-center font-body text-sm text-text-muted">{subtitle}</p>
         </GlassPanel>
       </div>
     );

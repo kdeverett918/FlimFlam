@@ -24,11 +24,9 @@ interface LobbyScreenProps {
 }
 
 const GAME_ID_TO_THEME: Record<string, GameTheme> = {
-  "world-builder": "world-builder",
-  "bluff-engine": "bluff-engine",
-  "quick-draw": "quick-draw",
-  "reality-drift": "reality-drift",
-  "hot-take": "hot-take",
+  jeopardy: "jeopardy",
+  "wheel-of-fortune": "wheel-of-fortune",
+  "family-feud": "family-feud",
 };
 
 export function LobbyScreen(props: LobbyScreenProps) {
@@ -94,6 +92,8 @@ function LobbyContent({
     };
   }, [joinUrl]);
 
+  const codeChars = roomCode.split("");
+
   return (
     <div className="relative flex min-h-screen flex-col p-8 lg:p-10">
       <AnimatedBackground variant="subtle" />
@@ -108,16 +108,36 @@ function LobbyContent({
               {controllerUrl ? controllerUrl.replace(/^https?:\/\//, "") : "(missing URL)"}
             </span>
           </p>
-          <GlassPanel
-            glow
-            glowColor="oklch(0.72 0.22 25 / 0.2)"
-            rounded="2xl"
-            className="px-10 py-4"
-          >
-            <span className="font-mono text-[96px] leading-none tracking-[8px] text-text-primary">
-              {roomCode}
-            </span>
-          </GlassPanel>
+          <div className="flex gap-3">
+            {codeChars.map((char, i) => (
+              <motion.span
+                // biome-ignore lint/suspicious/noArrayIndexKey: Character positions in code are stable
+                key={`code-${char}-${i}`}
+                initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 20,
+                  delay: 0.2 + i * 0.08,
+                }}
+                className="flex items-center justify-center rounded-xl border border-white/[0.12] bg-white/[0.06] backdrop-blur-lg"
+                style={{
+                  width: "clamp(60px, 12vw, 96px)",
+                  height: "clamp(72px, 14vw, 110px)",
+                  boxShadow:
+                    "inset 0 1px 0 oklch(1 0 0 / 0.08), 0 0 20px oklch(0.75 0.22 25 / 0.15)",
+                }}
+              >
+                <span
+                  className="font-mono font-bold leading-none text-text-primary"
+                  style={{ fontSize: "clamp(48px, 10vw, 80px)" }}
+                >
+                  {char}
+                </span>
+              </motion.span>
+            ))}
+          </div>
           <p className="font-body text-[24px] text-text-muted">Enter this code on your phone</p>
         </div>
 
@@ -134,7 +154,8 @@ function LobbyContent({
 
       {/* Player list */}
       <div className="relative z-10 my-6">
-        <div className="mb-4 flex items-baseline gap-4">
+        <div className="mb-4 flex items-center gap-4">
+          <div className="h-[3px] w-8 rounded-full bg-primary" />
           <h2 className="font-display text-[36px] font-bold text-text-primary">PLAYERS</h2>
           <span className="font-mono text-[28px] text-text-muted">{playerCount} / 8</span>
           {playerCount < MIN_PLAYERS && (
@@ -160,14 +181,27 @@ function LobbyContent({
                 }}
                 className="flex flex-col items-center gap-2"
               >
-                <div
-                  className="flex h-[80px] w-[80px] items-center justify-center rounded-full text-[36px] font-bold text-bg-deep"
-                  style={{
-                    backgroundColor: player.avatarColor,
-                    boxShadow: `0 0 20px ${player.avatarColor}50, 0 0 40px ${player.avatarColor}20`,
-                  }}
-                >
-                  {player.name.charAt(0).toUpperCase()}
+                <div className="relative">
+                  <div
+                    className="flex h-[80px] w-[80px] items-center justify-center rounded-full text-[36px] font-bold text-bg-deep"
+                    style={{
+                      backgroundColor: player.avatarColor,
+                      boxShadow: `0 0 20px ${player.avatarColor}50, 0 0 40px ${player.avatarColor}20`,
+                    }}
+                  >
+                    {player.name.charAt(0).toUpperCase()}
+                  </div>
+                  {/* Pulsing ring for ready players */}
+                  {player.ready && (
+                    <div
+                      className="absolute inset-0 rounded-full animate-pulse-ring"
+                      style={{
+                        border: `2px solid ${player.avatarColor}`,
+                        opacity: 0.6,
+                      }}
+                      aria-hidden="true"
+                    />
+                  )}
                 </div>
                 <span className="max-w-[100px] truncate font-body text-[20px] font-medium text-text-primary sm:max-w-[140px] md:max-w-[220px]">
                   {player.name}
@@ -186,10 +220,10 @@ function LobbyContent({
               transition={{ delay: 0.3 + i * 0.1 }}
               className="flex flex-col items-center gap-2"
             >
-              <div className="flex h-[80px] w-[80px] animate-glow-breathe items-center justify-center rounded-full border-2 border-dashed border-text-dim/40 text-[36px] text-text-dim/40">
+              <div className="flex h-[80px] w-[80px] animate-glow-breathe items-center justify-center rounded-full border-2 border-dashed border-text-dim text-[36px] text-text-dim">
                 ?
               </div>
-              <span className="font-body text-[20px] text-text-dim/40">Waiting...</span>
+              <span className="font-body text-[20px] text-text-dim">Waiting...</span>
             </motion.div>
           ))}
         </div>
@@ -197,13 +231,19 @@ function LobbyContent({
 
       {/* Game selection */}
       <div className="relative z-10 mb-4">
-        <h2 className="mb-3 font-display text-[36px] font-bold text-text-primary">SELECT GAME</h2>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="h-[3px] w-8 rounded-full bg-primary" />
+          <h2 className="font-display text-[36px] font-bold text-text-primary">SELECT GAME</h2>
+        </div>
         <GameSelector selectedGameId={selectedGameId} onSelect={onSelectGame} />
       </div>
 
       {/* Complexity picker */}
       <div className="relative z-10 mb-4">
-        <h2 className="mb-3 font-display text-[36px] font-bold text-text-primary">DIFFICULTY</h2>
+        <div className="mb-3 flex items-center gap-3">
+          <div className="h-[3px] w-8 rounded-full bg-primary" />
+          <h2 className="font-display text-[36px] font-bold text-text-primary">DIFFICULTY</h2>
+        </div>
         <ComplexityPicker complexity={complexity} onChange={onSetComplexity} />
       </div>
 
@@ -225,7 +265,7 @@ function LobbyContent({
               className={`relative h-14 w-28 rounded-full border-2 transition-all ${
                 effectiveHotTakePlayerInputEnabled
                   ? "border-accent-5 bg-accent-5/30"
-                  : "border-text-dim/30 bg-bg-dark"
+                  : "border-text-dim bg-bg-dark"
               } ${hotTakeToggleDisabled ? "cursor-not-allowed opacity-50" : "hover:scale-[1.03]"}`}
               aria-pressed={effectiveHotTakePlayerInputEnabled}
               aria-label="Toggle Hot Take player input mode"
@@ -257,7 +297,9 @@ function LobbyContent({
           onClick={onStartGame}
           disabled={!canStart}
           aria-label="Start the game"
-          className="w-full max-w-2xl rounded-2xl border border-primary/50 bg-white/[0.04] px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none"
+          className={`w-full max-w-2xl rounded-2xl border-2 border-primary/70 bg-primary/15 px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none ${
+            canStart ? "animate-glass-breathe" : ""
+          }`}
           style={{
             backdropFilter: "blur(16px)",
           }}

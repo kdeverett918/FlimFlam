@@ -1,6 +1,7 @@
 "use client";
 
 import { GlassPanel, haptics } from "@flimflam/ui";
+import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -75,35 +76,47 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
       )}
 
       <div className="flex flex-col gap-3">
-        {options.map((option) => {
+        {options.map((option, i) => {
           const isSelected = selected === option.index;
           const isDisabled = Boolean(option.disabled);
           return (
-            <button
+            <motion.button
               key={option.index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               type="button"
               aria-pressed={isSelected}
               disabled={isDisabled}
               onClick={() => handleSelect(option.index, option.disabled)}
-              className={`min-h-[60px] w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${
+              className={`relative min-h-[60px] w-full rounded-xl border px-4 py-3 text-left font-body text-lg transition-all ${
                 isDisabled ? "cursor-not-allowed opacity-40" : "active:scale-[0.98]"
               } ${
                 isSelected
-                  ? "border-primary/50 bg-white/[0.08] shadow-[0_0_16px_oklch(0.72_0.22_25_/_0.2)]"
-                  : "border-white/[0.08] bg-white/[0.04]"
+                  ? "border-primary/60 bg-white/[0.12] shadow-[0_0_16px_oklch(0.75_0.22_25_/_0.25)]"
+                  : "border-white/[0.15] bg-white/[0.08]"
               }`}
               style={{
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
               }}
             >
-              <span className={isSelected ? "text-text-primary" : "text-text-muted"}>
-                {option.label}
-              </span>
+              <span className="text-text-primary">{option.label}</span>
               {option.author && (
                 <span className="mt-1 block font-body text-sm text-text-dim">{option.author}</span>
               )}
-            </button>
+              {/* Checkmark indicator */}
+              {isSelected && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                  className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-primary"
+                >
+                  <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                </motion.div>
+              )}
+            </motion.button>
           );
         })}
       </div>

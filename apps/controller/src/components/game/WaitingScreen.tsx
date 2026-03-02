@@ -186,12 +186,12 @@ export function WaitingScreen({
   };
 
   return (
-    <div className="flex flex-col items-center justify-center gap-5 px-8 py-12">
+    <div className="flex flex-col items-center justify-center gap-5 px-8 py-12 animate-cinematic-entrance">
       <AnimatedBackground variant="subtle" />
 
       {/* Score + Rank badge */}
       {typeof score === "number" && typeof rank === "number" && (
-        <div className="flex items-center gap-3 rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2">
+        <div className="flex items-center gap-3 rounded-full border border-white/[0.15] bg-white/[0.10] px-4 py-2">
           <span className="font-mono text-lg font-bold text-primary">{score}</span>
           <span className="font-body text-xs text-text-dim">pts</span>
           <span className="mx-1 text-text-dim">|</span>
@@ -233,7 +233,7 @@ export function WaitingScreen({
           <span className="font-mono text-sm text-text-muted">
             {submittedCount}/{totalCount} submitted
           </span>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.12]">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -259,7 +259,7 @@ export function WaitingScreen({
       <button
         type="button"
         onClick={handleFidgetTap}
-        className="relative mt-2 flex h-14 w-28 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.03] transition-all active:scale-95 active:bg-white/[0.06]"
+        className="relative mt-2 flex h-14 w-28 items-center justify-center rounded-xl border border-white/[0.15] bg-white/[0.08] transition-all active:scale-95 active:bg-white/[0.12]"
         aria-label="Fidget tap area"
       >
         <span className="font-mono text-lg text-text-dim">{fidgetCount}</span>

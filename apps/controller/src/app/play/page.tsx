@@ -7,9 +7,16 @@ import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
 import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+
+const phaseTransition = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const } },
+  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+};
 
 export default function PlayPage() {
   const router = useRouter();
@@ -48,9 +55,11 @@ export default function PlayPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
         <AnimatedBackground variant="subtle" />
         <GlassPanel className="flex flex-col items-center gap-4 px-8 py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-primary" />
-          <p className="font-body text-text-muted">Connecting...</p>
-          {error && <p className="text-center font-body text-sm text-accent-6">{error}</p>}
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
+          <p className="font-body text-text-primary">Connecting...</p>
+          {error && (
+            <p className="text-center font-body text-sm font-medium text-accent-6">{error}</p>
+          )}
         </GlassPanel>
       </main>
     );
@@ -77,7 +86,7 @@ export default function PlayPage() {
             <Check className="h-8 w-8 text-accent-5" strokeWidth={3} />
           </div>
           <h2 className="font-display text-2xl font-bold text-text-primary">You're in!</h2>
-          <p className="text-center font-body text-text-muted">
+          <p className="text-center font-body text-text-primary/80">
             Waiting for the host to start a game...
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">
@@ -110,7 +119,7 @@ export default function PlayPage() {
           <h2 className="font-display text-2xl font-bold text-text-primary">
             Next game starting...
           </h2>
-          <p className="text-center font-body text-text-muted">
+          <p className="text-center font-body text-text-primary/80">
             The host is picking the next game.
           </p>
         </GlassPanel>
@@ -142,16 +151,20 @@ export default function PlayPage() {
         </div>
       )}
 
-      {/* Game content */}
-      <GameController
-        gameId={gameId}
-        phase={phase}
-        round={round}
-        totalRounds={totalRounds}
-        privateData={privateData}
-        errorNonce={errorNonce}
-        sendMessage={sendMessage}
-      />
+      {/* Game content with phase transitions */}
+      <AnimatePresence mode="wait">
+        <motion.div key={`${gameId}-${phase}`} {...phaseTransition}>
+          <GameController
+            gameId={gameId}
+            phase={phase}
+            round={round}
+            totalRounds={totalRounds}
+            privateData={privateData}
+            errorNonce={errorNonce}
+            sendMessage={sendMessage}
+          />
+        </motion.div>
+      </AnimatePresence>
 
       {/* Score badge footer */}
       <ScoreBadge

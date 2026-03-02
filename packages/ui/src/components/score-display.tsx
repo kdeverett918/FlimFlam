@@ -93,7 +93,7 @@ function ScoreDisplay({
   return (
     <div
       className={cn(
-        "relative inline-flex flex-col items-center rounded-xl bg-white/[0.04] backdrop-blur-md border border-white/[0.08] px-6 py-4",
+        "relative inline-flex flex-col items-center rounded-xl bg-white/[0.10] backdrop-blur-md border border-white/[0.15] px-6 py-4",
         className,
       )}
       {...props}

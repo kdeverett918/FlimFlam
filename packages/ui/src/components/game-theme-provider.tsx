@@ -2,14 +2,7 @@
 
 import * as React from "react";
 
-type GameTheme =
-  | "default"
-  | "world-builder"
-  | "bluff-engine"
-  | "quick-draw"
-  | "reality-drift"
-  | "hot-take"
-  | "brain-battle";
+type GameTheme = "default" | "jeopardy" | "wheel-of-fortune" | "family-feud";
 
 interface GameThemeContextValue {
   theme: GameTheme;
@@ -28,41 +21,23 @@ const GAME_THEMES: Record<
     primaryBlob: "oklch(0.72 0.22 25)",
     secondaryBlob: "oklch(0.70 0.15 185)",
   },
-  "world-builder": {
-    accent: "var(--color-accent-2)",
-    glow: "oklch(0.68 0.2 300 / 0.3)",
-    primaryBlob: "oklch(0.68 0.20 300)",
-    secondaryBlob: "oklch(0.60 0.18 270)",
+  jeopardy: {
+    accent: "var(--color-accent-jeopardy)",
+    glow: "oklch(0.68 0.22 265 / 0.3)",
+    primaryBlob: "oklch(0.68 0.22 265)",
+    secondaryBlob: "oklch(0.55 0.20 280)",
   },
-  "bluff-engine": {
-    accent: "var(--color-accent-3)",
-    glow: "oklch(0.78 0.18 85 / 0.3)",
-    primaryBlob: "oklch(0.78 0.18 85)",
-    secondaryBlob: "oklch(0.70 0.16 60)",
+  "wheel-of-fortune": {
+    accent: "var(--color-accent-wheel)",
+    glow: "oklch(0.78 0.20 85 / 0.3)",
+    primaryBlob: "oklch(0.78 0.20 85)",
+    secondaryBlob: "oklch(0.70 0.18 60)",
   },
-  "quick-draw": {
-    accent: "var(--color-accent-4)",
-    glow: "oklch(0.72 0.18 160 / 0.3)",
-    primaryBlob: "oklch(0.72 0.18 160)",
-    secondaryBlob: "oklch(0.65 0.15 140)",
-  },
-  "reality-drift": {
-    accent: "var(--color-accent-5)",
-    glow: "oklch(0.7 0.15 210 / 0.3)",
-    primaryBlob: "oklch(0.70 0.15 210)",
-    secondaryBlob: "oklch(0.62 0.14 240)",
-  },
-  "hot-take": {
-    accent: "var(--color-accent-6)",
-    glow: "oklch(0.68 0.25 20 / 0.3)",
-    primaryBlob: "oklch(0.68 0.25 20)",
+  "family-feud": {
+    accent: "var(--color-accent-feud)",
+    glow: "oklch(0.68 0.25 25 / 0.3)",
+    primaryBlob: "oklch(0.68 0.25 25)",
     secondaryBlob: "oklch(0.72 0.22 40)",
-  },
-  "brain-battle": {
-    accent: "var(--color-accent-7)",
-    glow: "oklch(0.65 0.22 260 / 0.3)",
-    primaryBlob: "oklch(0.65 0.22 260)",
-    secondaryBlob: "oklch(0.58 0.20 280)",
   },
 };
 
@@ -85,14 +60,14 @@ function GameThemeProvider({
   className,
 }: GameThemeProviderProps) {
   const [theme, setTheme] = React.useState<GameTheme>(defaultTheme);
-  const themeConfig = GAME_THEMES[theme];
+  const themeConfig = GAME_THEMES[theme] ?? GAME_THEMES.default;
 
   const value = React.useMemo<GameThemeContextValue>(
     () => ({
       theme,
       accentColor: themeConfig.accent,
       glowColor: themeConfig.glow,
-      setTheme,
+      setTheme: setTheme as (theme: GameTheme) => void,
     }),
     [theme, themeConfig],
   );

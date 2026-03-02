@@ -7,6 +7,26 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
+const staggerContainer = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.15,
+      delayChildren: 0.3,
+    },
+  },
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30, filter: "blur(8px)" },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] as const },
+  },
+};
+
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -21,14 +41,24 @@ export default function HomePage() {
       <AnimatedBackground />
 
       {/* Main content */}
-      <div className="relative z-10 flex flex-col items-center gap-12">
-        {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="flex flex-col items-center gap-4"
-        >
+      <motion.div
+        className="relative z-10 flex flex-col items-center gap-8"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        {/* Logo with radial spotlight */}
+        <motion.div variants={fadeInUp} className="relative flex flex-col items-center gap-4">
+          {/* Radial spotlight behind title */}
+          <div
+            className="pointer-events-none absolute -inset-32 -z-10"
+            style={{
+              background:
+                "radial-gradient(ellipse at center, oklch(0.75 0.22 25 / 0.25) 0%, oklch(0.74 0.15 185 / 0.12) 40%, transparent 70%)",
+              filter: "blur(40px)",
+            }}
+            aria-hidden="true"
+          />
           <h1
             className="font-display font-extrabold leading-none tracking-[-0.02em]"
             style={{
@@ -39,7 +69,7 @@ export default function HomePage() {
               animated
               style={{
                 textShadow:
-                  "0 0 40px oklch(0.72 0.22 25 / 0.4), 0 0 80px oklch(0.70 0.15 185 / 0.2)",
+                  "0 0 40px oklch(0.78 0.22 25 / 0.5), 0 0 80px oklch(0.76 0.15 185 / 0.3)",
               }}
             >
               FLIMFLAM
@@ -49,9 +79,7 @@ export default function HomePage() {
 
         {/* Tagline */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
+          variants={fadeInUp}
           className="font-body text-text-muted"
           style={{
             fontSize: "clamp(1.25rem, 3.5vw, 2.25rem)",
@@ -61,24 +89,32 @@ export default function HomePage() {
           Games that get weird.
         </motion.p>
 
+        {/* Value proposition subtitle */}
+        <motion.p
+          variants={fadeInUp}
+          className="max-w-xl text-center font-body text-base text-text-dim sm:text-lg"
+          style={{ textShadow: "0 2px 8px oklch(0.09 0.02 250 / 0.6)" }}
+        >
+          Host on a shared screen. Players join from their phones. No app downloads. No accounts.
+          Just chaos.
+        </motion.p>
+
         {/* Create room button */}
         <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
+          variants={fadeInUp}
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           type="button"
           onClick={handleCreateRoom}
           disabled={loading}
           aria-label="Create a new game room"
-          className="group relative h-14 overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-10 font-display text-2xl font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50 sm:h-[72px] sm:px-16 sm:text-4xl"
+          className="group relative h-14 overflow-hidden rounded-2xl border-2 border-primary/70 bg-primary/15 px-10 font-display text-2xl font-bold text-primary transition-all duration-300 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50 sm:h-[72px] sm:px-16 sm:text-4xl"
           style={{
             backdropFilter: "blur(16px)",
           }}
         >
           {/* Button shimmer effect */}
-          <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
+          <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-primary/15 to-transparent" />
           <span className="relative flex items-center gap-3">
             {loading ? (
               <>
@@ -90,62 +126,26 @@ export default function HomePage() {
             )}
           </span>
         </motion.button>
-      </div>
+      </motion.div>
+
+      {/* Gradient divider */}
+      <div className="relative z-10 mx-auto h-px w-full max-w-xs bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
 
       {/* Game showcase */}
       <div className="relative z-10 w-full">
         <GameShowcase />
       </div>
 
-      {/* Bottom CTA */}
-      <div className="relative z-10 flex flex-col items-center gap-5">
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.5 }}
-          className="font-display text-2xl font-semibold text-text-muted sm:text-[32px]"
-          style={{ textShadow: "0 2px 12px oklch(0.09 0.02 250 / 0.8)" }}
-        >
-          Ready to play?
-        </motion.p>
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.6 }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          type="button"
-          onClick={handleCreateRoom}
-          disabled={loading}
-          aria-label="Create a new game room"
-          className="group relative h-14 overflow-hidden rounded-2xl border border-primary/50 bg-white/[0.04] px-10 font-display text-2xl font-semibold text-primary transition-all duration-300 hover:border-primary hover:shadow-[0_0_40px_oklch(0.72_0.22_25/0.3)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-50 sm:h-16 sm:px-12 sm:text-[28px]"
-          style={{
-            backdropFilter: "blur(16px)",
-          }}
-        >
-          <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent" />
-          <span className="relative flex items-center gap-3">
-            {loading ? (
-              <>
-                <Loader2 className="h-6 w-6 animate-spin" />
-                CONNECTING...
-              </>
-            ) : (
-              "CREATE ROOM"
-            )}
-          </span>
-        </motion.button>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.6, delay: 1.8 }}
-          className="flex flex-col items-center gap-1.5 text-base text-text-muted sm:text-xl"
-        >
-          <p>Display this screen on a shared TV or monitor</p>
-          <p>Players join from their phones</p>
-        </motion.div>
-      </div>
+      {/* Bottom instruction */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 1.5 }}
+        className="relative z-10 text-center font-body text-base text-text-muted sm:text-xl"
+        style={{ textShadow: "0 2px 8px oklch(0.09 0.02 250 / 0.6)" }}
+      >
+        Display this screen on a shared TV. Players join from their phones.
+      </motion.p>
     </main>
   );
 }
