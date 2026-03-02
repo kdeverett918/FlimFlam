@@ -249,12 +249,12 @@ function LobbyContent({
 
       {showHotTakeToggle && (
         <GlassPanel glow rounded="2xl" className="relative z-10 mb-4 p-6">
-          <div className="mb-3 flex items-center justify-between gap-6">
+          <div className="mb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
             <div>
-              <h3 className="font-display text-[28px] font-bold text-text-primary">
+              <h3 className="font-display text-[24px] sm:text-[28px] font-bold text-text-primary">
                 AI PLAYER INPUT
               </h3>
-              <p className="font-body text-[20px] text-text-muted">
+              <p className="font-body text-[16px] sm:text-[20px] text-text-muted">
                 Players submit topics and AI tailors prompts to the group.
               </p>
             </div>
@@ -262,7 +262,7 @@ function LobbyContent({
               type="button"
               disabled={hotTakeToggleDisabled}
               onClick={() => onSetHotTakePlayerInput(!effectiveHotTakePlayerInputEnabled)}
-              className={`relative h-14 w-28 rounded-full border-2 transition-all ${
+              className={`relative h-14 w-28 shrink-0 rounded-full border-2 transition-all ${
                 effectiveHotTakePlayerInputEnabled
                   ? "border-accent-5 bg-accent-5/30"
                   : "border-text-dim bg-bg-dark"
@@ -277,7 +277,7 @@ function LobbyContent({
               />
             </button>
           </div>
-          <p className="font-body text-[18px] text-text-muted">
+          <p className="font-body text-[16px] sm:text-[18px] text-text-muted">
             {complexity === "advanced" && "Advanced mode always enables player input."}
             {complexity === "kids" && "Kids mode always uses static prompts."}
             {complexity === "standard" &&
@@ -297,7 +297,7 @@ function LobbyContent({
           onClick={onStartGame}
           disabled={!canStart}
           aria-label="Start the game"
-          className={`w-full max-w-2xl rounded-2xl border-2 border-primary/70 bg-primary/15 px-20 py-6 font-display text-[42px] font-bold text-primary transition-all duration-300 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none ${
+          className={`w-full max-w-2xl rounded-2xl border-2 border-primary/70 bg-primary/15 px-6 sm:px-20 py-4 sm:py-6 font-display text-[28px] sm:text-[42px] font-bold text-primary transition-all duration-300 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-primary/50 disabled:hover:shadow-none ${
             canStart ? "animate-glass-breathe" : ""
           }`}
           style={{

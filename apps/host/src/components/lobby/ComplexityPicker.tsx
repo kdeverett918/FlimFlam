@@ -47,49 +47,51 @@ export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps
   const activeIndex = OPTIONS.findIndex((o) => o.value === complexity);
 
   return (
-    <div
-      className="relative inline-flex overflow-hidden rounded-2xl border-2 border-white/[0.15] bg-white/[0.06]"
-      style={{ backdropFilter: "blur(12px)" }}
-    >
-      {/* Animated sliding pill */}
-      <motion.div
-        className="absolute inset-y-0 rounded-2xl bg-white/[0.08]"
-        animate={{
-          left: `${(activeIndex / OPTIONS.length) * 100}%`,
-          width: `${100 / OPTIONS.length}%`,
-        }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        aria-hidden="true"
-      />
+    <div className="w-full overflow-x-auto pb-2 -mb-2 scrollbar-hide">
+      <div
+        className="relative inline-flex min-w-full sm:min-w-max overflow-hidden rounded-2xl border-2 border-white/[0.15] bg-white/[0.06]"
+        style={{ backdropFilter: "blur(12px)" }}
+      >
+        {/* Animated sliding pill */}
+        <motion.div
+          className="absolute inset-y-0 rounded-2xl bg-white/[0.08]"
+          animate={{
+            left: `${(activeIndex / OPTIONS.length) * 100}%`,
+            width: `${100 / OPTIONS.length}%`,
+          }}
+          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          aria-hidden="true"
+        />
 
-      {OPTIONS.map((opt) => {
-        const isActive = complexity === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={isActive}
-            aria-label={`${opt.label}: ${opt.description}`}
-            onClick={() => onChange(opt.value)}
-            className={`relative flex flex-col items-center gap-1 border-y-2 border-transparent px-10 py-5 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep ${
-              isActive ? opt.activeColor : "text-text-dim hover:bg-white/[0.08]"
-            }`}
-            style={{
-              transform: isActive ? "scale(1.03)" : "scale(1)",
-              transition:
-                "transform 0.2s ease-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s",
-            }}
-          >
-            <span className={isActive ? opt.color : "text-text-dim"}>{opt.icon}</span>
-            <span
-              className={`font-display text-[32px] font-bold ${isActive ? opt.color : "text-text-muted"}`}
+        {OPTIONS.map((opt) => {
+          const isActive = complexity === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              aria-pressed={isActive}
+              aria-label={`${opt.label}: ${opt.description}`}
+              onClick={() => onChange(opt.value)}
+              className={`relative flex flex-1 sm:flex-none flex-col items-center gap-1 border-y-2 border-transparent px-4 py-3 sm:px-6 sm:py-4 md:px-10 md:py-5 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep ${
+                isActive ? opt.activeColor : "text-text-dim hover:bg-white/[0.08]"
+              }`}
+              style={{
+                transform: isActive ? "scale(1.03)" : "scale(1)",
+                transition:
+                  "transform 0.2s ease-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s",
+              }}
             >
-              {opt.label}
-            </span>
-            <span className="font-body text-[22px] text-text-muted">{opt.description}</span>
-          </button>
-        );
-      })}
+              <span className={isActive ? opt.color : "text-text-dim"}>{opt.icon}</span>
+              <span
+                className={`font-display text-[20px] sm:text-[24px] md:text-[32px] font-bold ${isActive ? opt.color : "text-text-muted"}`}
+              >
+                {opt.label}
+              </span>
+              <span className="font-body text-[14px] sm:text-[18px] md:text-[22px] text-text-muted text-center whitespace-nowrap sm:whitespace-normal">{opt.description}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

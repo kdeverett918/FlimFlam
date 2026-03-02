@@ -4,7 +4,6 @@ import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { Check, Cpu, Flame, Paintbrush, Sparkles, Zap } from "lucide-react";
-import { useRef } from "react";
 
 interface GameSelectorProps {
   selectedGameId: string;
@@ -12,11 +11,11 @@ interface GameSelectorProps {
 }
 
 const GAME_ICONS: Record<string, React.ReactNode> = {
-  "world-builder": <Sparkles className="h-10 w-10 text-accent-2" />,
-  "bluff-engine": <Zap className="h-10 w-10 text-accent-3" />,
-  "quick-draw": <Paintbrush className="h-10 w-10 text-accent-4" />,
-  "reality-drift": <Cpu className="h-10 w-10 text-accent-5" />,
-  "hot-take": <Flame className="h-10 w-10 text-accent-6" />,
+  "world-builder": <Sparkles className="h-10 w-10 text-accent-2 shrink-0" />,
+  "bluff-engine": <Zap className="h-10 w-10 text-accent-3 shrink-0" />,
+  "quick-draw": <Paintbrush className="h-10 w-10 text-accent-4 shrink-0" />,
+  "reality-drift": <Cpu className="h-10 w-10 text-accent-5 shrink-0" />,
+  "hot-take": <Flame className="h-10 w-10 text-accent-6 shrink-0" />,
 };
 
 const GAME_ACCENT_BORDER: Record<string, string> = {
@@ -36,24 +35,9 @@ const GAME_ACCENT_GRADIENT: Record<string, string> = {
 };
 
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   return (
-    <div className="relative">
-      {/* Scroll fade hints */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-bg-deep/80 to-transparent"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-bg-deep/80 to-transparent"
-        aria-hidden="true"
-      />
-
-      <div
-        ref={scrollRef}
-        className="scrollbar-hide flex snap-x snap-mandatory gap-6 overflow-x-auto px-2 pb-4"
-      >
+    <div className="relative w-full">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-2 py-4">
         {GAME_MANIFESTS.map((game) => {
           const isSelected = game.id === selectedGameId;
           const icon = GAME_ICONS[game.id];
@@ -66,12 +50,12 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
               onClick={() => onSelect(game.id)}
               aria-label={game.name}
               aria-pressed={isSelected}
-              className="relative snap-center rounded-2xl transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
+              className="relative flex flex-col rounded-2xl transition-transform duration-200 hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
             >
               {/* Gradient border wrapper for selected card */}
               {isSelected && accentGradient && (
                 <div
-                  className="absolute -inset-[2px] rounded-[18px]"
+                  className="absolute -inset-[3px] rounded-[18px]"
                   style={{ background: accentGradient }}
                   aria-hidden="true"
                 />
@@ -83,7 +67,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                  className="absolute -right-2 -top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg"
+                  className="absolute -right-3 -top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg"
                 >
                   <Check className="h-5 w-5 text-white" strokeWidth={3} />
                 </motion.div>
@@ -92,7 +76,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
               <GlassPanel
                 glow={isSelected}
                 rounded="2xl"
-                className={`relative flex min-w-[320px] flex-col gap-3 border-2 p-6 transition-all duration-300 ${
+                className={`relative flex h-full w-full flex-col gap-3 border-2 p-6 transition-all duration-300 text-left ${
                   isSelected
                     ? (GAME_ACCENT_BORDER[game.id] ?? "border-primary")
                     : "border-white/[0.15] hover:border-white/[0.25]"
@@ -100,17 +84,17 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
               >
                 {/* Icon + Name row */}
                 <div className="flex items-center gap-4">
-                  {icon ?? <Sparkles className="h-10 w-10 text-text-muted" />}
-                  <div className="flex flex-col items-start">
-                    <span className="font-display text-[28px] font-semibold text-text-primary">
+                  {icon ?? <Sparkles className="h-10 w-10 text-text-muted shrink-0" />}
+                  <div className="flex flex-col items-start min-w-0">
+                    <span className="font-display text-[24px] sm:text-[28px] font-semibold text-text-primary truncate w-full">
                       {game.name}
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-body text-[18px] text-text-muted">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         {game.minPlayers}-{game.maxPlayers} players
                       </span>
-                      <span className="text-[14px] text-text-muted">|</span>
-                      <span className="font-body text-[18px] text-text-muted">
+                      <span className="text-[14px] text-text-muted hidden sm:inline">|</span>
+                      <span className="font-body text-[16px] sm:text-[18px] text-text-muted whitespace-nowrap">
                         ~{game.estimatedMinutes}min
                       </span>
                     </div>
@@ -118,14 +102,14 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                 </div>
 
                 {/* Description */}
-                <p className="text-left font-body text-[20px] leading-relaxed text-text-muted">
+                <p className="flex-1 text-left font-body text-[18px] sm:text-[20px] leading-relaxed text-text-muted">
                   {game.description}
                 </p>
 
                 {/* Tags */}
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-auto pt-2">
                   {game.aiRequired && (
-                    <span className="rounded-full bg-accent-4/20 px-3 py-1 font-body text-[16px] font-medium text-accent-4">
+                    <span className="rounded-full bg-accent-4/20 px-3 py-1 font-body text-[14px] sm:text-[16px] font-medium text-accent-4">
                       AI Powered
                     </span>
                   )}
@@ -134,7 +118,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                     .map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[16px] text-text-primary/70"
+                        className="rounded-full border border-white/[0.10] bg-white/[0.06] px-3 py-1 font-body text-[14px] sm:text-[16px] text-text-primary/70"
                       >
                         {tag}
                       </span>
