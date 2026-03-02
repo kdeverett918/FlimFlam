@@ -171,6 +171,21 @@ importers:
         specifier: ^0.15.55
         version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
 
+  games/family-feud:
+    dependencies:
+      '@colyseus/schema':
+        specifier: ^2.0.35
+        version: 2.0.37
+      '@flimflam/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@flimflam/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
+
   games/hot-take:
     dependencies:
       '@colyseus/schema':
@@ -179,6 +194,21 @@ importers:
       '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@flimflam/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@flimflam/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
+
+  games/jeopardy:
+    dependencies:
+      '@colyseus/schema':
+        specifier: ^2.0.35
+        version: 2.0.37
       '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
@@ -212,6 +242,21 @@ importers:
       '@flimflam/ai':
         specifier: workspace:*
         version: link:../../packages/ai
+      '@flimflam/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
+      '@flimflam/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      colyseus:
+        specifier: ^0.15.55
+        version: 0.15.57(@colyseus/schema@2.0.37)(express@4.22.1)
+
+  games/wheel-of-fortune:
+    dependencies:
+      '@colyseus/schema':
+        specifier: ^2.0.35
+        version: 2.0.37
       '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
@@ -281,12 +326,18 @@ importers:
       '@flimflam/brain-battle':
         specifier: workspace:*
         version: link:../../games/brain-battle
+      '@flimflam/family-feud':
+        specifier: workspace:*
+        version: link:../../games/family-feud
       '@flimflam/game-engine':
         specifier: workspace:*
         version: link:../game-engine
       '@flimflam/hot-take':
         specifier: workspace:*
         version: link:../../games/hot-take
+      '@flimflam/jeopardy':
+        specifier: workspace:*
+        version: link:../../games/jeopardy
       '@flimflam/quick-draw':
         specifier: workspace:*
         version: link:../../games/quick-draw
@@ -296,6 +347,9 @@ importers:
       '@flimflam/shared':
         specifier: workspace:*
         version: link:../shared
+      '@flimflam/wheel-of-fortune':
+        specifier: workspace:*
+        version: link:../../games/wheel-of-fortune
       '@flimflam/world-builder':
         specifier: workspace:*
         version: link:../../games/world-builder

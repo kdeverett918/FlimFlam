@@ -130,3 +130,5 @@ export {
 export type { ResolveRoomIdResult } from "./utils/colyseus";
 
 export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";
+
+export { fuzzyMatch, normalizeAnswer, stringSimilarity } from "./utils/fuzzy-match";
