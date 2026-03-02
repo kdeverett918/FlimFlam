@@ -13,9 +13,9 @@
 module.exports = {
   apps: [
     {
-      // New app name avoids inheriting stale PM2 scale state from older failed
-      // rollouts that accumulated extra instances.
-      name: "flimflam-server",
+      // Keep a stable PM2 app name so Colyseus Cloud's post-deploy can reliably
+      // reload/replace the already-running process.
+      name: "partyline",
       // Run TypeScript directly (tsx loader).
       script: "packages/server/src/index.ts",
       interpreter: "node",
