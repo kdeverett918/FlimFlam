@@ -147,7 +147,7 @@ function AnswerBoard({
                   className={`flex items-center justify-between rounded-lg border px-6 py-3 ${
                     isRevealed
                       ? "border-accent-feud/40 bg-accent-feud/15"
-                      : "border-white/10 bg-bg-surface/50"
+                      : "border-white/[0.15] bg-bg-surface/50"
                   }`}
                   style={{ minHeight: 56 }}
                 >
@@ -193,7 +193,7 @@ function StrikeDisplay({ strikes, max = 3 }: { strikes: number; max?: number }) 
           animate={i === strikes - 1 ? { scale: 1 } : undefined}
           transition={{ type: "spring", stiffness: 300, damping: 15 }}
           className={`flex items-center justify-center rounded-xl border-2 ${
-            i < strikes ? "border-accent-6 bg-accent-6/20" : "border-white/10 bg-white/5"
+            i < strikes ? "border-accent-6 bg-accent-6/20" : "border-white/[0.15] bg-white/[0.10]"
           }`}
           style={{ width: 64, height: 64 }}
         >
@@ -267,7 +267,7 @@ export function FamilyFeudHost({ phase, players, timerEndTime, room }: FamilyFeu
           <div
             key={team.id}
             className={`flex items-center gap-3 rounded-xl px-6 py-3 transition-all ${
-              isControlling ? "bg-accent-feud/15 border border-accent-feud/30" : "bg-white/5"
+              isControlling ? "bg-accent-feud/15 border border-accent-feud/30" : "bg-white/[0.10]"
             }`}
           >
             <span
@@ -685,7 +685,7 @@ export function FamilyFeudHost({ phase, players, timerEndTime, room }: FamilyFeu
                       : "border-accent-6 bg-accent-6/10"
                     : i === gameState.fastMoneyCurrentIndex
                       ? "border-accent-feud bg-accent-feud/10"
-                      : "border-white/10 bg-white/5"
+                      : "border-white/[0.15] bg-white/[0.10]"
                 }`}
                 style={{ width: 56, height: 56 }}
               >

@@ -241,8 +241,8 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
                   key={key}
                   className={`flex min-h-[80px] items-center justify-center rounded-lg border transition-all ${
                     isRevealed
-                      ? "bg-bg-surface/30 border-white/5"
-                      : "bg-accent-jeopardy/15 border-accent-jeopardy/25 hover:bg-accent-jeopardy/25"
+                      ? "bg-bg-surface/50 border-white/10"
+                      : "bg-accent-jeopardy/20 border-accent-jeopardy/35 hover:bg-accent-jeopardy/30"
                   }`}
                   whileHover={!isRevealed ? { scale: 1.03 } : undefined}
                 >
@@ -311,7 +311,7 @@ export function JeopardyHost({ phase, players, timerEndTime, room }: JeopardyHos
         {/* Progress bar showing how many have answered */}
         {total > 0 && (
           <div className="flex flex-col items-center gap-2">
-            <div className="h-3 w-64 overflow-hidden rounded-full bg-bg-surface/40">
+            <div className="h-3 w-64 overflow-hidden rounded-full bg-white/[0.12]">
               <motion.div
                 className="h-full rounded-full bg-accent-jeopardy"
                 initial={{ width: 0 }}

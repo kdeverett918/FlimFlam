@@ -24,11 +24,9 @@ interface LobbyScreenProps {
 }
 
 const GAME_ID_TO_THEME: Record<string, GameTheme> = {
-  "world-builder": "world-builder",
-  "bluff-engine": "bluff-engine",
-  "quick-draw": "quick-draw",
-  "reality-drift": "reality-drift",
-  "hot-take": "hot-take",
+  jeopardy: "jeopardy",
+  "wheel-of-fortune": "wheel-of-fortune",
+  "family-feud": "family-feud",
 };
 
 export function LobbyScreen(props: LobbyScreenProps) {

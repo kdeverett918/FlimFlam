@@ -23,9 +23,9 @@ const GAME_THEMES: Record<
   },
   jeopardy: {
     accent: "var(--color-accent-jeopardy)",
-    glow: "oklch(0.55 0.25 265 / 0.3)",
-    primaryBlob: "oklch(0.55 0.25 265)",
-    secondaryBlob: "oklch(0.45 0.20 280)",
+    glow: "oklch(0.68 0.22 265 / 0.3)",
+    primaryBlob: "oklch(0.68 0.22 265)",
+    secondaryBlob: "oklch(0.55 0.20 280)",
   },
   "wheel-of-fortune": {
     accent: "var(--color-accent-wheel)",
