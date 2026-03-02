@@ -2,7 +2,7 @@
 
 import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
-import { Sparkles } from "lucide-react";
+import { HelpCircle, RotateCw, Sparkles, Users2 } from "lucide-react";
 import { useRef } from "react";
 
 interface GameSelectorProps {
@@ -10,9 +10,17 @@ interface GameSelectorProps {
   onSelect: (gameId: string) => void;
 }
 
-const GAME_ICONS: Record<string, React.ReactNode> = {};
+const GAME_ICONS: Record<string, React.ReactNode> = {
+  jeopardy: <HelpCircle className="h-10 w-10 text-accent-jeopardy" />,
+  "wheel-of-fortune": <RotateCw className="h-10 w-10 text-accent-wheel" />,
+  "family-feud": <Users2 className="h-10 w-10 text-accent-feud" />,
+};
 
-const GAME_ACCENT_BORDER: Record<string, string> = {};
+const GAME_ACCENT_BORDER: Record<string, string> = {
+  jeopardy: "border-accent-jeopardy shadow-[0_0_24px_oklch(0.55_0.25_265/0.25)]",
+  "wheel-of-fortune": "border-accent-wheel shadow-[0_0_24px_oklch(0.78_0.20_85/0.25)]",
+  "family-feud": "border-accent-feud shadow-[0_0_24px_oklch(0.68_0.25_25/0.25)]",
+};
 
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
   const scrollRef = useRef<HTMLDivElement>(null);

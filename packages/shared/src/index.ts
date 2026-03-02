@@ -11,6 +11,9 @@ export type { PlayerData } from "./types/player";
 
 export type {
   GameManifest,
+  JeopardyPhase,
+  WheelOfFortunePhase,
+  FamilyFeudPhase,
   GamePhase,
   TimerConfig,
   HostViewData,

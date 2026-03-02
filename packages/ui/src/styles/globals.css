@@ -22,10 +22,10 @@
   /* ── Game Show accent colors (3-accent system) ── */
   --color-accent-1: oklch(0.72 0.22 25); /* Coral (primary) */
   --color-accent-jeopardy: oklch(0.55 0.25 265); /* Royal blue */
-  --color-accent-wheel: oklch(0.78 0.20 85); /* Rich gold */
+  --color-accent-wheel: oklch(0.78 0.2 85); /* Rich gold */
   --color-accent-feud: oklch(0.68 0.25 25); /* Red-orange */
   --color-accent-2: oklch(0.55 0.25 265); /* Jeopardy blue */
-  --color-accent-3: oklch(0.78 0.20 85); /* Wheel gold */
+  --color-accent-3: oklch(0.78 0.2 85); /* Wheel gold */
   --color-accent-4: oklch(0.68 0.25 25); /* Feud red-orange */
   --color-accent-5: oklch(0.7 0.15 210); /* Cyan */
   --color-accent-6: oklch(0.68 0.25 20); /* Fiery red */
@@ -33,7 +33,7 @@
 
   /* ── Text (warm white, boosted for readability) ── */
   --color-text-primary: oklch(0.95 0.01 80);
-  --color-text-muted: oklch(0.80 0.02 80);
+  --color-text-muted: oklch(0.8 0.02 80);
   --color-text-dim: oklch(0.48 0.02 80);
 
   /* ── Semantic ── */

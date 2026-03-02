@@ -31,7 +31,39 @@ export const COMPLEXITY_ROUND_COUNTS: Record<Complexity, number> = {
   advanced: 7,
 };
 
-export const DEFAULT_PHASE_TIMERS: Record<string, number> = {};
+export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
+  // Jeopardy
+  "category-reveal": 5_000,
+  "clue-select": 30_000,
+  buzzing: 5_000,
+  answering: 15_000,
+  "daily-double-wager": 20_000,
+  "daily-double-answer": 15_000,
+  "clue-result": 4_000,
+  "final-jeopardy-category": 5_000,
+  "final-jeopardy-wager": 30_000,
+  "final-jeopardy-answer": 30_000,
+  "final-jeopardy-reveal": 8_000,
+  // Wheel of Fortune
+  "round-intro": 3_000,
+  spinning: 5_000,
+  "guess-consonant": 15_000,
+  "buy-vowel": 15_000,
+  "solve-attempt": 20_000,
+  "letter-result": 3_000,
+  "round-result": 5_000,
+  "bonus-round": 10_000,
+  "bonus-reveal": 8_000,
+  // Family Feud
+  "question-reveal": 5_000,
+  "face-off": 10_000,
+  guessing: 20_000,
+  strike: 3_000,
+  "steal-chance": 15_000,
+  "answer-reveal": 8_000,
+  "fast-money": 20_000,
+  "fast-money-reveal": 8_000,
+};
 
 export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;
 export const REACTION_COOLDOWN_MS = 2_000;
@@ -47,4 +79,43 @@ export const AVATAR_COLORS = [
   "#32CD32", // lime green
 ] as const;
 
-export const GAME_MANIFESTS: GameManifest[] = [];
+export const GAME_MANIFESTS: GameManifest[] = [
+  {
+    id: "jeopardy",
+    name: "Jeopardy",
+    description:
+      "Classic quiz show! Pick clues from the board, buzz in, and answer in the form of a question.",
+    minPlayers: 3,
+    maxPlayers: 8,
+    estimatedMinutes: 15,
+    aiRequired: false,
+    complexityLevels: ["kids", "standard", "advanced"],
+    tags: ["trivia", "buzzer", "classic"],
+    icon: "❓",
+  },
+  {
+    id: "wheel-of-fortune",
+    name: "Wheel of Fortune",
+    description: "Spin the wheel, guess letters, and solve the puzzle! Classic word game fun.",
+    minPlayers: 3,
+    maxPlayers: 8,
+    estimatedMinutes: 12,
+    aiRequired: false,
+    complexityLevels: ["kids", "standard", "advanced"],
+    tags: ["word", "puzzle", "classic"],
+    icon: "🎡",
+  },
+  {
+    id: "family-feud",
+    name: "Family Feud",
+    description:
+      "Survey says! Guess the top answers to survey questions. Play in teams or free-for-all!",
+    minPlayers: 3,
+    maxPlayers: 8,
+    estimatedMinutes: 15,
+    aiRequired: false,
+    complexityLevels: ["kids", "standard", "advanced"],
+    tags: ["survey", "teams", "classic"],
+    icon: "👨‍👩‍👧‍👦",
+  },
+];

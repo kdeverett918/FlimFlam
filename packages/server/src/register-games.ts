@@ -1,3 +1,8 @@
-import "@flimflam/game-engine";
+import { createFamilyFeudPlugin } from "@flimflam/family-feud";
+import { GameRegistry } from "@flimflam/game-engine";
+import { createJeopardyPlugin } from "@flimflam/jeopardy";
+import { createWheelOfFortunePlugin } from "@flimflam/wheel-of-fortune";
 
-// Game registrations will be added here as new games are implemented.
+GameRegistry.registerGame("jeopardy", createJeopardyPlugin);
+GameRegistry.registerGame("wheel-of-fortune", createWheelOfFortunePlugin);
+GameRegistry.registerGame("family-feud", createFamilyFeudPlugin);

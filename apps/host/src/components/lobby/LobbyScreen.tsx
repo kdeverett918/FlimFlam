@@ -23,7 +23,11 @@ interface LobbyScreenProps {
   onStartGame: () => void;
 }
 
-const GAME_ID_TO_THEME: Record<string, GameTheme> = {};
+const GAME_ID_TO_THEME: Record<string, GameTheme> = {
+  jeopardy: "jeopardy",
+  "wheel-of-fortune": "wheel-of-fortune",
+  "family-feud": "family-feud",
+};
 
 export function LobbyScreen(props: LobbyScreenProps) {
   const theme = GAME_ID_TO_THEME[props.selectedGameId] ?? "default";

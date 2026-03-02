@@ -20,11 +20,23 @@ interface GameControllerProps {
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
 }
 
-const GAME_THEME_MAP: Record<string, GameTheme> = {};
+const GAME_THEME_MAP: Record<string, GameTheme> = {
+  jeopardy: "jeopardy",
+  "wheel-of-fortune": "wheel-of-fortune",
+  "family-feud": "family-feud",
+};
 
-const GAME_DISPLAY_NAMES: Record<string, string> = {};
+const GAME_DISPLAY_NAMES: Record<string, string> = {
+  jeopardy: "Jeopardy",
+  "wheel-of-fortune": "Wheel of Fortune",
+  "family-feud": "Family Feud",
+};
 
-const GAME_ACCENT_CLASSES: Record<string, string> = {};
+const GAME_ACCENT_CLASSES: Record<string, string> = {
+  jeopardy: "text-accent-jeopardy bg-accent-jeopardy/15",
+  "wheel-of-fortune": "text-accent-wheel bg-accent-wheel/15",
+  "family-feud": "text-accent-feud bg-accent-feud/15",
+};
 
 export function GameController({
   gameId,

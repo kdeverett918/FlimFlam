@@ -13,8 +13,46 @@ export interface GameManifest {
   icon: string;
 }
 
-// Phase types — will be populated as new games are added
-export type GamePhase = string;
+// Phase types for each game
+export type JeopardyPhase =
+  | "category-reveal"
+  | "clue-select"
+  | "buzzing"
+  | "answering"
+  | "daily-double-wager"
+  | "daily-double-answer"
+  | "clue-result"
+  | "final-jeopardy-category"
+  | "final-jeopardy-wager"
+  | "final-jeopardy-answer"
+  | "final-jeopardy-reveal"
+  | "final-scores";
+
+export type WheelOfFortunePhase =
+  | "round-intro"
+  | "spinning"
+  | "guess-consonant"
+  | "buy-vowel"
+  | "solve-attempt"
+  | "letter-result"
+  | "round-result"
+  | "bonus-round"
+  | "bonus-reveal"
+  | "final-scores";
+
+export type FamilyFeudPhase =
+  | "question-reveal"
+  | "face-off"
+  | "guessing"
+  | "strike"
+  | "steal-chance"
+  | "answer-reveal"
+  | "round-result"
+  | "fast-money"
+  | "fast-money-reveal"
+  | "final-scores";
+
+export type GamePhase = JeopardyPhase | WheelOfFortunePhase | FamilyFeudPhase;
 
 export interface TimerConfig {
   durationMs: number;
