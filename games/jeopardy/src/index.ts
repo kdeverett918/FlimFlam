@@ -919,6 +919,14 @@ class JeopardyPlugin extends BaseGamePlugin {
       this.finalJeopardy?.wagers.has(sessionId) === true &&
       !this.finalJeopardy?.answers.has(sessionId);
 
+    // Include board data for the selector so the phone can render ClueGrid
+    const categories =
+      isSelector && this.board
+        ? this.board.categories.map((cat) => cat.name)
+        : undefined;
+    const answeredClues =
+      isSelector ? [...this.revealedClues] : undefined;
+
     room.send(client, "private-data", {
       type: "player-state",
       score,
@@ -928,6 +936,8 @@ class JeopardyPlugin extends BaseGamePlugin {
       canWagerFinal,
       canAnswerFinal,
       isDailyDoublePlayer: this.isDailyDouble && isSelector,
+      categories,
+      answeredClues,
     });
   }
 
