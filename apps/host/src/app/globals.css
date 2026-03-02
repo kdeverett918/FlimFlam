@@ -30,7 +30,7 @@
 
   /* ── Text (warm white) ── */
   --color-text-primary: oklch(0.95 0.01 80);
-  --color-text-muted: oklch(0.65 0.02 80);
+  --color-text-muted: oklch(0.75 0.02 80);
   --color-text-dim: oklch(0.42 0.02 80);
 
   /* ── Semantic ── */
