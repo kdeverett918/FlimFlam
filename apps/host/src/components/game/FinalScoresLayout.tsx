@@ -1,7 +1,7 @@
 "use client";
 
 import type { PlayerData, ScoreEntry } from "@flimflam/shared";
-import { AnimatedBackground } from "@flimflam/ui";
+import { AnimatedBackground, Button, ConfettiBurst } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { motion } from "framer-motion";
 import { RotateCcw, Shuffle } from "lucide-react";
@@ -60,9 +60,32 @@ export function FinalScoresLayout({
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
       <AnimatedBackground variant="subtle" />
 
-      <h1 className={`relative z-10 font-display text-[64px] font-bold ${accentColorClass}`}>
-        FINAL SCORES
-      </h1>
+      {/* Triple confetti burst */}
+      <ConfettiBurst trigger={scores.length > 0} preset="win" />
+      <ConfettiBurst trigger={scores.length > 0} preset="celebration" origin={{ x: 0.1, y: 0.5 }} />
+      <ConfettiBurst trigger={scores.length > 0} preset="celebration" origin={{ x: 0.9, y: 0.5 }} />
+
+      {/* Winner crown + Title */}
+      <div className="relative z-10 flex flex-col items-center gap-2">
+        <motion.span
+          initial={{ opacity: 0, scale: 0, y: -20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.5, type: "spring", stiffness: 300, damping: 15 }}
+          className="animate-crown-pulse text-5xl"
+          aria-hidden="true"
+        >
+          👑
+        </motion.span>
+        <motion.h1
+          initial={{ scale: 1.5, filter: "blur(12px)", opacity: 0 }}
+          animate={{ scale: 1, filter: "blur(0px)", opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className={`font-display text-[64px] font-bold ${accentColorClass}`}
+          style={{ textShadow: "0 0 40px currentColor" }}
+        >
+          FINAL SCORES
+        </motion.h1>
+      </div>
 
       <div className="relative z-10 w-full max-w-4xl">
         <Scoreboard scores={scores} previousScores={previousScores} />
@@ -98,22 +121,24 @@ export function FinalScoresLayout({
           transition={{ delay: 1.5 }}
           className="relative z-10 flex gap-4"
         >
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="lg"
             onClick={handlePlayAgain}
-            className="flex items-center gap-3 rounded-2xl border border-primary/50 bg-primary/15 px-8 py-4 font-display text-[28px] font-semibold text-primary transition-all hover:bg-primary/25 hover:shadow-[0_0_24px_oklch(0.72_0.22_25/0.3)] active:scale-95"
+            className="gap-3 px-8 py-4 font-display text-[28px] font-bold"
           >
             <RotateCcw className="h-6 w-6" />
             Play Again
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="secondary"
+            size="lg"
             onClick={handleNewGame}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] px-8 py-4 font-display text-[28px] font-semibold text-text-muted transition-all hover:bg-white/10 active:scale-95"
+            className="gap-3 px-8 py-4 font-display text-[28px] font-semibold"
           >
             <Shuffle className="h-6 w-6" />
             New Game
-          </button>
+          </Button>
         </motion.div>
       )}
     </div>

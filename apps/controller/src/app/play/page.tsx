@@ -48,9 +48,11 @@ export default function PlayPage() {
       <main className="flex min-h-dvh flex-col items-center justify-center px-6">
         <AnimatedBackground variant="subtle" />
         <GlassPanel className="flex flex-col items-center gap-4 px-8 py-10">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-primary" />
-          <p className="font-body text-text-muted">Connecting...</p>
-          {error && <p className="text-center font-body text-sm text-accent-6">{error}</p>}
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
+          <p className="font-body text-text-primary">Connecting...</p>
+          {error && (
+            <p className="text-center font-body text-sm font-medium text-accent-6">{error}</p>
+          )}
         </GlassPanel>
       </main>
     );
@@ -77,7 +79,7 @@ export default function PlayPage() {
             <Check className="h-8 w-8 text-accent-5" strokeWidth={3} />
           </div>
           <h2 className="font-display text-2xl font-bold text-text-primary">You're in!</h2>
-          <p className="text-center font-body text-text-muted">
+          <p className="text-center font-body text-text-primary/80">
             Waiting for the host to start a game...
           </p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">
@@ -110,7 +112,7 @@ export default function PlayPage() {
           <h2 className="font-display text-2xl font-bold text-text-primary">
             Next game starting...
           </h2>
-          <p className="text-center font-body text-text-muted">
+          <p className="text-center font-body text-text-primary/80">
             The host is picking the next game.
           </p>
         </GlassPanel>

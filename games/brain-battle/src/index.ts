@@ -336,12 +336,12 @@ export class BrainBattlePlugin extends BaseGamePlugin {
 
     if (phase === "answering" && sessionId === this.internal.buzzWinnerId) {
       this.clearTimer();
-      this._showClueResult(room, state, false, null);
+      this._checkNextBuzzerOrEndClue(room, state);
     }
 
     if (phase === "appeal-window" && sessionId === this.internal.wrongAnswerSessionId) {
       this.clearTimer();
-      this._showClueResult(room, state, false, null);
+      this._checkNextBuzzerOrEndClue(room, state);
     }
   }
 
@@ -481,6 +481,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     this.internal.currentClueValue = clue.value;
     this.internal.buzzTimestamps.clear();
     this.internal.buzzWinnerId = null;
+    this.internal.wrongAnswerers.clear();
     this.resetSubmissions(state);
 
     const catIndex = Number.parseInt(clueId.split("_")[0]?.replace("cat", "") ?? "0", 10);
@@ -504,6 +505,59 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     this.startPhaseTimer(room, "buzzing", this.internal.complexity, () => {
       this._resolveBuzz(room, state);
     });
+  }
+
+  private _resumeBuzzing(room: Room, state: Schema): void {
+    if (!this.internal.currentClueId || !this.internal.currentClue) {
+      this._startClueSelect(room, state);
+      return;
+    }
+
+    this.internal.buzzTimestamps.clear();
+    this.internal.buzzWinnerId = null;
+    this.resetSubmissions(state);
+
+    const catIndex = Number.parseInt(
+      this.internal.currentClueId.split("_")[0]?.replace("cat", "") ?? "0",
+      10,
+    );
+    const categoryName = this.internal.board?.categories[catIndex]?.name ?? "";
+
+    this.setPhase(state, "buzzing");
+    this._broadcastHost(room, state, {
+      clue: {
+        id: this.internal.currentClue.id,
+        answer: this.internal.currentClue.answer,
+        value: this.internal.currentClue.value,
+      },
+      categoryName,
+      isResume: true,
+    });
+
+    const hostId = (state as unknown as Record<string, unknown>).hostSessionId as string;
+    for (const client of room.clients) {
+      if (client.sessionId === hostId) continue;
+      const canBuzz = !this.internal.wrongAnswerers.has(client.sessionId);
+      room.send(client, "private-data", {
+        canBuzz,
+        clueValue: this.internal.currentClue.value,
+      });
+    }
+
+    this.startPhaseTimer(room, "buzzing", this.internal.complexity, () => {
+      this._resolveBuzz(room, state);
+    });
+  }
+
+  private _checkNextBuzzerOrEndClue(room: Room, state: Schema): void {
+    const activePlayers = this.getActivePlayers(state);
+    const eligiblePlayers = activePlayers.filter((id) => !this.internal.wrongAnswerers.has(id));
+
+    if (eligiblePlayers.length > 0) {
+      this._resumeBuzzing(room, state);
+    } else {
+      this._showClueResult(room, state, false, null);
+    }
   }
 
   private _resolveBuzz(room: Room, state: Schema): void {
@@ -600,6 +654,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     const value = this.internal.currentClueValue;
     this.addPoints(state, sessionId, -value * SCORING.WRONG_DEDUCTION_FACTOR, `Wrong! -$${value}`);
     this.internal.wrongAnswerSessionId = sessionId;
+    this.internal.wrongAnswerers.add(sessionId);
 
     const appealsLeft = this.internal.appealsRemaining.get(sessionId) ?? 0;
     if (appealsLeft > 0) {
@@ -610,7 +665,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       };
       this._startAppealWindow(room, state, sessionId);
     } else {
-      this._showClueResult(room, state, false, null);
+      this._checkNextBuzzerOrEndClue(room, state);
     }
   }
 
@@ -639,7 +694,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
     }
 
     this.startPhaseTimer(room, "appeal-window", this.internal.complexity, () => {
-      this._showClueResult(room, state, false, null);
+      this._checkNextBuzzerOrEndClue(room, state);
     });
   }
 
@@ -695,12 +750,11 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       });
 
       this.startPhaseTimer(room, "appeal-result", this.internal.complexity, () => {
-        this._showClueResult(
-          room,
-          state,
-          result.parsed.granted,
-          result.parsed.granted ? appeal.playerId : null,
-        );
+        if (result.parsed.granted) {
+          this._showClueResult(room, state, true, appeal.playerId);
+        } else {
+          this._checkNextBuzzerOrEndClue(room, state);
+        }
       });
     } catch (error) {
       console.warn("[BrainBattle] Appeal AI failed:", error);
@@ -713,7 +767,7 @@ export class BrainBattlePlugin extends BaseGamePlugin {
       });
 
       this.startPhaseTimer(room, "appeal-result", this.internal.complexity, () => {
-        this._showClueResult(room, state, false, null);
+        this._checkNextBuzzerOrEndClue(room, state);
       });
     }
   }

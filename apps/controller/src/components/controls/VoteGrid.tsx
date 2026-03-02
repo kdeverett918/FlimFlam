@@ -89,17 +89,15 @@ export function VoteGrid({ options, prompt, onConfirm, resetNonce }: VoteGridPro
                 isDisabled ? "cursor-not-allowed opacity-40" : "active:scale-[0.98]"
               } ${
                 isSelected
-                  ? "border-primary/50 bg-white/[0.08] shadow-[0_0_16px_oklch(0.72_0.22_25_/_0.2)]"
-                  : "border-white/[0.08] bg-white/[0.04]"
+                  ? "border-primary/60 bg-white/[0.12] shadow-[0_0_16px_oklch(0.75_0.22_25_/_0.25)]"
+                  : "border-white/[0.15] bg-white/[0.08]"
               }`}
               style={{
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
               }}
             >
-              <span className={isSelected ? "text-text-primary" : "text-text-muted"}>
-                {option.label}
-              </span>
+              <span className="text-text-primary">{option.label}</span>
               {option.author && (
                 <span className="mt-1 block font-body text-sm text-text-dim">{option.author}</span>
               )}

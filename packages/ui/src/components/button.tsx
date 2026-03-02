@@ -22,10 +22,11 @@ const buttonVariants = cva(
           "hover:brightness-110 hover:shadow-xl hover:shadow-primary/30",
           "hover:-translate-y-0.5 hover:shadow-[0_0_20px_oklch(0.72_0.22_25_/_0.35)]",
           "active:translate-y-0 active:scale-[0.97]",
+          "overflow-hidden relative group",
         ].join(" "),
         secondary: [
-          "bg-white/[0.04] backdrop-blur-md border border-white/[0.08] text-text-primary rounded-xl",
-          "hover:bg-white/[0.08] hover:border-white/[0.12]",
+          "bg-white/[0.10] backdrop-blur-md border border-white/[0.15] text-text-primary rounded-xl",
+          "hover:bg-white/[0.14] hover:border-white/[0.22]",
           "hover:-translate-y-0.5",
           "active:translate-y-0 active:scale-[0.97]",
         ].join(" "),
@@ -37,7 +38,7 @@ const buttonVariants = cva(
         ].join(" "),
         ghost: [
           "bg-transparent text-text-primary rounded-xl",
-          "hover:bg-white/[0.06]",
+          "hover:bg-white/[0.10]",
           "active:scale-[0.97]",
         ].join(" "),
         destructive: [
@@ -89,7 +90,16 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {children}
           </>
         ) : (
-          children
+          <>
+            {children}
+            {/* Shimmer effect for default variant */}
+            {variant === "default" || variant === undefined ? (
+              <span
+                className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent transition-transform duration-700 ease-in-out group-hover:translate-x-full"
+                aria-hidden="true"
+              />
+            ) : null}
+          </>
         )}
       </Comp>
     );

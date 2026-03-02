@@ -343,8 +343,8 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
                 }}
                 className={`flex h-12 w-12 items-center justify-center rounded-xl border transition-all active:scale-90 ${
                   isSelected
-                    ? "border-primary/50 bg-white/[0.08]"
-                    : "border-white/[0.08] bg-white/[0.04]"
+                    ? "border-primary/60 bg-white/[0.12]"
+                    : "border-white/[0.15] bg-white/[0.08]"
                 }`}
                 style={{
                   backdropFilter: "blur(8px)",
@@ -365,7 +365,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
             type="button"
             onClick={handleUndo}
             disabled={strokes.length === 0}
-            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.15] bg-white/[0.08] text-text-primary transition-all active:scale-90 disabled:opacity-30"
             style={{
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
@@ -378,7 +378,7 @@ export function DrawCanvas({ onStrokeSend, onUndoSend, onClearSend }: DrawCanvas
             type="button"
             onClick={handleClear}
             disabled={strokes.length === 0}
-            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-text-muted transition-all active:scale-90 disabled:opacity-30"
+            className="flex h-12 w-12 items-center justify-center rounded-xl border border-white/[0.15] bg-white/[0.08] text-text-primary transition-all active:scale-90 disabled:opacity-30"
             style={{
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",

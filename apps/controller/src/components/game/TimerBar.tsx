@@ -68,7 +68,7 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
         WebkitBackdropFilter: "blur(8px)",
       }}
     >
-      <div className="h-1.5 w-full bg-white/[0.06]">
+      <div className="h-1.5 w-full bg-white/[0.12]">
         <div
           role="progressbar"
           tabIndex={-1}

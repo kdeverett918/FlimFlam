@@ -49,7 +49,7 @@ function AnimatedBackground({
       <div
         className="absolute -left-[20%] -top-[20%] h-[70%] w-[70%] will-change-transform"
         style={{
-          background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.18)")}, transparent 70%)`,
+          background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.16)")}, transparent 70%)`,
           animation: "bgBlobA 28s ease-in-out infinite alternate",
         }}
       />
@@ -58,7 +58,7 @@ function AnimatedBackground({
       <div
         className="absolute -bottom-[15%] -right-[15%] h-[65%] w-[65%] will-change-transform"
         style={{
-          background: `radial-gradient(ellipse at center, ${teal.replace(")", " / 0.15)")}, transparent 70%)`,
+          background: `radial-gradient(ellipse at center, ${teal.replace(")", " / 0.14)")}, transparent 70%)`,
           animation: "bgBlobB 32s ease-in-out infinite alternate",
         }}
       />
@@ -68,17 +68,29 @@ function AnimatedBackground({
         <div
           className="absolute right-[10%] top-[30%] h-[45%] w-[45%] will-change-transform"
           style={{
-            background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.08)")}, transparent 70%)`,
+            background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.05)")}, transparent 70%)`,
             animation: "bgBlobC 24s ease-in-out infinite alternate",
           }}
         />
       )}
 
-      {/* Layer 4: Dot grid */}
+      {/* Layer 4: Accent purple blob — smaller, faster cycle */}
+      {variant === "default" && (
+        <div
+          className="absolute left-[15%] bottom-[20%] h-[30%] w-[30%] will-change-transform"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, oklch(0.65 0.20 280 / 0.10), transparent 70%)",
+            animation: "bgBlobD 18s ease-in-out infinite alternate",
+          }}
+        />
+      )}
+
+      {/* Layer 5: Dot grid */}
       <div
         className={cn(
           "absolute inset-0",
-          variant === "subtle" ? "opacity-[0.03]" : "opacity-[0.05]",
+          variant === "subtle" ? "opacity-[0.02]" : "opacity-[0.035]",
         )}
         style={{
           backgroundImage:
@@ -87,12 +99,12 @@ function AnimatedBackground({
         }}
       />
 
-      {/* Layer 5: SVG noise texture */}
+      {/* Layer 6: SVG noise texture */}
       <svg
         aria-hidden="true"
         className={cn(
           "pointer-events-none absolute inset-0 h-full w-full",
-          variant === "subtle" ? "opacity-[0.015]" : "opacity-[0.03]",
+          variant === "subtle" ? "opacity-[0.01]" : "opacity-[0.02]",
         )}
       >
         <filter id={filterId}>
@@ -122,10 +134,16 @@ function AnimatedBackground({
           50%  { transform: translate(-3%, 5%) scale(1.05); }
           100% { transform: translate(2%, -3%) scale(0.98); }
         }
+        @keyframes bgBlobD {
+          0%   { transform: translate(0, 0) scale(1); }
+          50%  { transform: translate(5%, -3%) scale(1.1); }
+          100% { transform: translate(-3%, 4%) scale(0.95); }
+        }
         @media (prefers-reduced-motion: reduce) {
           @keyframes bgBlobA { 0%, 100% { transform: none; } }
           @keyframes bgBlobB { 0%, 100% { transform: none; } }
           @keyframes bgBlobC { 0%, 100% { transform: none; } }
+          @keyframes bgBlobD { 0%, 100% { transform: none; } }
         }
       `}</style>
     </div>

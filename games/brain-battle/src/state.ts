@@ -21,6 +21,7 @@ export interface BrainBattleInternalState {
   } | null;
   turnOrder: string[];
   wrongAnswerSessionId: string | null;
+  wrongAnswerers: Set<string>;
   currentClueValue: number;
 }
 
@@ -42,6 +43,7 @@ export function createBrainBattleInternalState(complexity: Complexity): BrainBat
     currentAppeal: null,
     turnOrder: [],
     wrongAnswerSessionId: null,
+    wrongAnswerers: new Set(),
     currentClueValue: 0,
   };
 }
