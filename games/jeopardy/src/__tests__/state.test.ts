@@ -218,7 +218,7 @@ describe("judgeAnswer", () => {
   });
 
   it("uses the correct threshold", () => {
-    expect(FUZZY_THRESHOLD).toBe(0.85);
+    expect(FUZZY_THRESHOLD).toBe(0.7);
   });
 });
 

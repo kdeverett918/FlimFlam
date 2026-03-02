@@ -22,7 +22,7 @@ const FINAL_JEOPARDY_WAGER_TIMEOUT_MS = 30000;
 const FINAL_JEOPARDY_ANSWER_TIMEOUT_MS = 30000;
 const FINAL_JEOPARDY_REVEAL_DELAY_MS = 8000;
 
-const FUZZY_THRESHOLD = 0.85;
+const FUZZY_THRESHOLD = 0.7;
 
 /** Daily double counts per round. Round 1 always has 1, Round 2 always has 2. */
 function getDailyDoubleCount(_complexity: Complexity, round: number): number {
@@ -112,11 +112,32 @@ export function validateFinalJeopardyWager(wager: number, playerScore: number): 
   return wager <= playerScore;
 }
 
+const LEADING_ARTICLES = /^(a|an|the)\s+/i;
+
 /**
  * Judge an answer using fuzzy matching.
+ * Strips leading articles ("a", "an", "the") and common answer prefixes
+ * ("what is", "who is", etc.) from both sides before comparing.
+ * Uses a forgiving threshold (0.7) to allow for typos and partial answers.
  */
 export function judgeAnswer(playerAnswer: string, correctAnswer: string): boolean {
-  return fuzzyMatch(playerAnswer, correctAnswer, FUZZY_THRESHOLD);
+  // First try direct fuzzy match
+  if (fuzzyMatch(playerAnswer, correctAnswer, FUZZY_THRESHOLD)) return true;
+
+  // Strip leading articles and retry
+  const stripArticles = (s: string) => s.toLowerCase().trim().replace(LEADING_ARTICLES, "").trim();
+  const playerStripped = stripArticles(playerAnswer);
+  const correctStripped = stripArticles(correctAnswer);
+
+  if (playerStripped.length > 0 && correctStripped.length > 0) {
+    if (fuzzyMatch(playerStripped, correctStripped, FUZZY_THRESHOLD)) return true;
+    // Check if one contains the other (e.g., "spongebob" matches "spongebob squarepants")
+    if (playerStripped.includes(correctStripped) || correctStripped.includes(playerStripped)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ─── Plugin ────────────────────────────────────────────────────────────────
