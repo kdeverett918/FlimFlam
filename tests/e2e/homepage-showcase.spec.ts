@@ -103,21 +103,24 @@ test.describe("Homepage Game Showcase", () => {
     await expect(page).toHaveURL(/\/room\/(new|[A-Z0-9]{4})/, { timeout: 60_000 });
   });
 
-  test("game showcase is horizontally scrollable", async ({ page }) => {
+  test("game showcase renders as a grid without horizontal overflow", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.locator("h1")).toBeVisible({ timeout: 10_000 });
 
-    // The game cards container should be scrollable (overflow-x-auto).
-    // Verify that the scroll container exists and has scrollable content.
-    const scrollContainer = page.locator(".scrollbar-hide");
-    await expect(scrollContainer).toBeAttached();
+    const heading = page.getByRole("heading", { name: /^THE GAMES$/ });
+    await expect(heading).toBeVisible();
 
-    // The container's scrollWidth should be greater than its clientWidth
-    // because 6 cards at 280px each = 1680px + gaps exceeds most viewports.
-    const isScrollable = await scrollContainer.evaluate((el) => {
-      return el.scrollWidth > el.clientWidth;
-    });
-    expect(isScrollable).toBe(true);
+    // Current design uses a responsive grid (1 col -> 2 col -> 3 col) rather than
+    // a horizontal scroll container.
+    const section = heading.locator("..");
+    const grid = section.locator("div.grid").first();
+    await expect(grid).toBeAttached();
+
+    const display = await grid.evaluate((el) => getComputedStyle(el).display);
+    expect(display).toBe("grid");
+
+    const hasOverflow = await grid.evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+    expect(hasOverflow).toBe(false);
   });
 });
