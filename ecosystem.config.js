@@ -19,7 +19,8 @@ module.exports = {
       // Run TypeScript directly (tsx loader).
       script: "packages/server/src/index.ts",
       interpreter: "node",
-      node_args: "--import tsx",
+      // Use array form to avoid any ambiguity in PM2 arg splitting.
+      node_args: ["--import", "tsx"],
       time: true,
       watch: false,
       instances: 1,
