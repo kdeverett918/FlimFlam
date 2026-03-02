@@ -81,10 +81,7 @@ app.get("/health", (_req, res) => {
     maxNameLength: MAX_NAME_LENGTH,
     nodeVersion: process.version,
     gitSha:
-      process.env.RENDER_GIT_COMMIT ??
-      process.env.GITHUB_SHA ??
-      process.env.SOURCE_VERSION ??
-      null,
+      process.env.RENDER_GIT_COMMIT ?? process.env.GITHUB_SHA ?? process.env.SOURCE_VERSION ?? null,
   });
 });
 
