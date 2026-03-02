@@ -48,7 +48,14 @@ export class PartyRoom extends Room<RoomState> {
     if (!options?.isHost) return true;
 
     const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
-    if (this._hostToken && providedToken !== this._hostToken) {
+    // First host claim: create a server-side token and allow the host to join
+    // without providing it. All subsequent host joins must provide the exact token.
+    if (!this._hostToken) {
+      this._getOrCreateHostToken();
+      return true;
+    }
+
+    if (providedToken !== this._hostToken) {
       // Reject host takeover attempts at the handshake level (before onJoin).
       throw new Error("Host already assigned for this room");
     }
@@ -239,7 +246,6 @@ export class PartyRoom extends Room<RoomState> {
         this.send(client, "error", { message: "Can only restart from final scores" });
         return;
       }
-      // Keep selectedGameId and complexity, re-start the game
       this._startGame();
     };
 
@@ -261,6 +267,11 @@ export class PartyRoom extends Room<RoomState> {
         playerName,
         emoji,
       });
+    };
+
+    const handleHostRequestToken = (client: Client) => {
+      if (!requireHost(client)) return;
+      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
     };
 
     const handlePlayerReady = (client: Client) => {
@@ -291,6 +302,7 @@ export class PartyRoom extends Room<RoomState> {
     this.onMessage("host:skip", (client) => handleHostSkip(client));
     this.onMessage("host:end-game", (client) => handleHostEnd(client));
     this.onMessage("host:restart-game", (client) => handleRestartGame(client));
+    this.onMessage("host:request_token", (client) => handleHostRequestToken(client));
 
     // Player messages (preferred)
     this.onMessage("player:ready", (client) => handlePlayerReady(client));
@@ -308,6 +320,7 @@ export class PartyRoom extends Room<RoomState> {
     // Wildcard handler: delegate all other messages to the current game plugin
     this.onMessage("*", (client, type, data) => {
       const internalTypes = new Set<string>([
+        "host:request_token",
         "host:select-game",
         "host:set-complexity",
         "host:set-player-input",
@@ -344,20 +357,10 @@ export class PartyRoom extends Room<RoomState> {
     this._resetIdleTimeout();
 
     if (options.isHost) {
-      const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
-
-      // If a host was ever established for this room, require the server-issued token
-      // for any future host joins. This prevents any client from claiming host by
-      // sending `{ isHost: true }`.
-      if (this._hostToken && providedToken !== this._hostToken) {
-        this.send(client, "error", { message: "Host already assigned for this room" });
-        client.leave(1000);
-        return;
-      }
-
       // Host connects as a non-playing client. Players join from their own devices.
       this.state.hostSessionId = client.sessionId;
-      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
+      // Host token is requested by the host client after it registers its handlers.
+      // (Sending during onJoin can race with client-side handler registration.)
       this.setMetadata({
         code: this._roomCode,
         gameName: this.state.selectedGameId || "lobby",

@@ -62,6 +62,10 @@ export function useRoom(): UseRoomReturn {
       }
     });
 
+    // Request the host token after handlers are registered (avoids missing a
+    // token message that could arrive before onMessage() is set up).
+    joinedRoom.send("host:request_token");
+
     // Save session info for reconnection
     if (typeof window !== "undefined") {
       sessionStorage.setItem(RECONNECT_TOKEN_KEY, joinedRoom.reconnectionToken);
