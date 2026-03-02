@@ -555,16 +555,16 @@ describe("content quality", () => {
   it("kids boards have age-appropriate categories", () => {
     const kidsCategoryNames = KIDS_BOARDS.flatMap((b) => b.categories.map((c) => c.name));
     // Should include fun/simple topics
-    expect(kidsCategoryNames).toContain("Animals");
-    expect(kidsCategoryNames).toContain("Cartoons");
-    expect(kidsCategoryNames).toContain("Space");
+    expect(kidsCategoryNames).toContain("Disney & Pixar");
+    expect(kidsCategoryNames).toContain("Video Games");
+    expect(kidsCategoryNames).toContain("Superheroes");
   });
 
   it("advanced boards have challenging categories", () => {
     const advCategoryNames = ADVANCED_BOARDS.flatMap((b) => b.categories.map((c) => c.name));
-    expect(advCategoryNames).toContain("Classical Music");
-    expect(advCategoryNames).toContain("Philosophy");
-    expect(advCategoryNames).toContain("World Politics");
+    expect(advCategoryNames).toContain("World Leaders");
+    expect(advCategoryNames).toContain("International Conflicts");
+    expect(advCategoryNames).toContain("Supreme Court Decisions");
   });
 
   it("no duplicate category names within a single board", () => {
