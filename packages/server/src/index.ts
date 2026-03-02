@@ -3,12 +3,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
-import {
-  COLYSEUS_PORT,
-  GAME_MANIFESTS,
-  ROOM_CODE_CHARS,
-  ROOM_CODE_LENGTH,
-} from "@flimflam/shared";
+import { COLYSEUS_PORT, GAME_MANIFESTS, ROOM_CODE_CHARS, ROOM_CODE_LENGTH } from "@flimflam/shared";
 import cors from "cors";
 import express from "express";
 import { PartyRoom } from "./rooms/PartyRoom";
