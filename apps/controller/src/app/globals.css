@@ -20,6 +20,13 @@
   --color-secondary-muted: oklch(0.74 0.15 185 / 0.2);
 
   /* ── Per-game accent colors ── */
+  --color-accent-1: oklch(0.75 0.22 25); /* Coral */
+  --color-accent-2: oklch(0.68 0.2 300); /* Violet */
+  --color-accent-3: oklch(0.82 0.18 85); /* Amber */
+  --color-accent-4: oklch(0.72 0.18 160); /* Jade */
+  --color-accent-5: oklch(0.7 0.15 210); /* Cyan */
+  --color-accent-6: oklch(0.68 0.25 20); /* Fiery red */
+  --color-accent-7: oklch(0.65 0.22 260); /* Indigo */
   --color-accent-brainboard: oklch(0.68 0.22 265);
   --color-accent-luckyletters: oklch(0.82 0.18 85);
   --color-accent-surveysmash: oklch(0.74 0.25 25);
