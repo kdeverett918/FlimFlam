@@ -6,3 +6,6 @@ import { createSurveySmashPlugin } from "@flimflam/survey-smash";
 GameRegistry.registerGame("brain-board", createBrainBoardPlugin);
 GameRegistry.registerGame("lucky-letters", createLuckyLettersPlugin);
 GameRegistry.registerGame("survey-smash", createSurveySmashPlugin);
+
+// Freeze registry — no further registrations allowed after init.
+GameRegistry.freeze();

@@ -334,11 +334,28 @@ textarea,
 
 html {
   overscroll-behavior: none;
+  /* Prevent pull-to-refresh in standalone PWA mode */
+  overflow: hidden;
+}
+
+html,
+body {
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  /* Disable text selection on game UI */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .touch-target {
   min-height: 48px;
   min-width: 48px;
+}
+
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px oklch(0.09 0.02 250), 0 0 0 5px oklch(0.75 0.22 25);
 }
 
 .glass-input {

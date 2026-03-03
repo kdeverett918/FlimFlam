@@ -1,10 +1,10 @@
 "use client";
 
 import type { PlayerData, ScoreEntry } from "@flimflam/shared";
-import { AVATAR_COLORS } from "@flimflam/shared";
+import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
 import { ConfettiBurst, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FinalScoresLayout, buildScores } from "../game/FinalScoresLayout";
 import { Timer } from "../game/Timer";
@@ -246,7 +246,8 @@ export function SurveySmashHost({ phase, players, timerEndTime, room }: SurveySm
 
   useEffect(() => {
     if (!room) return;
-    room.onMessage("game-data", handleMessage);
+    const unsub = room.onMessage("game-data", handleMessage);
+    return () => unsub();
   }, [room, handleMessage]);
 
   if (!gameState) {
@@ -801,6 +802,17 @@ export function SurveySmashHost({ phase, players, timerEndTime, room }: SurveySm
   if (phase === "final-scores") {
     // Use leaderboard from game state if available, otherwise build from players
     const scores: ScoreEntry[] = gameState.leaderboard ?? buildScores(players);
+    const awards = generateAwards(
+      players
+        .filter((p) => !p.isHost)
+        .map((p) => ({
+          name: p.name,
+          sessionId: p.sessionId,
+          score: p.score,
+          correctCount: p.progressOrCustomInt,
+        })),
+      "survey-smash",
+    );
 
     return (
       <div>
@@ -832,6 +844,7 @@ export function SurveySmashHost({ phase, players, timerEndTime, room }: SurveySm
           scores={scores}
           accentColorClass="text-accent-surveysmash"
           gameId="survey-smash"
+          gameAwards={awards}
           room={room}
         />
       </div>

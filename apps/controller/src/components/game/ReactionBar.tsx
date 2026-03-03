@@ -39,7 +39,7 @@ export function ReactionBar({ sendMessage }: ReactionBarProps) {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center gap-1 px-2 py-2"
+      className="fixed inset-x-0 bottom-14 z-40 flex items-center justify-center gap-1 px-2 py-2"
       style={{
         background: "oklch(0.09 0.02 250 / 0.7)",
         backdropFilter: "blur(12px) saturate(1.2)",

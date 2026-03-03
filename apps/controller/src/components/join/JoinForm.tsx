@@ -2,8 +2,8 @@
 
 import { AVATAR_COLORS, MAX_NAME_LENGTH, ROOM_CODE_LENGTH } from "@flimflam/shared";
 import { GlassPanel, haptics } from "@flimflam/ui";
-import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AvatarPicker } from "./AvatarPicker";
 

@@ -55,7 +55,7 @@ function rateLimitResolveByIp(
   }
 
   const windowMs = 60_000;
-  const maxRequests = 240; // generous for parties behind NAT + E2E, blocks brute-force.
+  const maxRequests = 60;
 
   const existing = resolveRateByIp.get(ip);
   if (!existing || existing.resetAt <= now) {
@@ -136,6 +136,49 @@ app.post("/api/rooms/resolve", rateLimitResolveByIp, async (req, res) => {
 if (process.env.NODE_ENV !== "production") {
   app.use("/colyseus", monitor());
 }
+
+// ─── Room Creation Rate Limiting ─────────────────────────────────────────
+const matchmakeRateByIp = new Map<string, FixedWindowCounter>();
+
+function rateLimitMatchmakeByIp(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+) {
+  if (req.method !== "POST") {
+    next();
+    return;
+  }
+
+  const ip = req.ip || "unknown";
+  const now = Date.now();
+
+  if (matchmakeRateByIp.size > 10_000) {
+    for (const [key, counter] of matchmakeRateByIp) {
+      if (counter.resetAt <= now) matchmakeRateByIp.delete(key);
+    }
+  }
+
+  const windowMs = 60_000;
+  const maxRequests = 10;
+
+  const existing = matchmakeRateByIp.get(ip);
+  if (!existing || existing.resetAt <= now) {
+    matchmakeRateByIp.set(ip, { count: 1, resetAt: now + windowMs });
+    next();
+    return;
+  }
+
+  existing.count++;
+  if (existing.count > maxRequests) {
+    res.status(429).json({ error: "Too many room creation requests" });
+    return;
+  }
+
+  next();
+}
+
+app.use("/matchmake", rateLimitMatchmakeByIp);
 
 // ─── Create HTTP Server and Colyseus ────────────────────────────────────
 const httpServer = createServer(app);

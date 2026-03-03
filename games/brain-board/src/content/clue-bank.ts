@@ -1,5 +1,5 @@
 // ─── Jeopardy Clue Bank ───────────────────────────────────────────────────
-// 7 boards per complexity level (kids / standard / advanced) = 21 total.
+// 11 boards per complexity level (kids / standard / advanced) = 33 total.
 // Each board: 6 categories x 5 clues at $200 / $400 / $600 / $800 / $1000.
 
 export interface JeopardyClue {
@@ -712,6 +712,331 @@ export const KIDS_BOARDS: JeopardyBoard[] = [
       [
         "Climate change",
         "What is the term for rising global temperatures caused by greenhouse gases?",
+      ],
+    ]),
+  ),
+
+  // Board 8
+  board(
+    cat("Science & Nature", [
+      ["Photosynthesis", "What is the process plants use to turn sunlight into food?"],
+      ["Butterfly", "Which insect starts life as a caterpillar and goes through metamorphosis?"],
+      ["Volcano", "What mountain can erupt and shoot hot lava, ash, and gas into the air?"],
+      [
+        "Fossil",
+        "What is the preserved remains of a plant or animal from millions of years ago called?",
+      ],
+      [
+        "Camouflage",
+        "What ability lets animals like chameleons and octopuses blend in with their surroundings?",
+      ],
+    ]),
+    cat("Music Fun", [
+      ["Piano", "Which instrument has 88 black and white keys?"],
+      ["Guitar", "Which stringed instrument is most commonly used in rock bands?"],
+      ["Drums", "Which instrument do you hit with sticks to keep the beat in a band?"],
+      ["Bruno Mars", "Which singer is known for hits like 'Uptown Funk' and '24K Magic'?"],
+      ["Choir", "What is a group of people singing together called?"],
+    ]),
+    cat("Art & Colors", [
+      ["Rainbow", "What colorful arc appears in the sky after it rains?"],
+      ["Mona Lisa", "What is the name of the famous smiling painting by Leonardo da Vinci?"],
+      ["Orange", "Which color do you get when you mix red and yellow?"],
+      ["Sculpture", "What is a 3D artwork made by carving, molding, or shaping material called?"],
+      ["Bob Ross", "Which painter was famous for his TV show and saying 'happy little trees'?"],
+    ]),
+    cat("Geography Adventures", [
+      ["Africa", "Which continent has the most countries, including Egypt, Kenya, and Nigeria?"],
+      ["Pacific Ocean", "What is the largest ocean on Earth?"],
+      ["North Pole", "Where does Santa Claus supposedly live, at the very top of the world?"],
+      [
+        "Amazon Rainforest",
+        "What is the world's largest tropical rainforest, home to jaguars and toucans?",
+      ],
+      ["Hawaii", "Which U.S. state is made up of islands in the middle of the Pacific Ocean?"],
+    ]),
+    cat("Books & Stories", [
+      ["Dr. Seuss", "Which author wrote 'The Cat in the Hat' and 'Green Eggs and Ham'?"],
+      [
+        "Diary of a Wimpy Kid",
+        "Which book series follows Greg Heffley's hilarious middle school adventures?",
+      ],
+      [
+        "Charlotte's Web",
+        "In which book does a spider save a pig named Wilbur by writing words in her web?",
+      ],
+      [
+        "Dog Man",
+        "Which Dav Pilkey graphic novel series features a hero who is part dog, part police officer?",
+      ],
+      ["Narnia", "In which book series do children enter a magical world through a wardrobe?"],
+    ]),
+    cat("Bugs & Creepy Crawlies", [
+      ["Ladybug", "Which small red beetle with black spots is considered good luck?"],
+      ["Spider", "Which eight-legged creature spins webs to catch its food?"],
+      ["Firefly", "Which insect lights up at night with a glowing tail?"],
+      ["Ant", "Which tiny insect can carry objects 50 times its own body weight?"],
+      [
+        "Monarch butterfly",
+        "Which orange and black butterfly migrates thousands of miles each year?",
+      ],
+    ]),
+  ),
+
+  // Board 9
+  board(
+    cat("Space Explorers", [
+      ["The Moon", "What is the closest object in space to Earth that astronauts have walked on?"],
+      ["Saturn", "Which planet is famous for its beautiful rings made of ice and rock?"],
+      ["The Sun", "What is the star at the center of our solar system?"],
+      ["Astronaut", "What do you call a person who travels to space?"],
+      ["Milky Way", "What is the name of the galaxy that contains our solar system?"],
+    ]),
+    cat("Mythology & Legends", [
+      ["Zeus", "Who is the king of the Greek gods, known for throwing lightning bolts?"],
+      ["Unicorn", "Which mythical horse has a single spiral horn on its forehead?"],
+      ["Thor", "Which Norse god of thunder shares his name with a Marvel superhero?"],
+      [
+        "Dragon",
+        "Which legendary fire-breathing creature appears in stories from almost every culture?",
+      ],
+      [
+        "Medusa",
+        "Which monster from Greek mythology had snakes for hair and could turn people to stone?",
+      ],
+    ]),
+    cat("Technology for Kids", [
+      ["Wi-Fi", "What wireless technology lets your tablet or phone connect to the internet?"],
+      ["Robot", "What is a machine programmed to do tasks automatically called?"],
+      [
+        "Coding",
+        "What is the skill of writing instructions for computers also known as programming?",
+      ],
+      ["GPS", "Which technology in phones and cars uses satellites to help you find your way?"],
+      [
+        "QR code",
+        "Which square black-and-white pattern can you scan with your phone camera to open a website?",
+      ],
+    ]),
+    cat("Ocean Creatures", [
+      [
+        "Dolphin",
+        "Which smart ocean mammal is known for being playful and making clicking sounds?",
+      ],
+      ["Octopus", "Which sea creature has eight arms and three hearts?"],
+      ["Shark", "Which ocean predator has rows of sharp teeth that keep growing back?"],
+      [
+        "Sea turtle",
+        "Which ocean reptile can live for over 100 years and returns to the same beach to lay eggs?",
+      ],
+      [
+        "Jellyfish",
+        "Which see-through sea creature has no brain, no heart, and stinging tentacles?",
+      ],
+    ]),
+    cat("World Holidays", [
+      ["Diwali", "Which Hindu festival of lights involves fireworks, sweets, and oil lamps?"],
+      [
+        "Chinese New Year",
+        "Which celebration features dragon dances, red envelopes, and fireworks?",
+      ],
+      ["Hanukkah", "Which Jewish holiday lasts eight nights and involves lighting a menorah?"],
+      [
+        "Day of the Dead",
+        "Which Mexican holiday on November 1st and 2nd honors loved ones who have passed away?",
+      ],
+      [
+        "Carnival",
+        "Which colorful celebration before Lent is famous for parades, masks, and costumes in Brazil?",
+      ],
+    ]),
+    cat("Dinosaurs", [
+      [
+        "T-Rex",
+        "Which fearsome dinosaur had tiny arms and the strongest bite of any land animal ever?",
+      ],
+      [
+        "Triceratops",
+        "Which plant-eating dinosaur had three horns on its face and a big bony frill?",
+      ],
+      [
+        "Stegosaurus",
+        "Which dinosaur had large bony plates along its back and spikes on its tail?",
+      ],
+      [
+        "Pterodactyl",
+        "Which flying reptile from the dinosaur age had leathery wings and a long beak?",
+      ],
+      [
+        "Asteroid",
+        "What giant space rock is believed to have crashed into Earth 66 million years ago and wiped out the dinosaurs?",
+      ],
+    ]),
+  ),
+
+  // Board 10
+  board(
+    cat("Amazing Animals", [
+      ["Cheetah", "Which African cat is the fastest land animal, reaching speeds of 70 mph?"],
+      ["Elephant", "Which animal is the largest living land mammal and never forgets?"],
+      ["Parrot", "Which colorful bird can learn to talk and repeat human words?"],
+      ["Chameleon", "Which lizard can change its skin color to match its surroundings?"],
+      [
+        "Platypus",
+        "Which Australian animal has a duck bill, beaver tail, and lays eggs even though it's a mammal?",
+      ],
+    ]),
+    cat("Math is Fun", [
+      ["A dozen", "What word means a group of twelve?"],
+      ["Hexagon", "What is a shape with six sides called?"],
+      ["Infinity", "What is the concept for a number that goes on forever?"],
+      ["Pi", "Which math number starts with 3.14 and goes on forever without repeating?"],
+      [
+        "Fibonacci",
+        "Which famous number sequence starts 1, 1, 2, 3, 5, 8 where each number is the sum of the two before it?",
+      ],
+    ]),
+    cat("Countries & Flags", [
+      ["Canada", "Which country north of the United States has a maple leaf on its flag?"],
+      [
+        "Brazil",
+        "Which South American country is the largest and known for soccer and the Amazon?",
+      ],
+      ["India", "Which country has over a billion people and is famous for the Taj Mahal?"],
+      ["Egypt", "Which country is home to the ancient pyramids and the Sphinx?"],
+      [
+        "Nepal",
+        "Which country has the only national flag that is not rectangular, shaped like two triangles?",
+      ],
+    ]),
+    cat("Silly Science", [
+      [
+        "Uranus",
+        "Which planet in our solar system is tilted on its side and rolls around the sun?",
+      ],
+      [
+        "Slime",
+        "Which gooey, stretchy toy became a science experiment craze using glue and borax?",
+      ],
+      [
+        "Taste buds",
+        "What are the tiny sensors on your tongue that let you taste sweet, sour, salty, and bitter?",
+      ],
+      [
+        "Quicksand",
+        "Which natural trap is a mix of sand, clay, and water that can slowly swallow objects?",
+      ],
+      [
+        "Bioluminescence",
+        "What is the ability of some ocean creatures like anglerfish and jellyfish to make their own light?",
+      ],
+    ]),
+    cat("Classic Cartoons", [
+      ["Scooby-Doo", "Which cartoon dog solves mysteries with Shaggy and the Mystery Inc. gang?"],
+      ["Bugs Bunny", "Which wisecracking rabbit says 'What's up, Doc?'?"],
+      ["SpongeBob", "Which cartoon character works at the Krusty Krab and lives in a pineapple?"],
+      ["Garfield", "Which lazy orange cat loves lasagna and hates Mondays?"],
+      ["The Simpsons", "Which yellow-skinned cartoon family has lived in Springfield since 1989?"],
+    ]),
+    cat("Sports Basics", [
+      [
+        "Soccer",
+        "Which sport is called 'football' in most countries and is the most popular sport in the world?",
+      ],
+      ["Touchdown", "What is worth six points in American football?"],
+      ["Home run", "In baseball, what is it called when a batter hits the ball out of the park?"],
+      [
+        "Slam dunk",
+        "What flashy basketball move involves jumping and pushing the ball down through the hoop?",
+      ],
+      [
+        "Hat trick",
+        "In hockey and soccer, what is it called when one player scores three goals in a single game?",
+      ],
+    ]),
+  ),
+
+  // Board 11
+  board(
+    cat("Weather Wonders", [
+      ["Snow", "What type of frozen precipitation falls in fluffy white flakes?"],
+      ["Thunder", "What is the loud booming sound that follows lightning?"],
+      [
+        "Hurricane",
+        "What powerful spinning storm forms over warm ocean water and has an 'eye' in the center?",
+      ],
+      [
+        "Hail",
+        "What type of ice falls from the sky during severe thunderstorms, sometimes as big as baseballs?",
+      ],
+      [
+        "Earthquake",
+        "What natural event happens when tectonic plates under the ground suddenly shift and shake?",
+      ],
+    ]),
+    cat("Musical Instruments", [
+      [
+        "Violin",
+        "Which stringed instrument is played with a bow and is the smallest in the orchestra?",
+      ],
+      ["Trumpet", "Which shiny brass instrument is used in jazz and can play loud, bright notes?"],
+      ["Flute", "Which woodwind instrument do you play by blowing across a hole at the top?"],
+      ["Ukulele", "Which small four-stringed instrument comes from Hawaii?"],
+      [
+        "Harmonica",
+        "Which small instrument do you play by blowing and drawing air through tiny holes?",
+      ],
+    ]),
+    cat("Inventions That Changed the World", [
+      ["Printing press", "Which invention by Gutenberg made it possible to mass-produce books?"],
+      ["Light bulb", "Which invention by Thomas Edison lit up homes for the first time?"],
+      [
+        "Telephone",
+        "Which invention by Alexander Graham Bell let people talk to each other from far away?",
+      ],
+      [
+        "Airplane",
+        "Which invention by the Wright Brothers let humans fly for the first time in 1903?",
+      ],
+      [
+        "Internet",
+        "Which global network of computers changed the world by connecting billions of people?",
+      ],
+    ]),
+    cat("Human Body", [
+      ["Heart", "Which organ pumps blood through your whole body about 100,000 times a day?"],
+      ["206", "How many bones does an adult human body have?"],
+      ["Brain", "Which organ controls your thoughts, movements, and everything your body does?"],
+      ["Lungs", "Which pair of organs in your chest fills with air when you breathe?"],
+      ["Skin", "What is the largest organ of the human body?"],
+    ]),
+    cat("Famous Landmarks", [
+      ["Eiffel Tower", "Which famous iron tower in Paris, France was built in 1889?"],
+      [
+        "Statue of Liberty",
+        "Which giant green statue holding a torch was a gift from France to America?",
+      ],
+      ["Great Wall of China", "Which ancient wall stretches over 13,000 miles across China?"],
+      ["Big Ben", "What is the famous clock tower in London, England called?"],
+      [
+        "Mount Rushmore",
+        "Which South Dakota mountain has four U.S. presidents' faces carved into it?",
+      ],
+    ]),
+    cat("Pets & Pet Care", [
+      [
+        "Goldfish",
+        "Which popular orange pet fish can actually live for over 10 years with proper care?",
+      ],
+      [
+        "Hamster",
+        "Which small, furry pet loves running on a wheel and stuffing food in its cheeks?",
+      ],
+      ["Veterinarian", "What is a doctor who takes care of animals called?"],
+      ["Leash", "What do you attach to a dog's collar to keep them safe on walks?"],
+      [
+        "Hermit crab",
+        "Which pet crustacean carries a borrowed shell on its back and switches to bigger ones as it grows?",
       ],
     ]),
   ),
@@ -1586,6 +1911,532 @@ export const STANDARD_BOARDS: JeopardyBoard[] = [
       [
         "MrBeast",
         "Which YouTuber launched Feastables chocolate bars and a fast-food brand called MrBeast Burger?",
+      ],
+    ]),
+  ),
+
+  // Board 8
+  board(
+    cat("Science & Discovery", [
+      [
+        "CRISPR",
+        "Which gene-editing technology could let scientists cut and paste DNA like editing a document?",
+      ],
+      [
+        "Black hole photo",
+        "In 2019, the Event Horizon Telescope captured the first image of what mysterious space object?",
+      ],
+      [
+        "Mars rover",
+        "What type of robotic vehicle named Perseverance is currently exploring the Red Planet?",
+      ],
+      [
+        "mRNA vaccine",
+        "Which new type of vaccine technology was used to create COVID shots by Pfizer and Moderna?",
+      ],
+      [
+        "Nuclear fusion",
+        "In December 2022, U.S. scientists achieved ignition in which type of energy reaction that powers the sun?",
+      ],
+    ]),
+    cat("Music Legends", [
+      [
+        "Prince",
+        "Which legendary artist released 'Purple Rain' and changed his name to an unpronounceable symbol?",
+      ],
+      [
+        "David Bowie",
+        "Which chameleonic rock star was known for alter egos like Ziggy Stardust and 'Space Oddity'?",
+      ],
+      [
+        "Fleetwood Mac",
+        "Which classic rock band had 'Dreams' go viral on TikTok thanks to a cranberry juice skateboard video?",
+      ],
+      [
+        "Dolly Parton",
+        "Which country music icon has her own theme park, Dollywood, and funded children's book programs?",
+      ],
+      [
+        "Queen",
+        "Which band's 'Bohemian Rhapsody' biopic became the highest-grossing music biopic of all time?",
+      ],
+    ]),
+    cat("Art & Artists", [
+      [
+        "Banksy",
+        "Which anonymous British street artist is known for political graffiti and self-destructing artworks?",
+      ],
+      [
+        "Frida Kahlo",
+        "Which Mexican artist known for vivid self-portraits has become a feminist icon?",
+      ],
+      [
+        "Van Gogh",
+        "Which Dutch painter of 'Starry Night' has immersive digital exhibitions touring the world?",
+      ],
+      [
+        "NFT art",
+        "Beeple sold 'Everydays' for $69 million in which type of blockchain-verified digital art?",
+      ],
+      [
+        "KAWS",
+        "Which contemporary artist is known for his X-eyed figures and collaborations with brands like Uniqlo?",
+      ],
+    ]),
+    cat("Geography & Travel", [
+      [
+        "Iceland",
+        "Which Nordic island nation is famous for geysers, volcanoes, and the Northern Lights?",
+      ],
+      ["Dubai", "Which Middle Eastern city has the world's tallest building, the Burj Khalifa?"],
+      ["Machu Picchu", "Which ancient Incan citadel sits high in the Andes Mountains of Peru?"],
+      [
+        "Great Barrier Reef",
+        "Which natural wonder off Australia's coast is the world's largest coral reef system?",
+      ],
+      [
+        "Santorini",
+        "Which Greek island with white-and-blue buildings overlooking a volcanic caldera is a top Instagram destination?",
+      ],
+    ]),
+    cat("Books & Literature", [
+      [
+        "Colleen Hoover",
+        "Which author of 'It Ends with Us' dominated BookTok and became one of the best-selling authors of 2022-2023?",
+      ],
+      [
+        "Fourth Wing",
+        "Which Rebecca Yarros fantasy novel about dragon riders became BookTok's biggest obsession in 2023?",
+      ],
+      [
+        "Lessons in Chemistry",
+        "Which bestselling novel about a 1960s female chemist turned cooking show host became an Apple TV+ series?",
+      ],
+      [
+        "Sarah J. Maas",
+        "Which fantasy author's ACOTAR and Crescent City series have massive BookTok followings?",
+      ],
+      [
+        "Tomorrow and Tomorrow and Tomorrow",
+        "Which 2022 novel about two friends who create video games became a literary sensation?",
+      ],
+    ]),
+    cat("Technology & Gadgets", [
+      [
+        "AirPods",
+        "Which Apple wireless earbuds became so ubiquitous they're practically a fashion accessory?",
+      ],
+      ["Steam Deck", "Which Valve handheld gaming PC lets you play your Steam library on the go?"],
+      [
+        "Threads",
+        "Which Twitter/X competitor by Meta launched and gained 100 million users in record time?",
+      ],
+      [
+        "Rabbit R1",
+        "Which bright orange AI hardware device generated CES 2024 buzz but disappointed on delivery?",
+      ],
+      [
+        "Passkeys",
+        "Which passwordless login technology using biometrics is replacing traditional passwords across the web?",
+      ],
+    ]),
+  ),
+
+  // Board 9
+  board(
+    cat("Mythology & Legends", [
+      [
+        "Trojan Horse",
+        "Which giant wooden structure did the Greeks use to sneak soldiers into the city of Troy?",
+      ],
+      [
+        "Excalibur",
+        "What is the legendary sword that King Arthur pulled from a stone to prove he was the true king?",
+      ],
+      [
+        "Pandora's box",
+        "In Greek mythology, whose curiosity released all the evils into the world when she opened a container?",
+      ],
+      [
+        "Valhalla",
+        "In Norse mythology, what is the great hall where warriors go after dying in battle?",
+      ],
+      [
+        "Icarus",
+        "Which figure from Greek myth flew too close to the sun with wax wings that melted?",
+      ],
+    ]),
+    cat("Space & Astronomy", [
+      [
+        "Light year",
+        "What unit of distance measures how far light travels in one year, about 5.88 trillion miles?",
+      ],
+      [
+        "Hubble",
+        "Which NASA space telescope has been orbiting Earth and taking photos since 1990?",
+      ],
+      [
+        "Elon Musk",
+        "Whose SpaceX company successfully caught a returning Starship booster with a pair of giant mechanical arms?",
+      ],
+      [
+        "Voyager 1",
+        "Which NASA spacecraft launched in 1977 is the farthest human-made object from Earth?",
+      ],
+      ["Exoplanet", "What is a planet orbiting a star outside our solar system called?"],
+    ]),
+    cat("90s & 2000s Nostalgia", [
+      [
+        "Tamagotchi",
+        "Which egg-shaped Japanese digital pet from the 1990s had to be fed and cleaned or it would die?",
+      ],
+      [
+        "Razor scooter",
+        "Which foldable aluminum kick scooter was every kid's must-have toy around the year 2000?",
+      ],
+      [
+        "iPod",
+        "Which Apple device revolutionized how people listened to music with '1,000 songs in your pocket'?",
+      ],
+      [
+        "MySpace",
+        "Which social network where you could customize your profile with HTML and pick a Top 8 preceded Facebook?",
+      ],
+      [
+        "Vine",
+        "Which six-second video app launched careers for creators before shutting down in 2017?",
+      ],
+    ]),
+    cat("Cooking & Chefs", [
+      [
+        "Gordon Ramsay",
+        "Which fiery British chef is known for yelling at contestants on Hell's Kitchen and Kitchen Nightmares?",
+      ],
+      [
+        "Air fryer",
+        "Which countertop kitchen appliance that circulates hot air became TikTok's favorite way to cook everything?",
+      ],
+      [
+        "Sourdough",
+        "Which type of bread made with a fermented starter became everyone's lockdown baking project?",
+      ],
+      [
+        "Noma",
+        "Which Copenhagen restaurant was named the world's best multiple times before closing in 2024?",
+      ],
+      [
+        "Stanley Tucci",
+        "Which actor went viral for his cocktail-making videos and Italian food travelogue on CNN?",
+      ],
+    ]),
+    cat("Iconic TV Moments", [
+      [
+        "Red Wedding",
+        "Which shocking Game of Thrones massacre horrified viewers at a Stark-Frey wedding celebration?",
+      ],
+      [
+        "I am the one who knocks",
+        "What is Walter White's famous declaration of power in Breaking Bad?",
+      ],
+      [
+        "The Last of Us",
+        "Which HBO adaptation of a video game about a post-apocalyptic fungal infection became a massive hit?",
+      ],
+      [
+        "White Lotus",
+        "Which HBO anthology series about wealthy vacationers at luxury resorts became appointment TV?",
+      ],
+      [
+        "Succession",
+        "Which HBO drama about the Roy family's media empire dominated the 2023 Emmys in its final season?",
+      ],
+    ]),
+    cat("Weird World Records", [
+      [
+        "Joey Chestnut",
+        "Which competitive eater holds the record for most hot dogs consumed at Nathan's July 4th contest?",
+      ],
+      [
+        "Speed cubing",
+        "In which competitive hobby did Max Park set the 3.13-second world record for solving a Rubik's Cube?",
+      ],
+      [
+        "Longest fingernails",
+        "What body part does a Texas woman named Diana Armstrong hold a Guinness record for never cutting?",
+      ],
+      [
+        "Most T-shirts worn",
+        "What record involves layering hundreds of pieces of clothing on one person at the same time?",
+      ],
+      [
+        "Largest pizza",
+        "What was the food item measuring over 13,000 square feet that earned a Guinness record in 2023?",
+      ],
+    ]),
+  ),
+
+  // Board 10
+  board(
+    cat("Podcasts & True Crime", [
+      [
+        "My Favorite Murder",
+        "Which comedy-true crime podcast hosted by Karen Kilgariff and Georgia Hardstark coined 'murderino'?",
+      ],
+      [
+        "Dateline",
+        "Which long-running NBC newsmagazine has become must-watch Friday night true crime TV?",
+      ],
+      [
+        "Serial",
+        "Which podcast's investigation of Adnan Syed's case led to his conviction being overturned in 2022?",
+      ],
+      [
+        "The Jinx",
+        "Which HBO documentary series about Robert Durst returned for a second season after his conviction?",
+      ],
+      [
+        "Scam Goddess",
+        "Which comedy podcast hosted by Laci Mosley covers con artists with a humorous twist?",
+      ],
+    ]),
+    cat("Board Games & Tabletop", [
+      [
+        "Settlers of Catan",
+        "Which German board game about trading resources like wheat and ore became a worldwide phenomenon?",
+      ],
+      [
+        "Dungeons & Dragons",
+        "Which tabletop RPG saw a massive popularity surge thanks to shows like Stranger Things and Critical Role?",
+      ],
+      [
+        "Codenames",
+        "Which party word game has two teams trying to guess their agents based on one-word clues?",
+      ],
+      [
+        "Wingspan",
+        "Which award-winning board game about collecting birds became a surprise hit with gorgeous artwork?",
+      ],
+      [
+        "Ticket to Ride",
+        "Which board game has players collecting train cards to claim railway routes across a map?",
+      ],
+    ]),
+    cat("Internet Culture", [
+      [
+        "Touch grass",
+        "What does the internet tell someone to do when they need to step away from online drama and go outside?",
+      ],
+      [
+        "Main character energy",
+        "Which TikTok concept means living life as if you're the protagonist of your own movie?",
+      ],
+      [
+        "Slay",
+        "Which slang term means to do something extremely well, often used as enthusiastic praise?",
+      ],
+      [
+        "Rent free",
+        "What phrase describes something that lives in your head and you can't stop thinking about it?",
+      ],
+      [
+        "Chronically online",
+        "What does the internet call someone who spends so much time on social media they lose touch with reality?",
+      ],
+    ]),
+    cat("Fashion Moments", [
+      [
+        "Birkenstock",
+        "Which German sandal brand had a major fashion comeback after appearing in the Barbie movie?",
+      ],
+      [
+        "Barbiecore",
+        "Which hot pink fashion aesthetic took over in 2023, inspired by Margot Robbie's movie press tour?",
+      ],
+      [
+        "Zara",
+        "Which fast-fashion Spanish retailer has become Gen Z's go-to for trend replication?",
+      ],
+      [
+        "Platform shoes",
+        "Which thick-soled footwear from the '70s and '90s made a major comeback in the 2020s?",
+      ],
+      [
+        "Tenniscore",
+        "Which 2023 fashion aesthetic inspired by country club style featured pleated skirts and polo shirts?",
+      ],
+    ]),
+    cat("Streaming Music", [
+      [
+        "Spotify Wrapped",
+        "Which annual recap of your listening habits becomes a social media event every December?",
+      ],
+      [
+        "Vinyl revival",
+        "What physical music format outsold CDs for the first time in decades in 2022?",
+      ],
+      [
+        "Drake",
+        "Which rapper held the record for most streams on Spotify before being overtaken by The Weeknd?",
+      ],
+      [
+        "Doja Cat",
+        "Which rapper and singer known for 'Say So' and 'Paint the Town Red' is famous for wild costumes?",
+      ],
+      [
+        "SZA",
+        "Whose album 'SOS' spent over 10 weeks at number one and featured hits like 'Kill Bill'?",
+      ],
+    ]),
+    cat("Travel Trends", [
+      [
+        "Revenge travel",
+        "Which post-pandemic trend saw people booking expensive trips to make up for lost time?",
+      ],
+      ["Digital nomad", "What do you call someone who works remotely while traveling the world?"],
+      [
+        "Bleisure",
+        "What portmanteau describes combining business travel with leisure vacation time?",
+      ],
+      [
+        "Overtourism",
+        "What problem caused cities like Barcelona, Venice, and Amsterdam to restrict visitor numbers?",
+      ],
+      [
+        "Japan tourism boom",
+        "Which country saw record-breaking tourism in 2024 partly because its currency was weak against the dollar?",
+      ],
+    ]),
+  ),
+
+  // Board 11
+  board(
+    cat("Mental Health Awareness", [
+      [
+        "Therapy",
+        "What form of professional mental health treatment became destigmatized largely through social media?",
+      ],
+      [
+        "Burnout",
+        "Which condition of physical and emotional exhaustion from prolonged stress was recognized by the WHO?",
+      ],
+      [
+        "Anxiety",
+        "Which mental health condition affecting millions is characterized by persistent worry and nervousness?",
+      ],
+      [
+        "Mindfulness",
+        "Which practice of being fully present and aware became a popular wellness and meditation trend?",
+      ],
+      [
+        "Dopamine dressing",
+        "Which fashion trend involves wearing bright, happy colors specifically to boost your mood?",
+      ],
+    ]),
+    cat("Remix Culture", [
+      [
+        "Mashup",
+        "What do you call a song that combines elements from two or more existing tracks?",
+      ],
+      [
+        "Sampling",
+        "What music production technique involves reusing a portion of an existing recording in a new song?",
+      ],
+      [
+        "Fan fiction",
+        "What type of creative writing by fans features characters from existing books, movies, or shows?",
+      ],
+      [
+        "Cosplay",
+        "What hobby involves creating and wearing costumes to portray fictional characters at conventions?",
+      ],
+      [
+        "Fan edit",
+        "What type of video remixes footage from movies or shows to create new storylines or improve existing ones?",
+      ],
+    ]),
+    cat("Sports Culture", [
+      [
+        "Fantasy football",
+        "Which game lets you draft real NFL players and compete based on their actual stats each week?",
+      ],
+      [
+        "Pickleball",
+        "Which paddle sport combining elements of tennis, badminton, and ping-pong became America's fastest-growing sport?",
+      ],
+      [
+        "Formula 1",
+        "Which auto racing series saw a massive U.S. popularity surge after the Netflix documentary 'Drive to Survive'?",
+      ],
+      [
+        "NIL deals",
+        "What ruling lets college athletes earn money from their Name, Image, and Likeness?",
+      ],
+      [
+        "Saudi sports spending",
+        "Which country spent billions luring stars like Cristiano Ronaldo and Neymar to its soccer league?",
+      ],
+    ]),
+    cat("Home & Lifestyle", [
+      [
+        "Marie Kondo",
+        "Which Japanese tidying expert taught the world to keep only items that 'spark joy'?",
+      ],
+      [
+        "Cottagecore",
+        "Which aesthetic romanticizes rural life with baking bread, flower arranging, and living in the countryside?",
+      ],
+      [
+        "Plant parent",
+        "What do millennials and Gen Z call themselves when they fill their apartments with houseplants?",
+      ],
+      [
+        "Thrifting",
+        "Which trend of buying secondhand clothing became both a sustainability movement and fashion statement?",
+      ],
+      [
+        "Quiet luxury",
+        "Which lifestyle trend favors understated quality and subtlety over flashy logos and brands?",
+      ],
+    ]),
+    cat("Viral Challenges 2.0", [
+      [
+        "Milk crate challenge",
+        "Which dangerous 2021 viral trend involved climbing a pyramid of stacked plastic containers?",
+      ],
+      [
+        "Benadryl challenge",
+        "Which TikTok challenge involving antihistamines led to FDA warnings about dangerous overdoses?",
+      ],
+      [
+        "One Chip Challenge",
+        "Which Paqui snack dare involving the world's spiciest tortilla chip was pulled from stores after a teen's death?",
+      ],
+      [
+        "75 Hard",
+        "Which intense 75-day fitness and mental toughness program went viral on TikTok?",
+      ],
+      [
+        "12-3-30",
+        "Which treadmill workout trend involves walking at an incline of 12, speed 3, for 30 minutes?",
+      ],
+    ]),
+    cat("Celebrity Side Hustles", [
+      [
+        "Ryan Reynolds",
+        "Which actor owns Aviation Gin, Mint Mobile, and Wrexham A.F.C. soccer club with Rob McElhenney?",
+      ],
+      [
+        "Rihanna",
+        "Whose Fenty Beauty and Savage X Lingerie brands made her a billionaire beyond music?",
+      ],
+      ["George Clooney", "Which actor co-founded Casamigos tequila and sold it for $1 billion?"],
+      [
+        "Snoop Dogg",
+        "Which rapper has a cookbook, wine brand, and hosted the 2024 Olympics coverage for NBC?",
+      ],
+      [
+        "Dwayne Johnson",
+        "Which former wrestler turned actor launched Teremana tequila and the ZOA energy drink brand?",
       ],
     ]),
   ),
@@ -2544,6 +3395,550 @@ export const ADVANCED_BOARDS: JeopardyBoard[] = [
       [
         "Youth voter turnout",
         "Which metric measuring Gen Z's increased participation in elections has surprised political analysts?",
+      ],
+    ]),
+  ),
+
+  // Board 8
+  board(
+    cat("Science & Breakthroughs", [
+      [
+        "Nuclear fusion",
+        "In December 2022, Lawrence Livermore achieved net energy gain for the first time in which type of reaction?",
+      ],
+      [
+        "AlphaFold",
+        "Which DeepMind AI system solved the 50-year-old protein folding problem, winning its creators a Nobel Prize?",
+      ],
+      [
+        "Ozempic",
+        "Which semaglutide drug originally for diabetes became the most talked-about weight loss medication in decades?",
+      ],
+      [
+        "Quantum computing",
+        "Which computing paradigm using qubits instead of bits did Google claim 'supremacy' in with its Sycamore processor?",
+      ],
+      [
+        "Casgevy",
+        "What was the first CRISPR-based gene therapy approved by the FDA in 2023, treating sickle cell disease?",
+      ],
+    ]),
+    cat("Music Industry Politics", [
+      [
+        "Taylor's Version",
+        "What re-recording campaign did Taylor Swift launch after Scooter Braun acquired her master recordings?",
+      ],
+      [
+        "Streaming royalties",
+        "Which ongoing industry dispute centers on artists receiving fractions of a cent per play on platforms like Spotify?",
+      ],
+      [
+        "Ticketmaster",
+        "Which ticketing monopoly faced a DOJ antitrust lawsuit after its disastrous Eras Tour presale crash?",
+      ],
+      [
+        "Drake vs. Kendrick",
+        "Which 2024 rap feud produced diss tracks 'Not Like Us' and 'Family Matters' and dominated the summer?",
+      ],
+      [
+        "Beyoncé country snub",
+        "Whose 'Cowboy Carter' album fueled debate about genre gatekeeping after being overlooked by the CMA Awards?",
+      ],
+    ]),
+    cat("Art World Controversies", [
+      [
+        "Beeple",
+        "Which digital artist sold an NFT collage for $69.3 million at Christie's, making it the third-most expensive work by a living artist?",
+      ],
+      [
+        "Banksy shredder",
+        "Which anonymous artist's 'Love Is in the Bin' partially self-destructed at auction, then sold for even more?",
+      ],
+      [
+        "Stolen art repatriation",
+        "What movement has seen major museums return looted artifacts to countries like Greece, Nigeria, and Ethiopia?",
+      ],
+      [
+        "AI art copyright",
+        "What legal question emerged when the U.S. Copyright Office ruled that purely AI-generated images lack human authorship?",
+      ],
+      [
+        "Immersive Van Gogh",
+        "Which controversial exhibition format projects famous paintings onto walls, drawing both crowds and criticism?",
+      ],
+    ]),
+    cat("Geopolitics: Asia-Pacific", [
+      [
+        "QUAD",
+        "Which grouping of the U.S., Japan, India, and Australia was formed to counter China's influence in the Indo-Pacific?",
+      ],
+      [
+        "South China Sea",
+        "In which body of water does China claim territory through artificial islands despite international tribunal rulings against it?",
+      ],
+      [
+        "AUKUS",
+        "Which trilateral security pact will provide Australia with nuclear-powered submarines using U.S. and UK technology?",
+      ],
+      [
+        "Myanmar coup",
+        "In which Southeast Asian country did the military seize power in February 2021, triggering a brutal civil war?",
+      ],
+      [
+        "Fukushima water",
+        "Which Japanese nuclear plant began releasing treated radioactive wastewater into the Pacific in 2023, angering China?",
+      ],
+    ]),
+    cat("Philosophy & Ethics", [
+      [
+        "Effective altruism",
+        "Which philosophical movement associated with Sam Bankman-Fried advocates using evidence and reason to maximize charitable impact?",
+      ],
+      [
+        "Longtermism",
+        "Which philosophical stance prioritizes the welfare of future generations, sometimes over present concerns?",
+      ],
+      [
+        "AI alignment",
+        "What field of research focuses on ensuring artificial intelligence systems pursue goals beneficial to humanity?",
+      ],
+      [
+        "Trolley problem",
+        "Which classic ethics thought experiment about diverting a runaway trolley became relevant to self-driving car programming?",
+      ],
+      [
+        "Right to be forgotten",
+        "Which legal concept allows individuals to request the deletion of their personal data from search engines and databases?",
+      ],
+    ]),
+    cat("Latin America", [
+      [
+        "Nayib Bukele",
+        "Which El Salvadoran president gained fame for cracking down on gangs and adopting Bitcoin as legal tender?",
+      ],
+      [
+        "Pink tide",
+        "What term describes the wave of left-wing election victories across Latin America in 2022-2023?",
+      ],
+      [
+        "Gustavo Petro",
+        "Who became Colombia's first left-wing president in 2022, a former guerrilla fighter?",
+      ],
+      [
+        "Panama Canal drought",
+        "Which vital global shipping route faced severe traffic restrictions in 2023 due to climate-related water shortages?",
+      ],
+      [
+        "Venezuela migration",
+        "From which crisis-stricken country have over 7 million people emigrated, one of the largest displacement crises in the world?",
+      ],
+    ]),
+  ),
+
+  // Board 9
+  board(
+    cat("Tech Ethics & Regulation", [
+      [
+        "Algorithmic bias",
+        "What term describes systematic discrimination embedded in AI systems that can affect hiring, lending, and policing?",
+      ],
+      [
+        "Right to repair",
+        "Which consumer movement advocates for laws allowing people to fix their own electronics and farm equipment?",
+      ],
+      [
+        "Surveillance capitalism",
+        "What concept, coined by Shoshana Zuboff, describes the commodification of personal data by tech companies?",
+      ],
+      [
+        "Age verification",
+        "Which requirement for social media platforms has been passed into law in several U.S. states and the EU to protect minors?",
+      ],
+      [
+        "Open source AI",
+        "Which debate pits Meta's approach of releasing AI model weights publicly against OpenAI's closed approach?",
+      ],
+    ]),
+    cat("International Courts & Law", [
+      [
+        "ICJ",
+        "Which UN court ruled that Israel must take measures to prevent genocide in its military operations in Gaza?",
+      ],
+      [
+        "Universal jurisdiction",
+        "Which legal principle allows countries to prosecute certain grave crimes regardless of where they were committed?",
+      ],
+      [
+        "ICC arrest warrant",
+        "What legal instrument did the International Criminal Court issue for Vladimir Putin over the deportation of Ukrainian children?",
+      ],
+      [
+        "Crimes against humanity",
+        "Under which category of international law were the Uyghur detentions in Xinjiang characterized by human rights organizations?",
+      ],
+      [
+        "Rome Statute",
+        "Which 1998 treaty established the International Criminal Court, though major powers like the U.S., Russia, and China haven't ratified it?",
+      ],
+    ]),
+    cat("Space Exploration", [
+      [
+        "Artemis II",
+        "Which NASA mission will send astronauts around the Moon for the first time since Apollo 17 in 1972?",
+      ],
+      [
+        "OSIRIS-REx",
+        "Which NASA mission successfully returned a sample from the asteroid Bennu to Earth in 2023?",
+      ],
+      [
+        "Europa Clipper",
+        "Which NASA spacecraft launched in 2024 will investigate whether Jupiter's icy moon could harbor life?",
+      ],
+      [
+        "Starship orbital test",
+        "Which SpaceX vehicle, the largest rocket ever built, failed its first orbital test flight but succeeded in catching its booster on a later attempt?",
+      ],
+      [
+        "Space debris",
+        "What growing problem of defunct satellites and fragments in orbit threatens future space missions through cascading collisions known as the Kessler syndrome?",
+      ],
+    ]),
+    cat("Economic Theory & Policy", [
+      [
+        "Modern Monetary Theory",
+        "Which heterodox economic framework argues sovereign currency-issuing nations can't run out of money?",
+      ],
+      [
+        "Yield curve inversion",
+        "Which bond market phenomenon where short-term rates exceed long-term rates has historically predicted recessions?",
+      ],
+      [
+        "Shrinkflation",
+        "What practice sees companies reducing product sizes while maintaining prices, effectively a hidden price increase?",
+      ],
+      [
+        "Nearshoring",
+        "What is the practice of relocating supply chains to geographically closer countries like Mexico to reduce dependence on China?",
+      ],
+      [
+        "Central bank digital currency",
+        "What type of government-issued digital money are over 100 countries exploring, with China's e-CNY being the most advanced?",
+      ],
+    ]),
+    cat("Climate & Environment", [
+      [
+        "Tipping points",
+        "What term describes thresholds in the climate system that, once crossed, trigger irreversible and accelerating changes?",
+      ],
+      [
+        "Carbon capture",
+        "Which technology aims to remove CO2 directly from the atmosphere or industrial emissions and store it underground?",
+      ],
+      [
+        "Greenwashing",
+        "What is the deceptive practice of companies exaggerating or fabricating their environmental credentials?",
+      ],
+      [
+        "PFAS forever chemicals",
+        "Which class of persistent synthetic chemicals found in drinking water are linked to cancer and have prompted EPA regulation?",
+      ],
+      [
+        "Loss of biodiversity",
+        "Which crisis, sometimes called the sixth mass extinction, sees species disappearing at rates 100-1000 times normal?",
+      ],
+    ]),
+    cat("Media & Propaganda", [
+      [
+        "State media",
+        "What type of government-controlled news outlets like RT and CGTN do democracies struggle to counter?",
+      ],
+      [
+        "Information warfare",
+        "Which concept describes the strategic use of disinformation, hacking, and media manipulation as a weapon in geopolitical conflicts?",
+      ],
+      [
+        "Citizen journalism",
+        "What form of reporting by ordinary people using smartphones has become crucial for documenting conflicts and police violence?",
+      ],
+      [
+        "Section 230",
+        "Which 26-word U.S. law protecting internet platforms from liability for user content is called 'the most important law in tech'?",
+      ],
+      [
+        "Substack",
+        "Which newsletter platform became a haven for independent journalists but faced controversy over hosting extremist content?",
+      ],
+    ]),
+  ),
+
+  // Board 10
+  board(
+    cat("Global Health", [
+      [
+        "Antimicrobial resistance",
+        "Which growing public health threat occurs when bacteria, viruses, and fungi evolve to survive drugs designed to kill them?",
+      ],
+      [
+        "WHO pandemic preparedness",
+        "Which international treaty has been under contentious negotiation to improve the world's response to future health emergencies?",
+      ],
+      [
+        "Mental health crisis",
+        "Which public health emergency has seen adolescent rates of depression and anxiety surge, linked partly to social media?",
+      ],
+      [
+        "Universal healthcare",
+        "Which model of health coverage that most developed nations use remains politically contentious in the United States?",
+      ],
+      [
+        "Fentanyl crisis",
+        "Which synthetic opioid, 50-100 times stronger than morphine, drives the majority of U.S. overdose deaths?",
+      ],
+    ]),
+    cat("Authoritarian Playbook", [
+      [
+        "Autocratic legalism",
+        "What term describes leaders who use nominally democratic legal tools to consolidate power and suppress opposition?",
+      ],
+      [
+        "Viktor Orbán",
+        "Which Hungarian leader's model of 'illiberal democracy' has inspired far-right movements globally?",
+      ],
+      [
+        "Press freedom",
+        "What fundamental right has declined globally for a decade according to Reporters Without Borders?",
+      ],
+      [
+        "Pegasus spyware",
+        "Which Israeli-made surveillance software was revealed to have been used by governments to monitor journalists and dissidents?",
+      ],
+      [
+        "Social credit system",
+        "What controversial Chinese monitoring system assigns citizens scores based on their behavior?",
+      ],
+    ]),
+    cat("Digital Economy", [
+      [
+        "Creator economy",
+        "Which economic model valued at over $100 billion encompasses influencers, YouTubers, and podcasters monetizing content?",
+      ],
+      [
+        "Gig economy",
+        "Which labor model built on short-term independent contracts has faced legal battles over worker classification?",
+      ],
+      [
+        "Web3",
+        "Which blockchain-based vision of a decentralized internet has faced skepticism as crypto markets crashed?",
+      ],
+      [
+        "AI automation",
+        "What economic threat led Goldman Sachs to estimate 300 million jobs globally could be affected by generative AI?",
+      ],
+      [
+        "Platform economy",
+        "What model where companies like Uber, Airbnb, and DoorDash match suppliers with consumers dominates the modern economy?",
+      ],
+    ]),
+    cat("Historical Parallels", [
+      [
+        "Weimar Republic",
+        "Which interwar German democracy's collapse into authoritarianism is frequently invoked as a warning for modern democracies?",
+      ],
+      [
+        "Cold War 2.0",
+        "What term describes the growing ideological and technological rivalry between the U.S. and China?",
+      ],
+      [
+        "Appeasement",
+        "Which historical policy toward Hitler in the 1930s is invoked by critics of insufficient Western responses to Putin?",
+      ],
+      [
+        "Spanish flu",
+        "Which 1918 pandemic that killed 50 million people is the most common historical comparison point for COVID-19?",
+      ],
+      [
+        "Bretton Woods",
+        "Which 1944 agreement established the post-WWII economic order that BRICS nations now seek to challenge?",
+      ],
+    ]),
+    cat("Education & Culture Wars", [
+      [
+        "Critical race theory",
+        "Which academic framework examining systemic racism became a major political flashpoint in school board fights?",
+      ],
+      [
+        "Book banning",
+        "What practice saw record attempts in U.S. schools and libraries, often targeting LGBTQ+ and racial justice titles?",
+      ],
+      [
+        "School choice",
+        "Which education policy promoting vouchers and charter schools has advanced in multiple Republican-led states?",
+      ],
+      [
+        "Student debt",
+        "Which financial burden averaging $37,000 per borrower has the Biden administration made multiple attempts to reduce?",
+      ],
+      [
+        "AI in education",
+        "What technology's integration into classrooms has forced universities to rethink assessment, plagiarism, and learning?",
+      ],
+    ]),
+    cat("Migration & Demographics", [
+      [
+        "Population decline",
+        "What demographic trend affecting countries like Japan, South Korea, and China threatens economic growth and pension systems?",
+      ],
+      [
+        "Climate refugees",
+        "What term describes people displaced by rising seas, droughts, and extreme weather, though they lack formal legal status?",
+      ],
+      [
+        "Replacement theory",
+        "Which white supremacist conspiracy theory falsely claims elites are deliberately replacing white populations with immigrants?",
+      ],
+      [
+        "EU migration pact",
+        "What agreement did EU member states reach in 2024 to share responsibility for processing asylum seekers?",
+      ],
+      [
+        "Demographic dividend",
+        "Which economic concept explains how young populations in Africa could drive growth, if education and jobs keep pace?",
+      ],
+    ]),
+  ),
+
+  // Board 11
+  board(
+    cat("Artificial Intelligence Debates", [
+      [
+        "Existential risk",
+        "Which concern about advanced AI, endorsed by figures like Geoffrey Hinton and Yoshua Bengio, focuses on potential human extinction?",
+      ],
+      [
+        "Open letter pause",
+        "What did thousands of tech leaders sign in March 2023 calling for a six-month halt to training AI systems more powerful than GPT-4?",
+      ],
+      [
+        "Anthropic",
+        "Which AI safety company founded by former OpenAI researchers created Claude and pioneered Constitutional AI?",
+      ],
+      [
+        "AI copyright",
+        "What legal dispute has the New York Times, authors, and artists brought against AI companies over training on their work?",
+      ],
+      [
+        "Autonomous weapons",
+        "What category of AI-powered military technology that can select and engage targets without human intervention faces calls for a UN ban?",
+      ],
+    ]),
+    cat("Global Power Shifts", [
+      [
+        "Multipolar world",
+        "What term describes the emerging geopolitical order where power is distributed among several major states rather than one or two?",
+      ],
+      [
+        "Global South",
+        "What collective term for developing nations has gained prominence as these countries demand greater voice in international institutions?",
+      ],
+      [
+        "Petrodollar",
+        "Which decades-old system of pricing oil in U.S. dollars faced challenges as Saudi Arabia signaled willingness to trade in other currencies?",
+      ],
+      [
+        "ASEAN",
+        "Which 10-member Southeast Asian bloc has become a key arena for U.S.-China competition for influence?",
+      ],
+      [
+        "African Continental Free Trade Area",
+        "What is the world's largest free trade area by number of countries, creating a single market for 1.3 billion Africans?",
+      ],
+    ]),
+    cat("Technology & Society", [
+      [
+        "Digital divide",
+        "What term describes the gap between people with reliable internet and technology access and those without?",
+      ],
+      [
+        "Attention economy",
+        "Which concept describes how platforms compete for human focus, treating it as a scarce and monetizable resource?",
+      ],
+      [
+        "Techno-feudalism",
+        "What term coined by Yanis Varoufakis argues that platforms like Amazon and Google have replaced capitalism with a new form of serfdom?",
+      ],
+      [
+        "Brain-computer interface",
+        "Which technology connecting neural signals to computers advanced when Neuralink implanted its first human chip in 2024?",
+      ],
+      [
+        "Synthetic biology",
+        "Which field of engineering living organisms to produce fuels, drugs, and materials is considered a key 21st-century industry?",
+      ],
+    ]),
+    cat("Constitutional Crises", [
+      [
+        "Judicial overreach",
+        "What criticism has been leveled at U.S. district judges issuing nationwide injunctions that block federal policies?",
+      ],
+      [
+        "Executive power",
+        "Which area of constitutional law was at the center of debates about presidential immunity and emergency declarations?",
+      ],
+      [
+        "Insurrection clause",
+        "Which Section 3 of the 14th Amendment bars individuals who 'engaged in insurrection' from holding office?",
+      ],
+      [
+        "Court expansion",
+        "Which proposed reform would add seats to the U.S. Supreme Court to counteract its conservative supermajority?",
+      ],
+      [
+        "Originalism",
+        "Which judicial philosophy interprets the Constitution based on its original meaning at the time of ratification?",
+      ],
+    ]),
+    cat("Future of Work", [
+      [
+        "Four-day work week",
+        "Which labor reform showed positive results in UK and Icelandic trials, maintaining productivity with less time?",
+      ],
+      [
+        "Remote work",
+        "Which pandemic-accelerated practice of working from home has become a permanent battleground between employers and employees?",
+      ],
+      [
+        "AI job displacement",
+        "Which concern led the IMF to warn that 40% of global employment could be affected by artificial intelligence?",
+      ],
+      [
+        "Quiet quitting",
+        "Which 2022 workplace trend describes doing the minimum required at work instead of going above and beyond?",
+      ],
+      [
+        "Unions in tech",
+        "What labor movement gained ground as employees at Apple, Google, and Microsoft organized for better conditions?",
+      ],
+    ]),
+    cat("Philosophical Challenges", [
+      [
+        "Post-truth",
+        "Which concept describes a political culture where appeals to emotion and personal belief outweigh objective facts?",
+      ],
+      [
+        "Digital consciousness",
+        "Which philosophical question about whether AI could become sentient was raised when a Google engineer claimed LaMDA was aware?",
+      ],
+      [
+        "Epistemic crisis",
+        "What term describes the breakdown in shared agreement about basic facts and how knowledge is established?",
+      ],
+      [
+        "Techno-optimism",
+        "Which worldview, championed by Marc Andreessen's manifesto, argues technology is the solution to nearly all human problems?",
+      ],
+      [
+        "Degrowth",
+        "Which economic philosophy argues wealthy nations should deliberately shrink their economies to address climate change and inequality?",
       ],
     ]),
   ),

@@ -898,7 +898,7 @@ export function GameController({
             </div>
           );
         }
-        return <WaitingScreen phase={currentPhase} gameId={gameId} />;
+        return renderSurveySmashWatchCard(currentPhase);
       }
 
       case "steal-chance": {
@@ -916,7 +916,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Other team is trying to snag...");
+        return renderSurveySmashWatchCard(currentPhase);
       }
 
       case "lightning-round": {
@@ -947,7 +947,7 @@ export function GameController({
       case "answer-reveal":
       case "round-result":
       case "lightning-round-reveal":
-        return renderWatchScreen("Watch the main screen!");
+        return renderSurveySmashWatchCard(currentPhase);
 
       case "final-scores":
         return renderFinalScoresCard();
@@ -958,21 +958,276 @@ export function GameController({
   }
 
   // ────────────────────────────────────────────────────────────────────
+  // SURVEY SMASH — contextual watch card
+  // ────────────────────────────────────────────────────────────────────
+
+  function renderSurveySmashWatchCard(currentPhase: string) {
+    const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const question = typeof gs.question === "string" ? gs.question : "";
+    const strikes = typeof gs.strikes === "number" ? gs.strikes : 0;
+    const revealedAnswers = Array.isArray(gs.revealedAnswers)
+      ? (gs.revealedAnswers as Array<{ text: string; points: number; rank: number }>)
+      : [];
+    const answerCount = typeof gs.answerCount === "number" ? gs.answerCount : 0;
+    const teams = Array.isArray(gs.teams)
+      ? (gs.teams as Array<{ id: string; members: string[]; score: number }>)
+      : [];
+    const guessingOrder = Array.isArray(gs.guessingOrder) ? (gs.guessingOrder as string[]) : [];
+    const currentGuesserIndex =
+      typeof gs.currentGuesserIndex === "number" ? gs.currentGuesserIndex : 0;
+    const currentGuesserSessionId = guessingOrder[currentGuesserIndex] ?? null;
+    const currentGuesserName = currentGuesserSessionId
+      ? (players?.find((p) => p.sessionId === currentGuesserSessionId)?.name ?? "Player")
+      : null;
+    const lightningPlayerId =
+      typeof gs.lightningPlayerId === "string" ? gs.lightningPlayerId : null;
+    const lightningPlayerName = lightningPlayerId
+      ? (players?.find((p) => p.sessionId === lightningPlayerId)?.name ?? "Player")
+      : null;
+    const lightningTotalPoints =
+      typeof gs.lightningTotalPoints === "number" ? gs.lightningTotalPoints : 0;
+
+    // Strike indicators
+    const strikeDisplay =
+      strikes > 0 ? (
+        <div className="flex items-center justify-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className={`flex h-7 w-7 items-center justify-center rounded-full font-display text-xs font-bold ${
+                i < strikes ? "bg-red-500/20 text-red-400" : "bg-white/5 text-text-dim"
+              }`}
+            >
+              X
+            </span>
+          ))}
+        </div>
+      ) : null;
+
+    // Team scores
+    const teamScores =
+      teams.length > 0 ? (
+        <div className="flex items-center justify-center gap-4">
+          {teams.map((t) => (
+            <div key={t.id} className="flex items-center gap-1.5">
+              <span className="font-body text-xs text-text-muted uppercase">
+                {t.id === "team-a" ? "Team A" : t.id === "team-b" ? "Team B" : ""}
+              </span>
+              <span className="font-mono text-sm font-bold text-accent-surveysmash">
+                {t.score.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null;
+
+    // Revealed answers mini-board
+    const answersBoard =
+      revealedAnswers.length > 0 ? (
+        <div className="flex flex-col gap-1 px-2">
+          {revealedAnswers
+            .sort((a, b) => a.rank - b.rank)
+            .map((a) => (
+              <div
+                key={a.rank}
+                className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-1.5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-surveysmash/20 font-mono text-[10px] font-bold text-accent-surveysmash">
+                    {a.rank}
+                  </span>
+                  <span className="font-body text-sm text-text-primary">{a.text}</span>
+                </div>
+                <span className="font-mono text-xs text-text-muted">{a.points}</span>
+              </div>
+            ))}
+          {answerCount > revealedAnswers.length && (
+            <p className="text-center font-mono text-xs text-text-dim">
+              {answerCount - revealedAnswers.length} more hidden
+            </p>
+          )}
+        </div>
+      ) : null;
+
+    switch (currentPhase) {
+      case "question-reveal":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.74 0.25 25 / 0.2)"
+              className="flex flex-col items-center gap-3 px-6 py-5"
+            >
+              <span className="rounded-full bg-accent-surveysmash/15 px-3 py-1 font-display text-xs font-bold text-accent-surveysmash uppercase tracking-wider">
+                Round {round}/{totalRounds}
+              </span>
+              {question && (
+                <p className="text-center font-display text-base font-bold text-text-primary">
+                  {question}
+                </p>
+              )}
+            </GlassPanel>
+            {teamScores}
+          </div>
+        );
+
+      case "guessing":
+      case "steal-chance":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+              {question && (
+                <p className="text-center font-display text-sm font-bold text-text-primary">
+                  {question}
+                </p>
+              )}
+              {currentGuesserName && currentPhase === "guessing" && (
+                <p className="font-body text-xs text-text-muted">
+                  {currentGuesserName} is guessing...
+                </p>
+              )}
+              {currentPhase === "steal-chance" && (
+                <p className="font-display text-xs font-bold text-accent-surveysmash uppercase">
+                  Snag attempt!
+                </p>
+              )}
+              {strikeDisplay}
+            </GlassPanel>
+            {answersBoard}
+            {teamScores}
+          </div>
+        );
+
+      case "strike":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+              <p className="font-display text-xl font-black text-red-400 uppercase">Strike!</p>
+              {strikeDisplay}
+              {question && (
+                <p className="text-center font-body text-sm text-text-muted">{question}</p>
+              )}
+            </GlassPanel>
+            {answersBoard}
+            {teamScores}
+          </div>
+        );
+
+      case "answer-reveal":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+              <p className="font-display text-lg font-bold text-accent-surveysmash uppercase">
+                Answers Revealed!
+              </p>
+              {question && (
+                <p className="text-center font-body text-sm text-text-muted">{question}</p>
+              )}
+            </GlassPanel>
+            {answersBoard}
+            {teamScores}
+          </div>
+        );
+
+      case "round-result":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.74 0.25 25 / 0.15)"
+              className="flex flex-col items-center gap-3 px-6 py-5"
+            >
+              <p className="font-display text-lg font-bold text-text-primary uppercase">
+                Round Complete!
+              </p>
+            </GlassPanel>
+            {teamScores}
+          </div>
+        );
+
+      case "lightning-round-reveal":
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.74 0.25 25 / 0.2)"
+              className="flex flex-col items-center gap-3 px-6 py-5"
+            >
+              <p className="font-display text-lg font-bold text-accent-surveysmash uppercase">
+                Lightning Results!
+              </p>
+              {lightningPlayerName && (
+                <p className="font-body text-sm text-text-muted">
+                  {lightningPlayerName} scored {lightningTotalPoints} pts
+                </p>
+              )}
+            </GlassPanel>
+            {teamScores}
+          </div>
+        );
+
+      default:
+        return renderWatchScreen("Watch the main screen!");
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
   // BRAIN BOARD — contextual watch card
   // ────────────────────────────────────────────────────────────────────
 
   function renderBrainBoardWatchCard(message: string) {
     const playerScore = typeof pd.score === "number" ? pd.score : null;
+    const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const clueQuestion = typeof gs.currentClueQuestion === "string" ? gs.currentClueQuestion : null;
+    const clueCategory = typeof gs.currentCategoryName === "string" ? gs.currentCategoryName : null;
+    const clueValue = typeof gs.currentClueValue === "number" ? gs.currentClueValue : null;
+    const isPowerPlay = gs.isPowerPlay === true;
+    const answeredCount = typeof gs.answeredCount === "number" ? gs.answeredCount : 0;
+    const totalPlayerCount = typeof gs.totalPlayerCount === "number" ? gs.totalPlayerCount : 0;
+    const allInQuestion = typeof gs.allInQuestion === "string" ? gs.allInQuestion : null;
+    const allInCategory = typeof gs.allInCategory === "string" ? gs.allInCategory : null;
+
     return (
-      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
-        <GlassPanel className="flex flex-col items-center gap-3 px-8 py-6">
+      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+        <GlassPanel className="flex w-full max-w-sm flex-col items-center gap-3 px-6 py-5">
           {playerScore !== null && (
             <span className="font-mono text-xl font-bold text-accent-brainboard">
               {playerScore.toLocaleString()} pts
             </span>
           )}
+          {isPowerPlay && (
+            <span
+              className="font-display text-sm font-black uppercase"
+              style={{
+                color: "oklch(0.82 0.2 85)",
+                textShadow: "0 0 12px oklch(0.82 0.2 85 / 0.5)",
+              }}
+            >
+              Power Play!
+            </span>
+          )}
           <p className="text-center font-display text-lg font-bold text-text-primary">{message}</p>
-          <p className="text-center font-body text-sm text-text-muted">Watch the main screen!</p>
+          {clueCategory && clueValue !== null && (
+            <span className="rounded-lg border border-accent-brainboard/30 bg-accent-brainboard/15 px-3 py-1 font-display text-xs font-bold text-accent-brainboard uppercase">
+              {clueCategory} — ${clueValue}
+            </span>
+          )}
+          {clueQuestion && (
+            <p className="text-center font-body text-sm text-text-primary">{clueQuestion}</p>
+          )}
+          {allInCategory && !clueQuestion && (
+            <span className="rounded-lg border border-accent-brainboard/30 bg-accent-brainboard/15 px-3 py-1 font-display text-xs font-bold text-accent-brainboard uppercase">
+              {allInCategory}
+            </span>
+          )}
+          {allInQuestion && (
+            <p className="text-center font-body text-sm text-text-primary">{allInQuestion}</p>
+          )}
+          {totalPlayerCount > 0 && answeredCount > 0 && (
+            <p className="font-mono text-xs text-text-dim">
+              {answeredCount}/{totalPlayerCount} answered
+            </p>
+          )}
         </GlassPanel>
       </div>
     );

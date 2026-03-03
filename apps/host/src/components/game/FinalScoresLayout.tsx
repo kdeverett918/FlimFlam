@@ -1,11 +1,12 @@
 "use client";
 
-import type { PlayerData, ScoreEntry } from "@flimflam/shared";
+import type { GameAward, PlayerData, ScoreEntry } from "@flimflam/shared";
 import { AnimatedBackground, Button, ConfettiBurst } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
-import { motion } from "framer-motion";
 import { RotateCcw, Shuffle } from "lucide-react";
+import { motion } from "motion/react";
 import { BonusAward } from "./BonusAward";
+import { GameAwards } from "./GameAwards";
 import { Scoreboard } from "./Scoreboard";
 
 export interface BonusAwardData {
@@ -23,6 +24,7 @@ interface FinalScoresLayoutProps {
   accentColorClass?: string;
   gameId?: string;
   bonusAwards?: BonusAwardData[];
+  gameAwards?: GameAward[];
   room: Room | null;
 }
 
@@ -46,6 +48,7 @@ export function FinalScoresLayout({
   previousScores,
   accentColorClass = "text-accent-2",
   bonusAwards,
+  gameAwards,
   room,
 }: FinalScoresLayoutProps) {
   const handlePlayAgain = () => {
@@ -90,6 +93,13 @@ export function FinalScoresLayout({
       <div className="relative z-10 w-full max-w-4xl">
         <Scoreboard scores={scores} previousScores={previousScores} />
       </div>
+
+      {/* Game awards (from commentary engine) */}
+      {gameAwards && gameAwards.length > 0 && (
+        <div className="relative z-10">
+          <GameAwards awards={gameAwards} accentColorClass={accentColorClass} />
+        </div>
+      )}
 
       {/* Bonus awards */}
       {bonusAwards && bonusAwards.length > 0 && (

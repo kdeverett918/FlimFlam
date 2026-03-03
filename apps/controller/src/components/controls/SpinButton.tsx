@@ -1,7 +1,7 @@
 "use client";
 
 import { haptics } from "@flimflam/ui";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useCallback } from "react";
 
 interface SpinButtonProps {

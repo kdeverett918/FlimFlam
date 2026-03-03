@@ -1,7 +1,7 @@
 "use client";
 
 import type { Room } from "colyseus.js";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 interface FloatingReaction {

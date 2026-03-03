@@ -1,65 +1,64 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import {
+  createRoom,
+  joinControllersForRoom,
+  selectGameAndStart,
+  waitForColyseusHealthy,
+} from "./e2e-helpers";
 
-async function submitBrainBattleTopics(controllerPage: Page, topic: string) {
-  await expect(controllerPage.getByRole("button", { name: /submit topics/i })).toBeVisible({
-    timeout: 60_000,
-  });
-
-  await controllerPage.getByLabel("Topic 1").fill(topic);
-  await controllerPage.getByRole("button", { name: /submit topics/i }).click();
-
-  await expect(controllerPage.getByText(/topics submitted!/i)).toBeVisible({ timeout: 30_000 });
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-test("brain battle completes end-to-end (host skip speedrun)", async ({ page, browser }) => {
+async function getSelector(controllers: Page[]): Promise<{ page: Page; index: number }> {
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline) {
+    for (let i = 0; i < controllers.length; i++) {
+      const clue = controllers[i].locator('button[aria-label*=" for "]:enabled').first();
+      if (await clue.isVisible().catch(() => false)) {
+        return { page: controllers[i], index: i };
+      }
+    }
+    await controllers[0]?.waitForTimeout(200);
+  }
+  throw new Error("No active selector found");
+}
+
+test("brain board rotates selector and persists revealed clues", async ({ page, browser }) => {
   await page.goto("/");
   await waitForColyseusHealthy(page);
 
   const { code } = await createRoom(page);
+  const joined = await joinControllersForRoom(browser, page, code, ["Rae", "Sky"]);
+  const controllers = joined.map((c) => c.controllerPage);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
-  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
+  await selectGameAndStart(page, { gameName: "Brain Board", complexity: "kids" });
 
-  // Select game + difficulty and start.
-  await page.getByRole("button", { name: /brain battle/i }).click();
-  await page.getByRole("button", { name: /^kids/i }).click();
-  const startButton = page.getByRole("button", { name: /start the game/i });
-  await expect(startButton).toBeEnabled();
-  await startButton.click();
+  const skipButton = page.getByRole("button", { name: /^skip$/i });
+  await skipButton.click(); // category-reveal -> clue-select
 
-  // Submit topics on all controllers.
-  await Promise.all([
-    submitBrainBattleTopics(c1.controllerPage, "Space"),
-    submitBrainBattleTopics(c2.controllerPage, "Animals"),
-    submitBrainBattleTopics(c3.controllerPage, "Movies"),
-  ]);
+  const firstSelector = await getSelector(controllers);
+  const firstClue = firstSelector.page.locator('button[aria-label*=" for "]:enabled').first();
+  const firstLabel = await firstClue.getAttribute("aria-label");
+  await firstClue.click();
 
-  const skipBtn = page.getByRole("button", { name: /^skip$/i });
+  await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
+  await skipButton.click(); // answering -> clue-result
+  await skipButton.click(); // clue-result -> clue-select
 
-  // Move immediately into board generation.
-  await skipBtn.click();
+  const nextSelector = await getSelector(controllers);
+  expect(nextSelector.index).not.toBe(firstSelector.index);
 
-  // Wait for a board to be visible (any clue value cell).
-  await expect(page.getByText("$200", { exact: true }).first()).toBeVisible({ timeout: 120_000 });
-
-  // Speedrun the whole board: skip progresses phases synchronously in the server plugin.
-  // We avoid AI answer judging by never buzzing.
-  const finalScoresHeading = page.getByRole("heading", { name: /^FINAL SCORES$/ });
-  for (let i = 0; i < 140; i++) {
-    if (await finalScoresHeading.isVisible().catch(() => false)) break;
-    await skipBtn.click();
-    await page.waitForTimeout(150);
+  // Revealed clues should remain unavailable when selector changes.
+  if (firstLabel) {
+    const consumed = nextSelector.page.getByRole("button", {
+      name: new RegExp(`^${escapeRegex(firstLabel)}$`, "i"),
+    });
+    await expect(consumed).toBeDisabled();
   }
 
-  await expect(finalScoresHeading).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByText("Alice")).toBeVisible();
-  await expect(page.getByText("Bob")).toBeVisible();
-  await expect(page.getByText("Casey")).toBeVisible();
-
-  await c1.context.close();
-  await c2.context.close();
-  await c3.context.close();
+  for (const controller of joined) {
+    await controller.context.close();
+  }
 });

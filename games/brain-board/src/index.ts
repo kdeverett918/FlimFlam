@@ -3,7 +3,13 @@ import { aiRequest, buildAnswerJudgePrompt, enqueueAIRequest } from "@flimflam/a
 import { BaseGamePlugin } from "@flimflam/game-engine";
 import { AnswerJudgeSchema } from "@flimflam/shared";
 import type { Complexity, GameManifest } from "@flimflam/shared";
-import { fuzzyMatch, pickRandom, shuffleInPlace } from "@flimflam/shared";
+import {
+  fuzzyMatch,
+  normalizeAnswer,
+  pickRandom,
+  shuffleInPlace,
+  stringSimilarity,
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import { type JeopardyBoard, type JeopardyClue, getClueBank } from "./content/clue-bank";
 
@@ -16,12 +22,8 @@ const CLUES_PER_CATEGORY = 5;
 
 const CATEGORY_REVEAL_DELAY_MS = 30000;
 const CLUE_RESULT_DELAY_MS = 6000;
-const ANSWER_TIMEOUT_MS = 20000;
-const POWER_PLAY_WAGER_TIMEOUT_MS = 20000;
 const ROUND_TRANSITION_DELAY_MS = 4000;
 const ALL_IN_CATEGORY_DELAY_MS = 5000;
-const ALL_IN_WAGER_TIMEOUT_MS = 30000;
-const ALL_IN_ANSWER_TIMEOUT_MS = 30000;
 const ALL_IN_REVEAL_DELAY_MS = 8000;
 
 const FUZZY_THRESHOLD = 0.7;
@@ -421,7 +423,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.broadcastGameState(room, state);
       this.sendAllPrivateData(room, state);
 
-      this.scheduleDelayed(room, POWER_PLAY_WAGER_TIMEOUT_MS, () => {
+      this.startPhaseTimer(room, "bb-power-play-wager", this.complexity, () => {
         if (this.phase === "power-play-wager") {
           this.processPowerPlayWager(room, state, 5);
         }
@@ -444,7 +446,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.sendAllPrivateData(room, state);
 
     // Answer timeout — resolve whatever we have
-    this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
+    this.startPhaseTimer(room, "bb-answer", this.complexity, () => {
       if (this.phase === "answering") {
         void this.resolveAllAnswers(room, state);
       }
@@ -583,7 +585,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
+    this.startPhaseTimer(room, "bb-answer", this.complexity, () => {
       if (this.phase === "power-play-answer") {
         this.processPowerPlayAnswer(room, state, "", {
           correct: false,
@@ -801,7 +803,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    this.scheduleDelayed(room, ALL_IN_WAGER_TIMEOUT_MS, () => {
+    this.startPhaseTimer(room, "bb-all-in-wager", this.complexity, () => {
       if (this.phase === "all-in-wager") {
         this.finalizeFinalWagers(room, state);
       }
@@ -852,7 +854,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
-    this.scheduleDelayed(room, ALL_IN_ANSWER_TIMEOUT_MS, () => {
+    this.startPhaseTimer(room, "bb-all-in-answer", this.complexity, () => {
       if (this.phase === "all-in-answer") {
         void this.finalizeFinalAnswers(room, state);
       }
@@ -956,6 +958,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
       return { correct: true, judgedBy: "local", judgeExplanation: null };
     }
 
+    // Pre-compute fuzzy similarity for AI fallback
+    const similarity = stringSimilarity(normalizeAnswer(answer), normalizeAnswer(correctQuestion));
+
     try {
       const { system, user } = buildAnswerJudgePrompt(clueAnswer, correctQuestion, answer);
       const response = await enqueueAIRequest(room.roomId, () =>
@@ -972,7 +977,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
         judgeExplanation: this.normalizeJudgeExplanation(response.parsed.explanation),
       };
     } catch {
-      return { correct: false, judgedBy: "fallback", judgeExplanation: null };
+      // AI unavailable: benefit of the doubt if fuzzy similarity is decent
+      const correct = similarity >= 0.5;
+      return { correct, judgedBy: "fallback", judgeExplanation: null };
     }
   }
 
@@ -1285,7 +1292,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
     this.clearPendingTimer();
-    const delayed = room.clock.setTimeout(callback, delayMs);
+    const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
+    const scale = rawScale ? Number(rawScale) : 1;
+    const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
+    const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
+    const delayed = room.clock.setTimeout(callback, scaledDelay);
     this.pendingTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
   }
 

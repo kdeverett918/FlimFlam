@@ -1,8 +1,8 @@
 "use client";
 
 import { GlassPanel, haptics } from "@flimflam/ui";
-import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface VoteOption {

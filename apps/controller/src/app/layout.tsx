@@ -1,3 +1,4 @@
+import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
@@ -52,6 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-dvh bg-bg-deep font-body text-text-primary antialiased">
+        <ServiceWorkerRegistrar />
         {children}
       </body>
     </html>

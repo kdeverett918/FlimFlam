@@ -42,8 +42,17 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "board-reveal": 4_000,
   answering: 15_000,
   "clue-result": 3_000,
+  "bb-answer": 20_000,
+  "bb-power-play-wager": 20_000,
+  "bb-all-in-wager": 30_000,
+  "bb-all-in-answer": 30_000,
   // Lucky Letters
   "bonus-solve": 10_000,
+  // Survey Smash
+  "ss-face-off": 15_000,
+  "ss-guessing": 30_000,
+  "ss-steal": 20_000,
+  "ss-lightning": 20_000,
 };
 
 export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;

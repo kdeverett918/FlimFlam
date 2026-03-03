@@ -1,7 +1,7 @@
 "use client";
 
 import { getColyseusClient, resolveColyseusHttpUrl } from "@/lib/colyseus-client";
-import { type PlayerData, resolveRoomIdByCode } from "@flimflam/shared";
+import { type PlayerData, RECONNECTION_TIMEOUT_MS, resolveRoomIdByCode } from "@flimflam/shared";
 import type { Room } from "colyseus.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -44,6 +44,7 @@ interface UseRoomReturn {
   everConnected: boolean;
   myPlayer: PlayerData | null;
   ready: boolean;
+  clockOffset: number;
 }
 
 export function useRoom(): UseRoomReturn {
@@ -60,9 +61,12 @@ export function useRoom(): UseRoomReturn {
   const [gameEvents, setGameEvents] = useState<Record<string, Record<string, unknown>>>({});
   const previousPhaseRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const connectedRef = useRef(false);
   const reconnectAttempted = useRef(false);
   const reconnectInProgress = useRef(false);
+  const reconnectEpoch = useRef(0);
   const reconnectFnRef = useRef<(() => void) | null>(null);
+  const clockOffsetRef = useRef(0);
 
   const vibrate = useCallback((duration: number) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -72,9 +76,13 @@ export function useRoom(): UseRoomReturn {
 
   const setupRoomListeners = useCallback(
     (activeRoom: Room) => {
+      // Cancel any in-flight reconnect loops.
+      reconnectEpoch.current += 1;
+
       roomRef.current = activeRoom;
       setRoom(activeRoom);
       setConnected(true);
+      connectedRef.current = true;
       setEverConnected(true);
       setError(null);
 
@@ -167,9 +175,17 @@ export function useRoom(): UseRoomReturn {
         setGameEvents((prev) => ({ ...prev, [msgType]: data }));
       });
 
+      // Clock sync: compute offset between server and client clocks.
+      activeRoom.onMessage("server-time", (data: { serverTime?: number }) => {
+        if (typeof data?.serverTime === "number") {
+          clockOffsetRef.current = data.serverTime - Date.now();
+        }
+      });
+
       // Connection handlers
       activeRoom.onLeave((code) => {
         setConnected(false);
+        connectedRef.current = false;
         if (code !== 1000) {
           setError("Connection lost. Trying to reconnect...");
           reconnectFnRef.current?.();
@@ -231,11 +247,48 @@ export function useRoom(): UseRoomReturn {
     [setupRoomListeners],
   );
 
-  useEffect(() => {
-    reconnectFnRef.current = () => {
-      void reconnect({ clearStaleTokens: false });
-    };
+  const startReconnectLoop = useCallback(() => {
+    const epoch = reconnectEpoch.current + 1;
+    reconnectEpoch.current = epoch;
+
+    setConnected(false);
+    connectedRef.current = false;
+
+    void (async () => {
+      const deadline = Date.now() + RECONNECTION_TIMEOUT_MS - 2000;
+      let attempt = 0;
+
+      while (reconnectEpoch.current === epoch && Date.now() < deadline) {
+        const ok = await reconnect({ clearStaleTokens: false });
+        if (ok) return;
+
+        attempt++;
+
+        // If the browser is explicitly offline, avoid hammering.
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+          await new Promise((resolve) => setTimeout(resolve, 750));
+          continue;
+        }
+
+        const delay = Math.min(250 * 2 ** Math.min(attempt, 4), 4000);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      if (reconnectEpoch.current !== epoch) return;
+
+      // One final attempt: if the token is stale/invalid, clear it so a manual
+      // refresh doesn't get stuck in a bad loop.
+      await reconnect({ clearStaleTokens: true });
+
+      if (!connectedRef.current) {
+        setError("Unable to reconnect. Please refresh to rejoin.");
+      }
+    })();
   }, [reconnect]);
+
+  useEffect(() => {
+    reconnectFnRef.current = () => startReconnectLoop();
+  }, [startReconnectLoop]);
 
   // Try reconnection on mount
   useEffect(() => {
@@ -375,6 +428,26 @@ export function useRoom(): UseRoomReturn {
     }
   }, []);
 
+  // Keep connectedRef in sync.
+  useEffect(() => {
+    connectedRef.current = connected;
+  }, [connected]);
+
+  // If the browser goes offline and comes back, try reconnecting immediately.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onOnline = () => {
+      if (connectedRef.current) return;
+      if (typeof sessionStorage === "undefined") return;
+      if (!sessionStorage.getItem(RECONNECT_TOKEN_KEY)) return;
+      startReconnectLoop();
+    };
+
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [startReconnectLoop]);
+
   return {
     room,
     state,
@@ -390,5 +463,6 @@ export function useRoom(): UseRoomReturn {
     everConnected,
     myPlayer,
     ready,
+    clockOffset: clockOffsetRef.current,
   };
 }

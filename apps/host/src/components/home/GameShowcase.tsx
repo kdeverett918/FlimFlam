@@ -2,8 +2,8 @@
 
 import { GAME_MANIFESTS, GAME_PREVIEW_CONTENT } from "@flimflam/shared";
 import { MotionCard } from "@flimflam/ui";
-import { motion } from "framer-motion";
 import { Users } from "lucide-react";
+import { motion } from "motion/react";
 import { useState } from "react";
 import { GamePreviewDialog } from "./GamePreviewDialog";
 
