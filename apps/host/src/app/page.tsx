@@ -30,6 +30,12 @@ const fadeInUp = {
 export default function HomePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const safeAreaPadding = {
+    paddingTop: "max(4rem, env(safe-area-inset-top))",
+    paddingRight: "max(1rem, env(safe-area-inset-right))",
+    paddingBottom: "max(4rem, env(safe-area-inset-bottom))",
+    paddingLeft: "max(1rem, env(safe-area-inset-left))",
+  } as const;
 
   const handleCreateRoom = useCallback(() => {
     setLoading(true);
@@ -45,7 +51,10 @@ export default function HomePage() {
   );
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-12 px-4 py-16 sm:gap-16 sm:px-6">
+    <main
+      className="flex min-h-[100svh] flex-col items-center justify-center gap-12 sm:gap-16"
+      style={safeAreaPadding}
+    >
       <AnimatedBackground />
 
       {/* Main content */}
