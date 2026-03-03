@@ -173,12 +173,15 @@ test.describe("Host Homepage — Mobile Responsiveness", () => {
 test.describe("Controller Join Page — Mobile Responsiveness", () => {
   for (const vp of MOBILE_VIEWPORTS) {
     test.describe(`@ ${vp.name} (${vp.width}x${vp.height})`, () => {
-      test("page loads and heading is visible", async ({ browser }) => {
+      test("page loads and logo heading is visible", async ({ browser }) => {
         const context = await browser.newContext({
           viewport: { width: vp.width, height: vp.height },
         });
         const page = await context.newPage();
         await page.goto(CONTROLLER_URL);
+
+        const logo = page.locator('img[alt="FLIMFLAM Party Game"]');
+        await expect(logo).toBeVisible({ timeout: 10_000 });
 
         const heading = page.locator("h1");
         await expect(heading).toBeVisible({ timeout: 10_000 });
@@ -270,12 +273,11 @@ test.describe("Controller Join Page — Mobile Responsiveness", () => {
         const box = await joinBtn.boundingBox();
         expect(box).not.toBeNull();
         if (box) {
-          // Button should be >= 48px tall
-          expect(box.height).toBeGreaterThanOrEqual(48);
+          // Button should be >= 48px tall (accounting for scale(0.95) on disabled state)
+          expect(box.height).toBeGreaterThanOrEqual(48 * 0.95);
           // Button should span most of the viewport width (full width minus padding)
-          // The form has max-w-sm (~384px) + px-6 (24px each side), so at small viewports
-          // the button should be close to viewport width minus padding
-          const expectedMinWidth = Math.min(vp.width - 48, 384 - 48); // form padding
+          // Subtract 2px tolerance for sub-pixel rounding and framer-motion scale animation
+          const expectedMinWidth = Math.min(vp.width - 48, 384 - 48) - 2;
           expect(box.width).toBeGreaterThanOrEqual(expectedMinWidth);
         }
 
@@ -299,7 +301,53 @@ test.describe("Controller Join Page — Mobile Responsiveness", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Controller Game UI — Mobile viewports (requires server)
+// 3. Controller Join Page — Desktop viewports
+// ---------------------------------------------------------------------------
+
+test.describe("Controller Join Page — Desktop Responsiveness", () => {
+  for (const vp of DESKTOP_VIEWPORTS) {
+    test(`@ ${vp.name} (${vp.width}x${vp.height}): logo and labels are centered`, async ({
+      browser,
+    }) => {
+      const context = await browser.newContext({
+        viewport: { width: vp.width, height: vp.height },
+      });
+      const page = await context.newPage();
+      await page.goto(CONTROLLER_URL);
+
+      const logo = page.locator('img[alt="FLIMFLAM Party Game"]');
+      await expect(logo).toBeVisible({ timeout: 10_000 });
+
+      const roomCodeLabel = page.getByText("Room Code", { exact: true }).first();
+      const nameLabel = page.locator('label[for="player-name"]').first();
+      const colorLabel = page.getByText("Pick your color", { exact: true }).first();
+      const nameCounter = page.locator("form span.font-mono.text-xs").first();
+
+      await expect(roomCodeLabel).toBeVisible();
+      await expect(nameLabel).toBeVisible();
+      await expect(colorLabel).toBeVisible();
+      await expect(nameCounter).toBeVisible();
+
+      const [roomCodeAlign, nameAlign, colorAlign, counterAlign] = await Promise.all([
+        roomCodeLabel.evaluate((el) => window.getComputedStyle(el).textAlign),
+        nameLabel.evaluate((el) => window.getComputedStyle(el).textAlign),
+        colorLabel.evaluate((el) => window.getComputedStyle(el).textAlign),
+        nameCounter.evaluate((el) => window.getComputedStyle(el).textAlign),
+      ]);
+
+      expect(roomCodeAlign).toBe("center");
+      expect(nameAlign).toBe("center");
+      expect(colorAlign).toBe("center");
+      expect(counterAlign).toBe("center");
+
+      await checkNoHorizontalOverflow(page);
+      await context.close();
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 4. Controller Game UI — Mobile viewports (requires server)
 // ---------------------------------------------------------------------------
 
 test.describe("Controller Game UI — Mobile Responsiveness", () => {
@@ -354,7 +402,7 @@ test.describe("Controller Game UI — Mobile Responsiveness", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Controller WaitingScreen renders correctly
+// 5. Controller WaitingScreen renders correctly
 // ---------------------------------------------------------------------------
 
 test.describe("Controller WaitingScreen — Mobile Responsiveness", () => {
@@ -389,7 +437,7 @@ test.describe("Controller WaitingScreen — Mobile Responsiveness", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Host Lobby — Desktop / Tablet viewports
+// 6. Host Lobby — Desktop / Tablet viewports
 // ---------------------------------------------------------------------------
 
 test.describe("Host Lobby — Desktop Responsiveness", () => {
@@ -453,7 +501,7 @@ test.describe("Host Lobby — Desktop Responsiveness", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Host Lobby with players — room code readable, player slots visible
+// 7. Host Lobby with players — room code readable, player slots visible
 // ---------------------------------------------------------------------------
 
 test.describe("Host Lobby with Players — Layout Integrity", () => {

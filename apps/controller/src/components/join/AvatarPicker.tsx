@@ -23,10 +23,10 @@ interface AvatarPickerProps {
 export function AvatarPicker({ selectedColor, onSelect }: AvatarPickerProps) {
   return (
     <div className="w-full">
-      <span className="mb-2 block font-body text-sm font-medium text-text-muted">
+      <span className="mb-2 block text-center font-body text-sm font-medium text-text-muted">
         Pick your color
       </span>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="mx-auto grid w-fit grid-cols-4 gap-3">
         {AVATAR_COLORS.map((color) => {
           const isSelected = selectedColor === color;
           return (

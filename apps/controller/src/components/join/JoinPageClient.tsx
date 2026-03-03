@@ -1,7 +1,7 @@
 "use client";
 
 import { useRoom } from "@/hooks/useRoom";
-import { AnimatedBackground, GradientText } from "@flimflam/ui";
+import { AnimatedBackground } from "@flimflam/ui";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
@@ -77,36 +77,34 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
       <AnimatedBackground variant="subtle" />
 
       <motion.div
-        className="mb-8 flex w-full max-w-sm flex-col items-center gap-3"
+        className="mb-6 flex w-full max-w-sm flex-col items-center gap-2"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
       >
-        {/* Animated ring behind title */}
-        <motion.div variants={fadeInUp} className="relative">
+        {/* Logo banner */}
+        <motion.div variants={fadeInUp} className="relative flex justify-center">
+          {/* Radial spotlight behind logo */}
           <div
-            className="pointer-events-none absolute -inset-8 -z-10 rounded-full"
+            className="pointer-events-none absolute -inset-16 -z-10"
             style={{
-              background: "radial-gradient(circle, oklch(0.75 0.22 25 / 0.15) 0%, transparent 70%)",
-              filter: "blur(16px)",
+              background:
+                "radial-gradient(ellipse at center, oklch(0.75 0.22 25 / 0.2) 0%, oklch(0.74 0.15 185 / 0.08) 50%, transparent 70%)",
+              filter: "blur(24px)",
             }}
             aria-hidden="true"
           />
-          <h1
-            className="font-display font-extrabold leading-none tracking-tight"
-            style={{
-              fontSize: "clamp(2rem, 10vw, 3rem)",
-            }}
-          >
-            <GradientText
-              animated
+          <h1 className="font-display font-extrabold leading-none tracking-tight">
+            <img
+              src="/flimflam-logo.png"
+              alt="FLIMFLAM Party Game"
+              className="h-auto w-full max-w-[260px] min-[390px]:max-w-[300px] object-contain"
               style={{
-                textShadow:
-                  "0 0 32px oklch(0.78 0.22 25 / 0.5), 0 0 64px oklch(0.78 0.22 25 / 0.2)",
+                filter: "drop-shadow(0 0 32px oklch(0.75 0.22 25 / 0.4))",
               }}
-            >
-              FLIMFLAM
-            </GradientText>
+              aria-hidden="true"
+            />
+            <span className="sr-only">FLIMFLAM</span>
           </h1>
         </motion.div>
         <motion.p variants={fadeInUp} className="font-body text-sm text-text-muted">
