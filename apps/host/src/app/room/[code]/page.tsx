@@ -6,7 +6,7 @@ import { ReactionOverlay } from "@/components/game/ReactionOverlay";
 import { VolumeControl } from "@/components/game/VolumeControl";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
-import { GAME_MANIFESTS } from "@flimflam/shared";
+import { GAME_MANIFESTS, analyzeGameState, getLastRoundCommentary } from "@flimflam/shared";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRoomContext } from "../RoomProvider";
@@ -35,6 +35,7 @@ export default function RoomPage() {
   const initialized = useRef(false);
   const [showTransition, setShowTransition] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("");
+  const [transitionSubtitle, setTransitionSubtitle] = useState<string | null>(null);
   const prevPhase = useRef(gameState.phase);
 
   // Connect to room on mount.
@@ -94,17 +95,39 @@ export default function RoomPage() {
 
   // Phase transition effect
   useEffect(() => {
-    if (prevPhase.current !== gameState.phase && gameState.phase !== "lobby") {
-      const label = formatPhaseLabel(gameState.phase);
+    if (gameState.phase === "lobby") {
+      setShowTransition(false);
+      prevPhase.current = gameState.phase;
+      return;
+    }
+
+    if (prevPhase.current !== gameState.phase) {
+      let label = formatPhaseLabel(gameState.phase);
+      const isLastRound = gameState.round === gameState.totalRounds && gameState.round > 0;
+
+      // Override label for final round transition phases
+      if (
+        isLastRound &&
+        (gameState.phase === "round-transition" || gameState.phase === "round-intro")
+      ) {
+        label = "FINAL ROUND";
+      }
+
       if (label) {
         setTransitionLabel(label);
+        // Generate dynamic commentary from game standings
+        const standings = gameState.playerList
+          .filter((p) => !p.isHost)
+          .map((p) => ({ name: p.name, score: p.score }));
+        const commentary = analyzeGameState(standings, isLastRound);
+        setTransitionSubtitle(commentary ?? (isLastRound ? getLastRoundCommentary() : null));
         setShowTransition(true);
         const timer = setTimeout(() => setShowTransition(false), 2000);
         return () => clearTimeout(timer);
       }
     }
     prevPhase.current = gameState.phase;
-  }, [gameState.phase]);
+  }, [gameState.phase, gameState.playerList, gameState.round, gameState.totalRounds]);
 
   if (!connected || !room) {
     const isCreateRoute = routeCode === "NEW" || routeCode.length !== 4;
@@ -137,6 +160,8 @@ export default function RoomPage() {
           gameId={gameState.selectedGameId}
           round={gameState.round}
           totalRounds={gameState.totalRounds}
+          subtitle={transitionSubtitle}
+          isFinalRound={gameState.round === gameState.totalRounds && gameState.round > 0}
         />
       )}
 

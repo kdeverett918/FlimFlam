@@ -1,16 +1,25 @@
 "use client";
 
 import { AnimatedBackground, GAME_THEMES, type GameTheme } from "@flimflam/ui";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 
 interface PhaseTransitionProps {
   label: string;
   gameId?: string;
   round?: number;
   totalRounds?: number;
+  subtitle?: string | null;
+  isFinalRound?: boolean;
 }
 
-export function PhaseTransition({ label, gameId, round, totalRounds }: PhaseTransitionProps) {
+export function PhaseTransition({
+  label,
+  gameId,
+  round,
+  totalRounds,
+  subtitle,
+  isFinalRound,
+}: PhaseTransitionProps) {
   const theme = gameId ? GAME_THEMES[gameId as GameTheme] : undefined;
   const accentColor = theme?.primaryBlob ?? "oklch(0.72 0.22 25)";
   const secondColor = theme?.secondaryBlob ?? "oklch(0.70 0.15 185)";
@@ -23,7 +32,7 @@ export function PhaseTransition({ label, gameId, round, totalRounds }: PhaseTran
       transition={{ duration: 0.5 }}
       className="fixed inset-0 z-50 flex items-center justify-center"
     >
-      <AnimatedBackground gameId={gameId} />
+      <AnimatedBackground gameId={gameId} isFinalRound={isFinalRound} />
 
       {/* White flash overlay */}
       <motion.div
@@ -76,6 +85,17 @@ export function PhaseTransition({ label, gameId, round, totalRounds }: PhaseTran
             className="font-display text-[36px] font-semibold text-text-muted"
           >
             Round {round}/{totalRounds}
+          </motion.p>
+        )}
+        {subtitle && (
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ delay: 0.6 }}
+            className="font-display text-[28px] italic text-text-muted/80"
+          >
+            {subtitle}
           </motion.p>
         )}
       </motion.div>

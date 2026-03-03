@@ -2,8 +2,9 @@
 
 import { GameShowcase } from "@/components/home/GameShowcase";
 import { AnimatedBackground } from "@flimflam/ui";
-import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { motion } from "motion/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
@@ -76,9 +77,12 @@ export default function HomePage() {
             }}
             aria-hidden="true"
           />
-          <img
+          <Image
             src="/flimflam-logo.png"
             alt="FLIMFLAM Party Game"
+            width={560}
+            height={140}
+            priority
             className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
           />
           <span className="sr-only">FLIMFLAM</span>

@@ -748,8 +748,19 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.sendAllPrivateData(room, state);
         break;
       case "letter-result":
+        // Skip the letter-result delay — if puzzle solved end round, otherwise go to spinning
+        if (
+          this.currentPuzzle &&
+          isPuzzleFullyRevealed(this.currentPuzzle.phrase, this.revealedLetters)
+        ) {
+          this.endRound(room, state, this.turnOrder[this.currentTurnIndex] ?? null);
+        } else {
+          this.goToPlayerChoice(room, state);
+        }
+        break;
       case "round-result":
-        // These auto-advance, just speed them up
+        // Skip the round-result delay — start next round
+        this.startNextRound(room, state);
         break;
       case "bonus-reveal":
         this.goToFinalScores(room, state);
@@ -1036,7 +1047,11 @@ class LuckyLettersPlugin extends BaseGamePlugin {
    */
   private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
     this.clearPendingTimer();
-    const delayed = room.clock.setTimeout(callback, delayMs);
+    const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
+    const scale = rawScale ? Number(rawScale) : 1;
+    const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
+    const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
+    const delayed = room.clock.setTimeout(callback, scaledDelay);
     this.pendingTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
   }
 

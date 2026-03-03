@@ -1,75 +1,34 @@
 import { expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import {
+  createRoom,
+  driveSurveySmashKidsToFinalScores,
+  joinControllersForRoom,
+  selectGameAndStart,
+  waitForColyseusHealthy,
+} from "./e2e-helpers";
 
-test("bluff engine game completes end-to-end", async ({ page, browser }) => {
-  await page.goto("/");
+test.describe("Survey Smash Flow", () => {
+  test("completes kids-mode game to final scores with deterministic host controls", async ({
+    page,
+    browser,
+  }) => {
+    await page.goto("/");
+    await waitForColyseusHealthy(page);
 
-  await waitForColyseusHealthy(page);
-  const { code } = await createRoom(page);
+    const { code } = await createRoom(page);
+    const joined = await joinControllersForRoom(browser, page, code, ["Mia", "Noah", "Ava"]);
+    const controllerPages = joined.map((c) => c.controllerPage);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
-  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
+    await selectGameAndStart(page, { gameName: "Survey Smash", complexity: "kids" });
+    await driveSurveySmashKidsToFinalScores(page, controllerPages);
 
-  // Select game and set difficulty.
-  await page.getByRole("button", { name: /bluff engine/i }).click();
-  await page.getByRole("button", { name: /^kids/i }).click();
+    await expect(page.getByText("Mia", { exact: true })).toBeVisible();
+    await expect(page.getByText("Noah", { exact: true })).toBeVisible();
+    await expect(page.getByText("Ava", { exact: true })).toBeVisible();
 
-  // Start game.
-  const startButton = page.getByRole("button", { name: /start the game/i });
-  await expect(startButton).toBeEnabled();
-  await startButton.click();
-
-  // Play 3 rounds (kids mode).
-  for (let i = 0; i < 3; i++) {
-    const a = `alice bluff ${i}`;
-    const b = `bob bluff ${i}`;
-    const c = `casey bluff ${i}`;
-
-    await Promise.all([
-      c1.controllerPage.locator("textarea").waitFor(),
-      c2.controllerPage.locator("textarea").waitFor(),
-      c3.controllerPage.locator("textarea").waitFor(),
-    ]);
-
-    await Promise.all([
-      c1.controllerPage.locator("textarea").fill(a),
-      c2.controllerPage.locator("textarea").fill(b),
-      c3.controllerPage.locator("textarea").fill(c),
-    ]);
-
-    const submit1 = c1.controllerPage.getByRole("button", { name: /^submit$/i });
-    const submit2 = c2.controllerPage.getByRole("button", { name: /^submit$/i });
-    const submit3 = c3.controllerPage.getByRole("button", { name: /^submit$/i });
-
-    await Promise.all([submit1.click(), submit2.click(), submit3.click()]);
-
-    const confirm1 = c1.controllerPage.getByRole("button", { name: /confirm vote/i });
-    const confirm2 = c2.controllerPage.getByRole("button", { name: /confirm vote/i });
-    const confirm3 = c3.controllerPage.getByRole("button", { name: /confirm vote/i });
-
-    await Promise.all([confirm1.waitFor(), confirm2.waitFor(), confirm3.waitFor()]);
-
-    // Select any enabled option (the server disables each player's own answer).
-    await Promise.all([
-      c1.controllerPage.locator("button:not([disabled])").first().click(),
-      c2.controllerPage.locator("button:not([disabled])").first().click(),
-      c3.controllerPage.locator("button:not([disabled])").first().click(),
-    ]);
-
-    await Promise.all([confirm1.click(), confirm2.click(), confirm3.click()]);
-  }
-
-  await page.waitForFunction(() => document.body.innerText.includes("FINAL SCORES"), null, {
-    timeout: 60_000,
+    for (const controller of joined) {
+      await controller.context.close();
+    }
   });
-  await expect(page.getByRole("heading", { name: /^FINAL SCORES$/ })).toBeVisible();
-  await expect(page.getByText("Alice")).toBeVisible();
-  await expect(page.getByText("Bob")).toBeVisible();
-  await expect(page.getByText("Casey")).toBeVisible();
-
-  await c1.context.close();
-  await c2.context.close();
-  await c3.context.close();
 });

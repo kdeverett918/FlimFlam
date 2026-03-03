@@ -134,3 +134,18 @@ export type { ResolveRoomIdResult } from "./utils/colyseus";
 export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";
 
 export { fuzzyMatch, normalizeAnswer, stringSimilarity } from "./utils/fuzzy-match";
+
+// Commentary & Awards
+export {
+  getStreakCommentary,
+  getComebackCommentary,
+  getCloseGameCommentary,
+  getBlowoutCommentary,
+  getLastRoundCommentary,
+  getCorrectCommentary,
+  getWrongCommentary,
+  analyzeGameState,
+  generateAwards,
+} from "./commentary";
+
+export type { GameAward } from "./commentary";

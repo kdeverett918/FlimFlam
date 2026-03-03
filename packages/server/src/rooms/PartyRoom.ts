@@ -32,6 +32,7 @@ export class PartyRoom extends Room<RoomState> {
   private _hostToken: string | null = null;
 
   private _lastReactionAt = new Map<string, number>();
+  private _clientMsgRate = new Map<string, { count: number; resetAt: number }>();
 
   private _getOrCreateHostToken(): string {
     if (!this._hostToken) {
@@ -319,6 +320,16 @@ export class PartyRoom extends Room<RoomState> {
 
     // Wildcard handler: delegate all other messages to the current game plugin
     this.onMessage("*", (client, type, data) => {
+      // Per-client rate limiting: 30 messages per 1-second window
+      const now = Date.now();
+      const rate = this._clientMsgRate.get(client.sessionId);
+      if (!rate || rate.resetAt <= now) {
+        this._clientMsgRate.set(client.sessionId, { count: 1, resetAt: now + 1000 });
+      } else {
+        rate.count++;
+        if (rate.count > 30) return;
+      }
+
       const internalTypes = new Set<string>([
         "host:request_token",
         "host:select-game",
@@ -344,8 +355,37 @@ export class PartyRoom extends Room<RoomState> {
         return;
       }
 
+      // Basic input validation before delegating to game plugins
+      if (typeof type !== "string" || type.length > 64) {
+        return; // Reject non-string or absurdly long message types
+      }
+
+      // Player messages must come from actual players (not the host client)
+      if (type.startsWith("player:") && client.sessionId === this.state.hostSessionId) {
+        return;
+      }
+
+      // Ensure data is a plain object (not null, array, or primitive)
+      if (
+        data !== null &&
+        data !== undefined &&
+        (typeof data !== "object" || Array.isArray(data))
+      ) {
+        return;
+      }
+
+      // Sanitize string fields — truncate to prevent abuse
+      if (data && typeof data === "object") {
+        for (const key of Object.keys(data as Record<string, unknown>)) {
+          const val = (data as Record<string, unknown>)[key];
+          if (typeof val === "string" && val.length > 1000) {
+            (data as Record<string, unknown>)[key] = val.slice(0, 1000);
+          }
+        }
+      }
+
       if (this._currentPlugin && this.state.lobbyPhase === "in-game") {
-        this._currentPlugin.onPlayerMessage(this, this.state, client, type as string, data);
+        this._currentPlugin.onPlayerMessage(this, this.state, client, type, data);
       }
     });
   }
@@ -355,6 +395,9 @@ export class PartyRoom extends Room<RoomState> {
     options: { name?: string; isHost?: boolean; hostToken?: unknown; color?: string },
   ): void {
     this._resetIdleTimeout();
+
+    // Send server clock for client-side timer sync.
+    this.send(client, "server-time", { serverTime: Date.now() });
 
     if (options.isHost) {
       // Host connects as a non-playing client. Players join from their own devices.
@@ -427,6 +470,8 @@ export class PartyRoom extends Room<RoomState> {
   }
 
   async onLeave(client: Client, consented: boolean): Promise<void> {
+    this._clientMsgRate.delete(client.sessionId);
+
     const isHostClient = client.sessionId === this.state.hostSessionId;
 
     const player = this.state.players.get(client.sessionId);
@@ -450,6 +495,8 @@ export class PartyRoom extends Room<RoomState> {
         if (player) {
           player.connected = true;
         }
+        // Re-sync clock after reconnection.
+        this.send(client, "server-time", { serverTime: Date.now() });
         return;
       }
     } catch {

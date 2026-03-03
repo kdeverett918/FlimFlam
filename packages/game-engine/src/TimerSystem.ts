@@ -10,14 +10,20 @@ import {
  * Returns the duration in milliseconds.
  */
 export function computePhaseDuration(phase: string, complexity: Complexity): number {
-  const baseMs = DEFAULT_PHASE_TIMERS[phase] ?? 30_000;
+  const baseMs = DEFAULT_PHASE_TIMERS[phase];
+  if (baseMs === undefined) {
+    console.warn(
+      `[TimerSystem] No timer configured for phase "${phase}", falling back to 30s. Add it to DEFAULT_PHASE_TIMERS in packages/shared/src/constants.ts`,
+    );
+  }
+  const resolvedMs = baseMs ?? 30_000;
   const multiplier = COMPLEXITY_TIMER_MULTIPLIERS[complexity];
 
   const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
   const scale = rawScale ? Number(rawScale) : 1;
   const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
 
-  return Math.max(250, Math.round(baseMs * multiplier * safeScale));
+  return Math.max(250, Math.round(resolvedMs * multiplier * safeScale));
 }
 
 /**

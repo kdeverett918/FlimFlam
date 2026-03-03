@@ -12,6 +12,8 @@ export interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivEle
   secondaryColor?: string;
   /** Use per-game blob colors from GAME_THEMES */
   gameId?: string;
+  /** Shift to warmer/more intense tones for final round tension */
+  isFinalRound?: boolean;
 }
 
 function AnimatedBackground({
@@ -19,6 +21,7 @@ function AnimatedBackground({
   primaryColor,
   secondaryColor,
   gameId,
+  isFinalRound,
   className,
   ...props
 }: AnimatedBackgroundProps) {
@@ -33,6 +36,12 @@ function AnimatedBackground({
       coral = theme.primaryBlob;
       teal = theme.secondaryBlob;
     }
+  }
+
+  // Shift to warmer, more intense colors in final round
+  if (isFinalRound) {
+    coral = "oklch(0.68 0.28 25)";
+    teal = "oklch(0.60 0.20 15)";
   }
 
   return (

@@ -17,7 +17,6 @@ import {
 const FUZZY_THRESHOLD = 0.7;
 const MAX_STRIKES = 3;
 const LIGHTNING_QUESTION_COUNT = 5;
-const LIGHTNING_TIMER_MS = 20_000;
 const LIGHTNING_BONUS_THRESHOLD = 200;
 const LIGHTNING_BONUS_POINTS = 10_000;
 
@@ -28,9 +27,6 @@ const ROUND_COUNTS: Record<Complexity, number> = {
 };
 
 const PHASE_REVEAL_DELAY_MS = 3_000;
-const FACE_OFF_TIMER_MS = 15_000;
-const GUESSING_TIMER_MS = 30_000;
-const STEAL_TIMER_MS = 20_000;
 const ANSWER_REVEAL_DELAY_MS = 5_000;
 const ROUND_RESULT_DELAY_MS = 5_000;
 const LIGHTNING_REVEAL_DELAY_MS = 8_000;
@@ -157,6 +153,7 @@ function findMatchingAnswer(
 
 function buildHostData(gs: SurveySmashInternalState): Record<string, unknown> {
   return {
+    type: "game-state",
     action: "survey-smash-state",
     phase: gs.phase,
     round: gs.round,
@@ -272,7 +269,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   private gs: SurveySmashInternalState = this._freshState();
   private _room: Room | null = null;
   private _roomState: Schema | null = null;
-  private _phaseTimeout: ReturnType<typeof setTimeout> | null = null;
+  private _phaseTimeout: { clear: () => void } | null = null;
 
   private _freshState(): SurveySmashInternalState {
     return {
@@ -428,8 +425,42 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
   onPlayerLeave(room: Room, state: Schema, sessionId: string, consented: boolean): void {
     super.onPlayerLeave(room, state, sessionId, consented);
-    // Remove from allPlayerIds if they fully leave
-    // (they stay for reconnect window; plugin doesn't force-end)
+
+    // Handle active-player disconnect during critical phases
+    if (this.gs.phase === "guessing") {
+      const currentGuesser = this.gs.guessingOrder[this.gs.currentGuesserIndex];
+      if (sessionId === currentGuesser) {
+        // Current guesser disconnected — treat as a strike
+        this._recordStrike(room, state);
+      }
+    } else if (this.gs.phase === "face-off") {
+      if (this.gs.faceOffPlayers.includes(sessionId) && !this.gs.faceOffResolved) {
+        // Check if all face-off players have either submitted or disconnected
+        const allResolved = this.gs.faceOffPlayers.every((pid) => {
+          if (this.gs.faceOffEntries.some((e) => e.sessionId === pid)) return true;
+          if (pid === sessionId) return true; // the one leaving now
+          return false;
+        });
+        if (allResolved) {
+          this._resolveFaceOff(room, state);
+        }
+      }
+    } else if (this.gs.phase === "lightning-round") {
+      if (sessionId === this.gs.lightningPlayerId) {
+        // Lightning player disconnected — record no-answer for remaining questions and finish
+        this._clearPhaseTimeout();
+        const q = this.gs.lightningQuestions[this.gs.lightningCurrentIndex];
+        if (q) {
+          this.gs.lightningAnswers.push({
+            question: q.question,
+            answer: "(disconnected)",
+            points: 0,
+            matched: false,
+          });
+        }
+        this._advanceLightning(room);
+      }
+    }
   }
 
   onPlayerReconnect(room: Room, state: Schema, client: Client): void {
@@ -509,14 +540,19 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
   private _clearPhaseTimeout(): void {
     if (this._phaseTimeout !== null) {
-      clearTimeout(this._phaseTimeout);
+      this._phaseTimeout.clear();
       this._phaseTimeout = null;
     }
   }
 
   private _scheduleTimeout(delayMs: number, callback: () => void): void {
     this._clearPhaseTimeout();
-    this._phaseTimeout = setTimeout(callback, delayMs);
+    if (!this._room) return;
+    const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
+    const scale = rawScale ? Number(rawScale) : 1;
+    const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
+    const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
+    this._phaseTimeout = this._room.clock.setTimeout(callback, scaledDelay);
   }
 
   // ─── Phase Transitions ─────────────────────────────────────────────
@@ -580,7 +616,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     }
 
     // Timer for face-off
-    this._scheduleTimeout(FACE_OFF_TIMER_MS, () => {
+    this.startPhaseTimer(room, "ss-face-off", this.gs.complexity, () => {
       this._resolveFaceOff(room, state);
     });
   }
@@ -701,7 +737,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this._notifyCurrentGuesser(room);
 
     // Timer
-    this._scheduleTimeout(GUESSING_TIMER_MS, () => {
+    this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
       // Time ran out for this guess: count as strike
       this._recordStrike(room, state);
     });
@@ -775,7 +811,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
       this._notifyCurrentGuesser(room);
 
       // Reset timer
-      this._scheduleTimeout(GUESSING_TIMER_MS, () => {
+      this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
         this._recordStrike(room, state);
       });
     } else {
@@ -809,7 +845,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
         this._broadcastGameData(room);
         this._notifyCurrentGuesser(room);
 
-        this._scheduleTimeout(GUESSING_TIMER_MS, () => {
+        this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
           this._recordStrike(room, state);
         });
       });
@@ -848,7 +884,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     });
 
     // Timer
-    this._scheduleTimeout(STEAL_TIMER_MS, () => {
+    this.startPhaseTimer(room, "ss-steal", this.gs.complexity, () => {
       // Time ran out: controlling team keeps points
       this._resolveSteal(room, state, false);
     });
@@ -1003,7 +1039,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
       totalQuestions: this.gs.lightningQuestions.length,
     });
 
-    this._scheduleTimeout(LIGHTNING_TIMER_MS, () => {
+    this.startPhaseTimer(room, "ss-lightning", this.gs.complexity, () => {
       // Time ran out: record 0 points
       this.gs.lightningAnswers.push({
         question: q.question,
@@ -1132,9 +1168,16 @@ class SurveySmashPlugin extends BaseGamePlugin {
         case "face-off":
           this._resolveFaceOff(room, state);
           break;
+        case "guessing":
+        case "steal-chance":
+          this._goToAnswerReveal(room, state);
+          break;
         case "strike":
         case "answer-reveal":
           this._goToRoundResult(room, state);
+          break;
+        case "lightning-round":
+          this._finishLightning(room);
           break;
         case "round-result":
           if (this.gs.round >= this.gs.totalRounds) {

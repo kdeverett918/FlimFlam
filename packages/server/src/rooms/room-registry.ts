@@ -1,3 +1,18 @@
+/**
+ * Redis Migration Path
+ * --------------------
+ * When scaling beyond a single process, replace this in-memory Map with Redis:
+ *
+ * 1. Use `ioredis` as the Redis client.
+ * 2. Store room codes via HSET/HGET/HDEL:
+ *      HSET  room:codes  <code>  <roomId>
+ *      HGET  room:codes  <code>
+ *      HDEL  room:codes  <code>
+ * 3. Set per-key EXPIRE (e.g. 4 hours) for auto-cleanup of stale codes.
+ * 4. Configure Colyseus with RedisPresence and RedisDriver for
+ *    multi-process / multi-region room discovery.
+ */
+
 type RoomIndexEntry = {
   roomId: string;
   createdAt: number;

@@ -1,10 +1,10 @@
 "use client";
 
 import type { PlayerData } from "@flimflam/shared";
-import { AVATAR_COLORS } from "@flimflam/shared";
+import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
 import { ConfettiBurst, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FinalScoresLayout, buildScores } from "../game/FinalScoresLayout";
 import { Timer } from "../game/Timer";
@@ -166,7 +166,8 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
 
   useEffect(() => {
     if (!room) return;
-    room.onMessage("game-data", handleMessage);
+    const unsub = room.onMessage("game-data", handleMessage);
+    return () => unsub();
   }, [room, handleMessage]);
 
   if (!gameState) {
@@ -558,6 +559,53 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
           </motion.span>
         )}
 
+        {/* Individual player answers */}
+        {clueResult.results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-wrap justify-center gap-3 max-w-4xl"
+          >
+            {clueResult.results.map((result) => {
+              const pName = getPlayerName(players, result.sessionId);
+              const pColor = getPlayerColor(players, result.sessionId);
+              return (
+                <div
+                  key={result.sessionId}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 ${
+                    result.correct
+                      ? "bg-success/15 border border-success/30"
+                      : result.answer
+                        ? "bg-accent-6/10 border border-accent-6/20"
+                        : "bg-white/5 border border-white/10"
+                  }`}
+                >
+                  <PlayerAvatar name={pName} color={pColor} size={28} />
+                  <span className="font-body text-[16px] text-text-primary">{pName}</span>
+                  <span
+                    className={`font-body text-[14px] italic ${
+                      result.correct ? "text-success" : "text-text-muted"
+                    }`}
+                  >
+                    {result.answer || "(no answer)"}
+                  </span>
+                  {result.delta !== 0 && (
+                    <span
+                      className={`font-mono text-[14px] font-bold ${
+                        result.delta > 0 ? "text-success" : "text-accent-6"
+                      }`}
+                    >
+                      {result.delta > 0 ? "+" : ""}
+                      {result.delta}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </motion.div>
+        )}
+
         <ConfettiBurst trigger={anyCorrect} preset="correct" />
       </div>
     );
@@ -761,11 +809,23 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
   // ── Final Scores ────────────────────────────────────────────────────────
   if (phase === "final-scores") {
     const scores = buildScores(players);
+    const awards = generateAwards(
+      players
+        .filter((p) => !p.isHost)
+        .map((p) => ({
+          name: p.name,
+          sessionId: p.sessionId,
+          score: p.score,
+          correctCount: p.progressOrCustomInt,
+        })),
+      "brain-board",
+    );
     return (
       <FinalScoresLayout
         scores={scores}
         accentColorClass="text-accent-brainboard"
         gameId="brain-board"
+        gameAwards={awards}
         room={room}
       />
     );

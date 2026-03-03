@@ -4,7 +4,8 @@ import type { Complexity, PlayerData } from "@flimflam/shared";
 import { MIN_PLAYERS } from "@flimflam/shared";
 import { AnimatedBackground, GameThemeProvider, GlassPanel, useGameTheme } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
+import Image from "next/image";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { ComplexityPicker } from "./ComplexityPicker";
@@ -96,9 +97,12 @@ function LobbyContent({
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 flex-col gap-12 p-6 sm:p-10 md:p-16">
         {/* Logo header */}
         <div className="flex justify-center">
-          <img
+          <Image
             src="/flimflam-logo.png"
             alt="FLIMFLAM Party Game"
+            width={480}
+            height={120}
+            priority
             className="h-auto w-full max-w-[480px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
           />
         </div>

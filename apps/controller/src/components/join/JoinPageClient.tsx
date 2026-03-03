@@ -2,7 +2,8 @@
 
 import { useRoom } from "@/hooks/useRoom";
 import { AnimatedBackground } from "@flimflam/ui";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect } from "react";
 import { JoinForm } from "./JoinForm";
@@ -95,9 +96,12 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
             aria-hidden="true"
           />
           <h1 className="font-display font-extrabold leading-none tracking-tight">
-            <img
+            <Image
               src="/flimflam-logo.png"
               alt="FLIMFLAM Party Game"
+              width={300}
+              height={75}
+              priority
               className="h-auto w-full max-w-[260px] min-[390px]:max-w-[300px] object-contain"
               style={{
                 filter: "drop-shadow(0 0 32px oklch(0.75 0.22 25 / 0.4))",

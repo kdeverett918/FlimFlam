@@ -2,8 +2,8 @@
 
 import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
-import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { motion } from "motion/react";
 
 interface GameSelectorProps {
   selectedGameId: string;

@@ -34,6 +34,7 @@ interface UseRoomReturn {
   reconnecting: boolean;
   roomCode: string | null;
   ready: boolean;
+  clockOffset: number;
 }
 
 const RECONNECT_TOKEN_KEY = "flimflam_host_reconnect_token";
@@ -86,6 +87,7 @@ export function useRoom(): UseRoomReturn {
   const reconnectInProgress = useRef(false);
   const reconnectEpoch = useRef(0);
   const reconnectFnRef = useRef<(() => void) | null>(null);
+  const clockOffsetRef = useRef(0);
 
   const attachListeners = useCallback((joinedRoom: Room) => {
     // Cancel any reconnect loops.
@@ -224,6 +226,13 @@ export function useRoom(): UseRoomReturn {
 
     joinedRoom.onMessage("error", (data: { message: string }) => {
       setError(data.message);
+    });
+
+    // Clock sync: compute offset between server and client clocks.
+    joinedRoom.onMessage("server-time", (data: { serverTime?: number }) => {
+      if (typeof data?.serverTime === "number") {
+        clockOffsetRef.current = data.serverTime - Date.now();
+      }
     });
 
     joinedRoom.onLeave((code: number) => {
@@ -550,5 +559,6 @@ export function useRoom(): UseRoomReturn {
     reconnecting,
     roomCode,
     ready,
+    clockOffset: clockOffsetRef.current,
   };
 }

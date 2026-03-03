@@ -19,16 +19,16 @@ import {
 // ─── Board Generation Tests ───────────────────────────────────────────────
 
 describe("board generation", () => {
-  it("kids has 7 boards", () => {
-    expect(KIDS_BOARDS).toHaveLength(7);
+  it("kids has 11 boards", () => {
+    expect(KIDS_BOARDS).toHaveLength(11);
   });
 
-  it("standard has 7 boards", () => {
-    expect(STANDARD_BOARDS).toHaveLength(7);
+  it("standard has 11 boards", () => {
+    expect(STANDARD_BOARDS).toHaveLength(11);
   });
 
-  it("advanced has 7 boards", () => {
-    expect(ADVANCED_BOARDS).toHaveLength(7);
+  it("advanced has 11 boards", () => {
+    expect(ADVANCED_BOARDS).toHaveLength(11);
   });
 
   it("getClueBank returns correct bank for each complexity", () => {

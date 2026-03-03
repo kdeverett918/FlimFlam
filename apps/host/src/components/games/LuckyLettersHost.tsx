@@ -1,10 +1,10 @@
 "use client";
 
 import type { PlayerData } from "@flimflam/shared";
-import { AVATAR_COLORS } from "@flimflam/shared";
+import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
 import { ConfettiBurst, GlassPanel } from "@flimflam/ui";
 import type { Room } from "colyseus.js";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { FinalScoresLayout, buildScores } from "../game/FinalScoresLayout";
 import { Timer } from "../game/Timer";
@@ -264,58 +264,82 @@ const WHEEL_VISUAL_SEGMENTS: Array<{ type: string; label: string; color: string 
 function WheelSpinner({
   spinning,
   angle,
+  landed,
 }: {
   spinning: boolean;
   angle: number;
+  landed?: { type: string; label: string } | null;
 }) {
   const segments = WHEEL_VISUAL_SEGMENTS;
   const segAngle = 360 / segments.length;
+  const wheelSize = 420;
 
   return (
-    <div className="relative" style={{ width: 280, height: 280 }}>
+    <div className="relative" style={{ width: wheelSize, height: wheelSize }}>
       {/* Pointer */}
       <div
-        className="absolute -top-3 left-1/2 z-10 -translate-x-1/2"
+        className="absolute -top-4 left-1/2 z-10 -translate-x-1/2"
         style={{
           width: 0,
           height: 0,
-          borderLeft: "14px solid transparent",
-          borderRight: "14px solid transparent",
-          borderTop: "28px solid oklch(0.82 0.2 85)",
-          filter: "drop-shadow(0 2px 6px oklch(0 0 0 / 0.5))",
+          borderLeft: "16px solid transparent",
+          borderRight: "16px solid transparent",
+          borderTop: "34px solid oklch(0.82 0.2 85)",
+          filter: "drop-shadow(0 3px 8px oklch(0 0 0 / 0.6))",
+        }}
+      />
+      {/* Glow ring behind wheel */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          boxShadow: spinning
+            ? "0 0 60px oklch(0.82 0.18 85 / 0.4), 0 0 120px oklch(0.82 0.18 85 / 0.15)"
+            : landed
+              ? `0 0 40px ${landed.type === "bust" ? "oklch(0.68 0.25 20 / 0.5)" : landed.type === "wild" ? "oklch(0.65 0.22 300 / 0.5)" : "oklch(0.82 0.18 85 / 0.3)"}`
+              : "0 0 20px oklch(0.82 0.18 85 / 0.15)",
+          transition: "box-shadow 0.5s ease",
         }}
       />
       {/* Wheel */}
       <motion.div
-        className="h-full w-full rounded-full border-4 border-accent-luckyletters/50 overflow-hidden"
+        className="relative h-full w-full rounded-full border-4 border-accent-luckyletters/60 overflow-hidden"
         animate={{ rotate: spinning ? angle + 1800 : angle }}
-        transition={spinning ? { duration: 3, ease: [0.2, 0.8, 0.3, 1] } : { duration: 0 }}
+        transition={spinning ? { duration: 3.5, ease: [0.15, 0.85, 0.25, 1] } : { duration: 0 }}
         style={{ transformOrigin: "center center" }}
       >
         <svg viewBox="0 0 200 200" className="h-full w-full">
           <title>Lucky Letters spinner</title>
+          <defs>
+            {segments.map((seg, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: static wheel segments
+              <radialGradient key={`grad-${i}`} id={`seg-grad-${i}`} cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor={seg.color} stopOpacity="0.85" />
+                <stop offset="100%" stopColor={seg.color} stopOpacity="1" />
+              </radialGradient>
+            ))}
+          </defs>
           {segments.map((seg, i) => {
             const startAngle = (i * segAngle * Math.PI) / 180;
             const endAngle = ((i + 1) * segAngle * Math.PI) / 180;
-            const x1 = 100 + 100 * Math.cos(startAngle);
-            const y1 = 100 + 100 * Math.sin(startAngle);
-            const x2 = 100 + 100 * Math.cos(endAngle);
-            const y2 = 100 + 100 * Math.sin(endAngle);
+            const x1 = 100 + 98 * Math.cos(startAngle);
+            const y1 = 100 + 98 * Math.sin(startAngle);
+            const x2 = 100 + 98 * Math.cos(endAngle);
+            const y2 = 100 + 98 * Math.sin(endAngle);
             const largeArc = segAngle > 180 ? 1 : 0;
 
             const midAngle = ((i + 0.5) * segAngle * Math.PI) / 180;
-            const textX = 100 + 60 * Math.cos(midAngle);
-            const textY = 100 + 60 * Math.sin(midAngle);
+            const textX = 100 + 62 * Math.cos(midAngle);
+            const textY = 100 + 62 * Math.sin(midAngle);
             const textRot = (i + 0.5) * segAngle;
 
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: static wheel segments never reorder
               <g key={`seg-${i}`}>
                 <path
-                  d={`M100,100 L${x1},${y1} A100,100 0 ${largeArc},1 ${x2},${y2} Z`}
-                  fill={seg.color}
-                  stroke="oklch(0.12 0.025 248)"
-                  strokeWidth="1"
+                  d={`M100,100 L${x1},${y1} A98,98 0 ${largeArc},1 ${x2},${y2} Z`}
+                  fill={`url(#seg-grad-${i})`}
+                  stroke="oklch(0.08 0.02 248)"
+                  strokeWidth="0.5"
                 />
                 <text
                   x={textX}
@@ -323,15 +347,26 @@ function WheelSpinner({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="white"
-                  fontSize="5"
+                  fontSize={seg.type === "cash" ? "5" : "5.5"}
                   fontWeight="bold"
                   transform={`rotate(${textRot}, ${textX}, ${textY})`}
+                  style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
                 >
                   {seg.label}
                 </text>
               </g>
             );
           })}
+          {/* Center hub */}
+          <circle
+            cx="100"
+            cy="100"
+            r="12"
+            fill="oklch(0.15 0.02 248)"
+            stroke="oklch(0.82 0.18 85)"
+            strokeWidth="2"
+          />
+          <circle cx="100" cy="100" r="4" fill="oklch(0.82 0.18 85)" />
         </svg>
       </motion.div>
     </div>
@@ -493,7 +528,15 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
         />
 
         <div className="flex items-center gap-6 mt-4">
-          <WheelSpinner spinning={isSpinning} angle={spinResult?.angle ?? 0} />
+          <WheelSpinner
+            spinning={isSpinning}
+            angle={spinResult?.angle ?? 0}
+            landed={
+              !isSpinning && lastSpin
+                ? { type: lastSpin.segment.type, label: lastSpin.segment.label }
+                : null
+            }
+          />
 
           <div className="flex flex-col items-center gap-3">
             <PlayerAvatar name={currentName} color={currentColor} size={72} />
@@ -823,11 +866,23 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
   // ── Final Scores ────────────────────────────────────────────────────────
   if (phase === "final-scores") {
     const scores = buildScores(players);
+    const awards = generateAwards(
+      players
+        .filter((p) => !p.isHost)
+        .map((p) => ({
+          name: p.name,
+          sessionId: p.sessionId,
+          score: p.score,
+          correctCount: p.progressOrCustomInt,
+        })),
+      "lucky-letters",
+    );
     return (
       <FinalScoresLayout
         scores={scores}
         accentColorClass="text-accent-luckyletters"
         gameId="lucky-letters"
+        gameAwards={awards}
         room={room}
       />
     );

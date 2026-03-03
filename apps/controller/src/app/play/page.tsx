@@ -7,8 +7,8 @@ import { TimerBar } from "@/components/game/TimerBar";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 import { useRoom } from "@/hooks/useRoom";
 import { AnimatedBackground, GlassPanel } from "@flimflam/ui";
-import { AnimatePresence, motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

@@ -1,110 +1,65 @@
-import { type Page, expect, test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import {
+  createRoom,
+  findControllerWithButton,
+  joinControllersForRoom,
+  selectGameAndStart,
+  waitForColyseusHealthy,
+} from "./e2e-helpers";
 
-test("reality drift game completes end-to-end", async ({ page, browser }) => {
+test("survey smash standard mode reaches lightning round and resolves to final scores", async ({
+  page,
+  browser,
+}) => {
   await page.goto("/");
-
   await waitForColyseusHealthy(page);
+
   const { code } = await createRoom(page);
+  const joined = await joinControllersForRoom(browser, page, code, ["Leo", "Ivy", "Max"]);
+  const controllerPages = joined.map((c) => c.controllerPage);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
-  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
+  await selectGameAndStart(page, { gameName: "Survey Smash", complexity: "standard" });
 
-  // Select game and set difficulty.
-  await page.getByRole("button", { name: /reality drift/i }).click();
-  await page.getByRole("button", { name: /^kids/i }).click();
+  const skipButton = page.getByRole("button", { name: /^skip$/i });
 
-  // Start game.
-  const startButton = page.getByRole("button", { name: /start the game/i });
-  await expect(startButton).toBeEnabled();
-  await startButton.click();
+  // Burn through 4 regular rounds by forcing a strike each round.
+  for (let round = 1; round <= 4; round++) {
+    await skipButton.click(); // question-reveal -> face-off
+    await skipButton.click(); // face-off -> guessing
 
-  const waitForAnswerPhase = async (controllerPage: Page) => {
-    await expect
-      .poll(async () => {
-        const hasVoteConfirm = await controllerPage
-          .getByRole("button", { name: /confirm vote/i })
-          .isVisible()
-          .catch(() => false);
-        const hasSubmit = await controllerPage
-          .getByRole("button", { name: /^submit$/i })
-          .isVisible()
-          .catch(() => false);
-        return hasVoteConfirm || hasSubmit;
-      })
-      .toBe(true);
-  };
+    const guesser = await findControllerWithButton(controllerPages, /^submit$/i, 20_000);
+    await guesser.getByRole("textbox").first().fill("zzzzzz");
+    await guesser
+      .getByRole("button", { name: /^submit$/i })
+      .first()
+      .click();
 
-  const answerRound = async (controllerPage: Page) => {
-    const confirmVote = controllerPage.getByRole("button", { name: /confirm vote/i });
-    if (await confirmVote.isVisible().catch(() => false)) {
-      // Option-based answer mode.
-      await controllerPage.locator("button:not([disabled])").first().click();
-      await confirmVote.click();
-      return;
-    }
-
-    // Fallback: free-text answer mode.
-    const textarea = controllerPage.locator("textarea");
-    const submit = controllerPage.getByRole("button", { name: /^submit$/i });
-    await textarea.waitFor({ timeout: 20_000 });
-    await textarea.fill("test answer");
-    await submit.click();
-  };
-
-  const driftCheck = async (controllerPage: Page, choice: "real" | "drift") => {
-    const buttonName = choice === "drift" ? /^hallucination\b/i : /^real\b/i;
-    await controllerPage.getByRole("button", { name: buttonName }).click();
-    await controllerPage.getByRole("button", { name: /confirm vote/i }).click();
-  };
-
-  // Play 3 rounds (kids mode).
-  for (let round = 1; round <= 3; round++) {
-    await Promise.all([
-      waitForAnswerPhase(c1.controllerPage),
-      waitForAnswerPhase(c2.controllerPage),
-      waitForAnswerPhase(c3.controllerPage),
-    ]);
-
-    await Promise.all([
-      answerRound(c1.controllerPage),
-      answerRound(c2.controllerPage),
-      answerRound(c3.controllerPage),
-    ]);
-
-    await Promise.all([
-      c1.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
-      c2.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
-      c3.controllerPage.getByText(/is this headline real or made up\?/i).waitFor(),
-    ]);
-
-    // Round 1 should always be real, so calling drift should apply a penalty.
-    const choice = round === 1 ? "drift" : "real";
-    await Promise.all([
-      driftCheck(c1.controllerPage, choice),
-      driftCheck(c2.controllerPage, choice),
-      driftCheck(c3.controllerPage, choice),
-    ]);
-
-    if (round === 1) {
-      await page.waitForFunction(() => document.body.innerText.includes("RESULTS"), null, {
-        timeout: 20_000,
-      });
-      await expect(page.getByText("-150")).toHaveCount(3);
-    }
+    await expect(page.getByText(/^strike!?$/i)).toBeVisible({ timeout: 15_000 });
+    await skipButton.click(); // strike -> round-result
+    await skipButton.click(); // round-result -> next round/lightning
   }
 
-  await page.waitForFunction(() => document.body.innerText.includes("FINAL SCORES"), null, {
-    timeout: 60_000,
-  });
-  await expect(page.getByRole("heading", { name: /^FINAL SCORES$/ })).toBeVisible();
-  await expect(page.getByText("Alice")).toBeVisible();
-  await expect(page.getByText("Bob")).toBeVisible();
-  await expect(page.getByText("Casey")).toBeVisible();
+  await expect(page.getByText(/lightning round/i)).toBeVisible({ timeout: 20_000 });
 
-  await c1.context.close();
-  await c2.context.close();
-  await c3.context.close();
+  // Lightning phase uses QuickGuessInput ("Guess" button) for the selected player.
+  for (let i = 0; i < 5; i++) {
+    const lightningController = await findControllerWithButton(controllerPages, /^guess$/i, 20_000);
+    const input = lightningController.getByRole("textbox").first();
+    await input.fill(`guess-${i + 1}`);
+    await lightningController
+      .getByRole("button", { name: /^guess$/i })
+      .first()
+      .click();
+  }
+
+  await expect(page.getByText(/lightning round results/i)).toBeVisible({ timeout: 20_000 });
+  await skipButton.click();
+  await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  for (const controller of joined) {
+    await controller.context.close();
+  }
 });

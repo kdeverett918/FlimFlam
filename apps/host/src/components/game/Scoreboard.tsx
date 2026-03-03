@@ -3,8 +3,8 @@
 import type { ScoreEntry } from "@flimflam/shared";
 import { AVATAR_COLORS } from "@flimflam/shared";
 import { ConfettiBurst, GlassPanel, ScoreReveal } from "@flimflam/ui";
-import { AnimatePresence, motion } from "framer-motion";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 interface ScoreboardProps {
