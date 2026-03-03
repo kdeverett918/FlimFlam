@@ -65,7 +65,7 @@ export default function HomePage() {
         animate="visible"
       >
         {/* Logo with radial spotlight */}
-        <div className="relative flex flex-col items-center gap-4">
+        <h1 className="relative flex w-full max-w-[560px] flex-col items-center gap-4">
           {/* Radial spotlight behind title */}
           <div
             className="pointer-events-none absolute -inset-32 -z-10"
@@ -81,7 +81,8 @@ export default function HomePage() {
             alt="FLIMFLAM Party Game"
             className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
           />
-        </div>
+          <span className="sr-only">FLIMFLAM</span>
+        </h1>
 
         {/* Tagline */}
         <motion.p

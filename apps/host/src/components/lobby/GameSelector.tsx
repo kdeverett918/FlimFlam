@@ -3,18 +3,12 @@
 import { GAME_MANIFESTS } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
 import { motion } from "framer-motion";
-import { Check, HelpCircle, Type, Users } from "lucide-react";
+import { Check } from "lucide-react";
 
 interface GameSelectorProps {
   selectedGameId: string;
   onSelect: (gameId: string) => void;
 }
-
-const GAME_ICONS: Record<string, React.ReactNode> = {
-  "brain-board": <HelpCircle className="h-10 w-10 text-accent-brainboard shrink-0" />,
-  "lucky-letters": <Type className="h-10 w-10 text-accent-luckyletters shrink-0" />,
-  "survey-smash": <Users className="h-10 w-10 text-accent-surveysmash shrink-0" />,
-};
 
 const GAME_ACCENT_BORDER: Record<string, string> = {
   "brain-board": "border-accent-brainboard shadow-[0_0_24px_oklch(0.68_0.22_265/0.35)]",
@@ -34,7 +28,6 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
       <div className="grid grid-cols-1 gap-8 px-2 py-6 sm:grid-cols-2 lg:grid-cols-3">
         {GAME_MANIFESTS.map((game) => {
           const isSelected = game.id === selectedGameId;
-          const icon = GAME_ICONS[game.id];
           const accentGradient = GAME_ACCENT_GRADIENT[game.id];
 
           return (
@@ -79,7 +72,9 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                 {/* Icon + Name row */}
                 <div className="flex items-center gap-4">
                   <div className="transition-transform duration-300 group-hover:scale-110">
-                    {icon ?? <HelpCircle className="h-10 w-10 text-text-muted shrink-0" />}
+                    <span className="block shrink-0 text-[38px] leading-none" aria-hidden="true">
+                      {game.icon || "❔"}
+                    </span>
                   </div>
                   <div className="flex flex-col items-start min-w-0">
                     <span className="w-full font-display text-[24px] font-bold leading-tight text-text-primary sm:text-[28px]">

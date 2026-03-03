@@ -119,7 +119,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col items-center gap-6">
       {/* Room code inputs */}
       <div className="w-full">
-        <span className="mb-2 block font-body text-sm font-semibold text-text-primary/80">
+        <span className="mb-2 block text-center font-body text-sm font-semibold text-text-primary/80">
           Room Code
         </span>
         <div className="flex justify-center gap-3">
@@ -152,7 +152,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
       {/* Name input */}
       <div className="w-full">
         <label
-          className="mb-2 block font-body text-sm font-semibold text-text-primary/80"
+          className="mb-2 block text-center font-body text-sm font-semibold text-text-primary/80"
           htmlFor="player-name"
         >
           Your Name
@@ -176,7 +176,7 @@ export function JoinForm({ initialCode = "", onJoin, error, disabled }: JoinForm
           placeholder="Enter your name"
           className="glass-input h-14 w-full rounded-xl px-4 font-body text-lg font-medium text-text-primary placeholder:text-text-dim transition-all focus:border-primary/60 focus:shadow-[0_0_16px_oklch(0.75_0.22_25_/_0.25)] disabled:opacity-50"
         />
-        <span className="mt-1 block text-right font-mono text-xs text-text-muted">
+        <span className="mt-1 block text-center font-mono text-xs text-text-muted">
           {name.length}/{MAX_NAME_LENGTH}
         </span>
       </div>
