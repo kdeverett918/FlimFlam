@@ -1,7 +1,7 @@
 "use client";
 
 import type { Complexity } from "@flimflam/shared";
-import { motion } from "framer-motion";
+import { GlassPanel } from "@flimflam/ui";
 import { Brain, Smile, Swords } from "lucide-react";
 
 interface ComplexityPickerProps {
@@ -14,6 +14,7 @@ const OPTIONS: {
   label: string;
   color: string;
   activeColor: string;
+  activeIconBg: string;
   description: string;
   icon: React.ReactNode;
 }[] = [
@@ -21,79 +22,75 @@ const OPTIONS: {
     value: "kids",
     label: "KIDS",
     color: "text-accent-5",
-    activeColor: "border-accent-5 bg-accent-5/15 shadow-[0_0_20px_oklch(0.70_0.15_210/0.25)]",
+    activeColor: "border-accent-5 bg-accent-5/12 shadow-[0_0_20px_oklch(0.70_0.15_210/0.25)]",
+    activeIconBg: "bg-accent-5/20",
     description: "Ages 8+ / Silly & fun",
-    icon: <Smile className="h-6 w-6" />,
+    icon: <Smile className="h-5 w-5 sm:h-6 sm:w-6" />,
   },
   {
     value: "standard",
     label: "STANDARD",
     color: "text-accent-3",
-    activeColor: "border-accent-3 bg-accent-3/15 shadow-[0_0_20px_oklch(0.78_0.18_85/0.25)]",
+    activeColor: "border-accent-3 bg-accent-3/12 shadow-[0_0_20px_oklch(0.78_0.18_85/0.25)]",
+    activeIconBg: "bg-accent-3/20",
     description: "Ages 13+ / Balanced",
-    icon: <Swords className="h-6 w-6" />,
+    icon: <Swords className="h-5 w-5 sm:h-6 sm:w-6" />,
   },
   {
     value: "advanced",
     label: "ADVANCED",
     color: "text-accent-6",
-    activeColor: "border-accent-6 bg-accent-6/15 shadow-[0_0_20px_oklch(0.68_0.25_20/0.25)]",
+    activeColor: "border-accent-6 bg-accent-6/12 shadow-[0_0_20px_oklch(0.68_0.25_20/0.25)]",
+    activeIconBg: "bg-accent-6/20",
     description: "Ages 16+ / Strategic",
-    icon: <Brain className="h-6 w-6" />,
+    icon: <Brain className="h-5 w-5 sm:h-6 sm:w-6" />,
   },
 ];
 
 export function ComplexityPicker({ complexity, onChange }: ComplexityPickerProps) {
-  const activeIndex = OPTIONS.findIndex((o) => o.value === complexity);
-
   return (
-    <div className="w-full overflow-x-auto pb-2 -mb-2 scrollbar-hide">
-      <div
-        className="relative inline-flex min-w-full sm:min-w-max overflow-hidden rounded-2xl border-2 border-white/[0.15] bg-white/[0.06]"
-        style={{ backdropFilter: "blur(12px)" }}
-      >
-        {/* Animated sliding pill */}
-        <motion.div
-          className="absolute inset-y-0 rounded-2xl bg-white/[0.08]"
-          animate={{
-            left: `${(activeIndex / OPTIONS.length) * 100}%`,
-            width: `${100 / OPTIONS.length}%`,
-          }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          aria-hidden="true"
-        />
-
-        {OPTIONS.map((opt) => {
-          const isActive = complexity === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              aria-pressed={isActive}
-              aria-label={`${opt.label}: ${opt.description}`}
-              onClick={() => onChange(opt.value)}
-              className={`relative flex flex-1 sm:flex-none flex-col items-center gap-1 border-y-2 border-transparent px-4 py-3 sm:px-6 sm:py-4 md:px-10 md:py-5 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep ${
-                isActive ? opt.activeColor : "text-text-dim hover:bg-white/[0.08]"
+    <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+      {OPTIONS.map((opt) => {
+        const isActive = complexity === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            aria-pressed={isActive}
+            aria-label={`${opt.label}: ${opt.description}`}
+            onClick={() => onChange(opt.value)}
+            className="group w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep rounded-2xl"
+          >
+            <GlassPanel
+              rounded="2xl"
+              glow={isActive}
+              className={`h-full border-2 p-4 sm:p-5 transition-all duration-300 ${
+                isActive
+                  ? opt.activeColor
+                  : "border-white/[0.15] bg-white/[0.05] hover:border-white/[0.25] hover:bg-white/[0.08]"
               }`}
-              style={{
-                transform: isActive ? "scale(1.03)" : "scale(1)",
-                transition:
-                  "transform 0.2s ease-out, background-color 0.3s, border-color 0.3s, box-shadow 0.3s",
-              }}
             >
-              <span className={isActive ? opt.color : "text-text-dim"}>{opt.icon}</span>
-              <span
-                className={`font-display text-[20px] sm:text-[24px] md:text-[32px] font-bold ${isActive ? opt.color : "text-text-muted"}`}
+              <div
+                className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+                  isActive ? `${opt.activeIconBg} ${opt.color}` : "bg-white/[0.08] text-text-dim"
+                }`}
+              >
+                {opt.icon}
+              </div>
+              <p
+                className={`font-display text-[22px] font-bold tracking-tight sm:text-[26px] ${
+                  isActive ? opt.color : "text-text-primary"
+                }`}
               >
                 {opt.label}
-              </span>
-              <span className="font-body text-[14px] sm:text-[18px] md:text-[22px] text-text-muted text-center whitespace-nowrap sm:whitespace-normal">
+              </p>
+              <p className="mt-1 font-body text-[14px] text-text-muted sm:text-[16px]">
                 {opt.description}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+              </p>
+            </GlassPanel>
+          </button>
+        );
+      })}
     </div>
   );
 }
