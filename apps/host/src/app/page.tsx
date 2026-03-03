@@ -52,7 +52,7 @@ export default function HomePage() {
 
   return (
     <main
-      className="flex min-h-[100svh] flex-col items-center justify-center gap-12 sm:gap-16"
+      className="flex min-h-[100svh] flex-col items-center justify-center gap-12 overflow-x-hidden sm:gap-16"
       style={safeAreaPadding}
     >
       <AnimatedBackground />

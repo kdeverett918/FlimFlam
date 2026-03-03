@@ -180,7 +180,10 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
   private bonusPlayerSessionId: string | null = null;
   private bonusExtraLetters: string[] = [];
+  private bonusPickBuffer: string[] = [];
   private bonusSolved = false;
+
+  private currentStreak = 0;
 
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
 
@@ -244,6 +247,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         break;
       case "player:choose-action":
         this.handleChooseAction(room, state, client, msg);
+        break;
+      case "player:bonus-pick":
+        this.handleBonusPick(room, state, client, msg);
         break;
       case "player:bonus-letters":
         this.handleBonusLetters(room, state, client, msg);
@@ -362,6 +368,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
           this.playerCash.set(currentPlayer, { roundCash: 0, totalCash: cash.totalCash });
         }
         this.wildActive = false;
+        this.currentStreak = 0;
         this.broadcastGameState(room, state);
         // Show result briefly then advance turn
         this.scheduleDelayed(room, LETTER_RESULT_DELAY_MS, () => {
@@ -419,6 +426,8 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.setPhase(state, "letter-result");
 
     if (count > 0) {
+      this.currentStreak++;
+
       // Award cash
       const currentPlayer = this.turnOrder[this.currentTurnIndex];
       if (currentPlayer) {
@@ -436,6 +445,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         count,
         inPuzzle: true,
         earned: count * spinValue,
+        streak: this.currentStreak,
         puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
       });
 
@@ -451,12 +461,15 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         });
       }
     } else {
+      this.currentStreak = 0;
+
       room.broadcast("game-data", {
         type: "letter-result",
         letter,
         count: 0,
         inPuzzle: false,
         earned: 0,
+        streak: this.currentStreak,
         puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
       });
 
@@ -602,6 +615,52 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     }
   }
 
+  private handleBonusPick(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "bonus-round") return;
+    if (client.sessionId !== this.bonusPlayerSessionId) return;
+
+    const letter = (typeof data.letter === "string" ? data.letter : "").toUpperCase().trim();
+    if (letter.length !== 1) return;
+    if (!CONSONANTS.has(letter) && !VOWELS.has(letter)) return;
+    if (this.revealedLetters.has(letter)) return;
+    if (this.bonusPickBuffer.includes(letter)) return;
+
+    // Count consonants and vowels already in buffer
+    const consonantCount = this.bonusPickBuffer.filter((l) => CONSONANTS.has(l)).length;
+    const vowelCount = this.bonusPickBuffer.filter((l) => VOWELS.has(l)).length;
+
+    if (CONSONANTS.has(letter)) {
+      if (consonantCount >= 3) return; // Already have 3 consonants
+    } else {
+      if (vowelCount >= 1) return; // Already have 1 vowel
+    }
+
+    this.bonusPickBuffer.push(letter);
+
+    // Broadcast confirmation so controller can show selections
+    room.broadcast("game-data", {
+      type: "bonus-pick-confirmed",
+      letter,
+      pickedSoFar: [...this.bonusPickBuffer],
+    });
+
+    // Check if buffer is complete: 3 consonants + 1 vowel
+    const newConsonantCount = this.bonusPickBuffer.filter((l) => CONSONANTS.has(l)).length;
+    const newVowelCount = this.bonusPickBuffer.filter((l) => VOWELS.has(l)).length;
+
+    if (newConsonantCount === 3 && newVowelCount === 1) {
+      // Construct data in the format handleBonusLetters expects
+      const consonants = this.bonusPickBuffer.filter((l) => CONSONANTS.has(l));
+      const vowel = this.bonusPickBuffer.find((l) => VOWELS.has(l)) ?? "";
+      this.handleBonusLetters(room, state, client, { consonants, vowel });
+    }
+  }
+
   private handleBonusLetters(
     room: Room,
     state: Schema,
@@ -706,6 +765,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   private advanceTurn(room: Room, state: Schema): void {
     this.wildActive = false;
     this.lastSpinResult = null;
+    this.currentStreak = 0;
 
     // Find next connected player
     const _startIndex = this.currentTurnIndex;
@@ -793,6 +853,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.bonusPlayerSessionId = bestId;
     this.bonusSolved = false;
     this.bonusExtraLetters = [];
+    this.bonusPickBuffer = [];
 
     // Pick a new puzzle for the bonus round
     this.currentPuzzle = this.pickUnusedPuzzle();
@@ -871,6 +932,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       bonusPlayerSessionId: this.bonusPlayerSessionId,
       bonusSolved: this.bonusSolved,
       revealedLetters: [...this.revealedLetters],
+      streak: this.currentStreak,
     });
   }
 
@@ -893,6 +955,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       canBuyVowel,
       canSolve: isMyTurn,
       isBonusPlayer: sessionId === this.bonusPlayerSessionId,
+      revealedLetters: [...this.revealedLetters],
     });
   }
 

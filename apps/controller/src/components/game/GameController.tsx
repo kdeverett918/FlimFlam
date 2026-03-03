@@ -1,12 +1,18 @@
 "use client";
 
 import { BuzzButton } from "@/components/controls/BuzzButton";
+import { CategoryReveal } from "@/components/controls/CategoryReveal";
 import { ClueGrid } from "@/components/controls/ClueGrid";
 import { LetterPicker } from "@/components/controls/LetterPicker";
+import { MobileLetterResult } from "@/components/controls/MobileLetterResult";
+import { MobilePuzzleBoard } from "@/components/controls/MobilePuzzleBoard";
+import { MobileSpinResult } from "@/components/controls/MobileSpinResult";
+import { MobileStandings } from "@/components/controls/MobileStandings";
 import { NumberInput } from "@/components/controls/NumberInput";
 import { SpinButton } from "@/components/controls/SpinButton";
 import { TextInput } from "@/components/controls/TextInput";
-import { GameThemeProvider, GlassPanel } from "@flimflam/ui";
+import type { PlayerData } from "@flimflam/shared";
+import { ConfettiBurst, GameThemeProvider, GlassPanel } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 import { Monitor, Trophy } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -23,6 +29,9 @@ interface GameControllerProps {
   round: number;
   totalRounds: number;
   privateData: PrivateData | null;
+  gameEvents: Record<string, Record<string, unknown>>;
+  players: PlayerData[];
+  mySessionId: string | null;
   errorNonce?: number;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
 }
@@ -51,6 +60,9 @@ export function GameController({
   round,
   totalRounds,
   privateData,
+  gameEvents,
+  players,
+  mySessionId,
   errorNonce,
   sendMessage,
 }: GameControllerProps) {
@@ -139,6 +151,14 @@ export function GameController({
     [sendMessage],
   );
 
+  const handleConfirmCategories = useCallback(() => {
+    sendMessage("player:confirm-categories");
+  }, [sendMessage]);
+
+  const handleRerollBoard = useCallback(() => {
+    sendMessage("player:reroll-board");
+  }, [sendMessage]);
+
   // ─── Lucky Letters action chooser helpers ──────────────────────
 
   const handleChooseBuyVowel = useCallback(() => {
@@ -211,7 +231,20 @@ export function GameController({
 
   function renderBrainBoard(currentPhase: string): React.ReactNode {
     switch (currentPhase) {
-      case "category-reveal":
+      case "category-reveal": {
+        const revealCategories = Array.isArray(pd.categories)
+          ? pd.categories.filter((c): c is string => typeof c === "string")
+          : [];
+        if (revealCategories.length > 0) {
+          return (
+            <CategoryReveal
+              categories={revealCategories}
+              isSelector={pd.isSelector === true}
+              onConfirm={handleConfirmCategories}
+              onReroll={handleRerollBoard}
+            />
+          );
+        }
         return (
           <WaitingScreen
             phase={currentPhase}
@@ -219,6 +252,7 @@ export function GameController({
             score={typeof pd.score === "number" ? pd.score : undefined}
           />
         );
+      }
 
       case "clue-select": {
         if (pd.isSelector) {
@@ -258,14 +292,20 @@ export function GameController({
         return (
           <div className="flex flex-col gap-4 pb-16 pt-4">
             {clueCat && (
-              <div className="mx-4 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-brainboard">
-                {clueCat} — ${clueVal}
+              <div className="mx-4 flex justify-center">
+                <span className="rounded-lg border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-2 font-display text-sm font-bold text-accent-brainboard uppercase">
+                  {clueCat} — ${clueVal}
+                </span>
               </div>
             )}
             {clueQ && (
-              <p className="px-4 text-center font-body text-lg font-medium text-text-primary">
-                {clueQ}
-              </p>
+              <div className="px-4">
+                <GlassPanel glow glowColor="oklch(0.68 0.22 265 / 0.2)" className="px-4 py-4">
+                  <p className="text-center font-body text-lg font-medium text-text-primary">
+                    {clueQ}
+                  </p>
+                </GlassPanel>
+              </div>
             )}
             <TextInput
               prompt="Your answer:"
@@ -282,10 +322,19 @@ export function GameController({
           const maxWager = typeof pd.score === "number" ? Math.max(pd.score, 1000) : 1000;
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              <p
+                className="text-center font-display text-2xl font-black uppercase"
+                style={{
+                  color: "oklch(0.82 0.2 85)",
+                  textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
+                }}
+              >
+                Power Play!
+              </p>
               <NumberInput
                 min={5}
                 max={maxWager}
-                label="Power Play! Set your wager:"
+                label="Set your wager:"
                 onSubmit={handlePowerPlayWager}
               />
             </div>
@@ -298,8 +347,17 @@ export function GameController({
         if (pd.isPowerPlayPlayer) {
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              <p
+                className="text-center font-display text-2xl font-black uppercase"
+                style={{
+                  color: "oklch(0.82 0.2 85)",
+                  textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
+                }}
+              >
+                Power Play!
+              </p>
               <TextInput
-                prompt="Power Play answer:"
+                prompt="Your answer:"
                 placeholder="Answer..."
                 onSubmit={handlePowerPlayAnswer}
                 resetNonce={errorNonce}
@@ -313,12 +371,26 @@ export function GameController({
       case "all-in-wager": {
         if (pd.canWagerFinal) {
           const playerScore = typeof pd.score === "number" ? pd.score : 0;
+          const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              <p
+                className="text-center font-display text-2xl font-black uppercase text-accent-brainboard"
+                style={{
+                  textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
+                }}
+              >
+                All-In Round
+              </p>
+              {allInCat && (
+                <p className="text-center font-display text-sm font-bold text-accent-brainboard uppercase">
+                  {allInCat}
+                </p>
+              )}
               <NumberInput
                 min={0}
                 max={playerScore}
-                label="All-In Round! Set your wager:"
+                label="Set your wager:"
                 onSubmit={handleAllInWager}
               />
             </div>
@@ -329,10 +401,24 @@ export function GameController({
 
       case "all-in-answer": {
         if (pd.canAnswerFinal) {
+          const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              <p
+                className="text-center font-display text-2xl font-black uppercase text-accent-brainboard"
+                style={{
+                  textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
+                }}
+              >
+                All-In Round
+              </p>
+              {allInCat && (
+                <p className="text-center font-display text-sm font-bold text-accent-brainboard uppercase">
+                  {allInCat}
+                </p>
+              )}
               <TextInput
-                prompt="All-In answer:"
+                prompt="Your answer:"
                 placeholder="Answer..."
                 onSubmit={handleAllInAnswer}
                 resetNonce={errorNonce}
@@ -344,9 +430,13 @@ export function GameController({
       }
 
       case "clue-result":
+        return renderBrainBoardWatchCard("Results are in!");
+
       case "all-in-category":
+        return renderBrainBoardWatchCard("All-In Round!");
+
       case "all-in-reveal":
-        return renderWatchScreen("Watch the main screen!");
+        return renderBrainBoardWatchCard("Final Reveal!");
 
       case "final-scores":
         return renderFinalScoresCard();
@@ -371,14 +461,124 @@ export function GameController({
     const canBuyVowel = pd.canBuyVowel === true;
     const isBonusPlayer = pd.isBonusPlayer === true;
 
+    // Extract game-data events for rich mobile views
+    const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const spinResult = gameEvents?.["spin-result"] as
+      | { type: string; segment: { type: string; value: number; label: string }; angle: number }
+      | undefined;
+    const letterResult = gameEvents?.["letter-result"] as
+      | {
+          letter: string;
+          count: number;
+          inPuzzle: boolean;
+          earned: number;
+          vowelCost?: number;
+          streak?: number;
+        }
+      | undefined;
+    const roundResult = gameEvents?.["round-result"] as
+      | {
+          winnerId: string | null;
+          answer: string;
+          category: string;
+          roundCashEarned: number;
+          standings: Array<{ sessionId: string; roundCash: number; totalCash: number }>;
+        }
+      | undefined;
+    const bonusReveal = gameEvents?.["bonus-reveal"] as
+      | { solved: boolean; answer: string; bonusPrize: number; bonusPlayerId: string | null }
+      | undefined;
+    const bonusPickConfirmed = gameEvents?.["bonus-pick-confirmed"] as
+      | { letter: string; pickedSoFar: string[] }
+      | undefined;
+
+    // Game state from broadcast
+    const puzzleDisplay = typeof gs.puzzleDisplay === "string" ? gs.puzzleDisplay : "";
+    const category = typeof gs.category === "string" ? gs.category : "";
+    const hint = typeof gs.hint === "string" ? gs.hint : "";
+    const currentTurnSessionId =
+      typeof gs.currentTurnSessionId === "string" ? gs.currentTurnSessionId : null;
+    const standings = Array.isArray(gs.standings)
+      ? (gs.standings as Array<{ sessionId: string; roundCash: number; totalCash: number }>)
+      : [];
+    const streak = typeof gs.streak === "number" ? gs.streak : 0;
+    const bonusPlayerSessionId =
+      typeof gs.bonusPlayerSessionId === "string" ? gs.bonusPlayerSessionId : null;
+
+    // Puzzle stats for progress bar
+    const totalLetters = puzzleDisplay
+      ? puzzleDisplay.split("").filter((ch) => /[A-Z_]/.test(ch)).length
+      : 0;
+    const revealedCount = puzzleDisplay
+      ? puzzleDisplay.split("").filter((ch) => /[A-Z]/.test(ch)).length
+      : 0;
+
+    const getPlayerName = (sessionId: string | null) =>
+      players?.find((p) => p.sessionId === sessionId)?.name ?? "Player";
+    const turnPlayerName = getPlayerName(currentTurnSessionId);
+    const roundCash = typeof pd.roundCash === "number" ? pd.roundCash : 0;
+
+    // Shared puzzle board element
+    const puzzleBoard = puzzleDisplay ? (
+      <MobilePuzzleBoard
+        puzzleDisplay={puzzleDisplay}
+        category={category}
+        hint={hint}
+        revealedCount={revealedCount}
+        totalLetters={totalLetters}
+      />
+    ) : null;
+
     switch (currentPhase) {
+      case "round-intro": {
+        const gsRound = typeof gs.round === "number" ? gs.round : round;
+        const gsTotalRounds = typeof gs.totalRounds === "number" ? gs.totalRounds : totalRounds;
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            <p className="text-center font-display text-xl font-black text-accent-luckyletters uppercase">
+              Round {gsRound} of {gsTotalRounds}
+            </p>
+            {category && (
+              <p className="text-center font-display text-sm font-bold text-text-primary uppercase tracking-wider">
+                {category}
+              </p>
+            )}
+            {hint && <p className="text-center font-body text-sm text-text-muted">{hint}</p>}
+            {standings.length > 0 && (
+              <MobileStandings
+                standings={standings}
+                currentTurnSessionId={currentTurnSessionId}
+                mySessionId={mySessionId}
+                players={players}
+              />
+            )}
+          </div>
+        );
+      }
+
       case "spinning": {
         if (isMyTurn) {
           return (
-            <div className="flex flex-col items-center gap-4 pb-16">
+            <div className="flex flex-col gap-3 pb-16 animate-fade-in-up">
+              {puzzleBoard}
+              {roundCash > 0 && (
+                <div className="flex justify-center">
+                  <span className="rounded-full bg-red-500/10 px-3 py-1 font-mono text-xs font-bold text-red-400">
+                    At Risk: ${roundCash.toLocaleString()}
+                  </span>
+                </div>
+              )}
+              {spinResult && (
+                <MobileSpinResult
+                  segment={spinResult.segment}
+                  currentTurnName="You"
+                  isMyTurn={true}
+                  roundCashAtRisk={roundCash}
+                />
+              )}
               <SpinButton onSpin={handleSpin} />
               {/* Action chooser: buy vowel / solve */}
-              <div className="flex items-center gap-3 px-4">
+              <div className="flex items-center justify-center gap-3 px-4">
                 {canBuyVowel && (
                   <button
                     type="button"
@@ -400,18 +600,27 @@ export function GameController({
           );
         }
         return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
-          />
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {puzzleBoard}
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName}&apos;s turn
+            </p>
+            {spinResult && (
+              <MobileSpinResult
+                segment={spinResult.segment}
+                currentTurnName={turnPlayerName}
+                isMyTurn={false}
+              />
+            )}
+          </div>
         );
       }
 
       case "guess-consonant": {
         if (isMyTurn) {
           return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
+            <div className="flex flex-col gap-3 pb-16 pt-2 animate-fade-in-up">
+              {puzzleBoard}
               <LetterPicker
                 mode="consonant"
                 usedLetters={usedLetters}
@@ -421,35 +630,39 @@ export function GameController({
           );
         }
         return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
-          />
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {puzzleBoard}
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is picking a consonant...
+            </p>
+          </div>
         );
       }
 
       case "buy-vowel": {
         if (isMyTurn) {
           return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
+            <div className="flex flex-col gap-3 pb-16 pt-2 animate-fade-in-up">
+              {puzzleBoard}
               <LetterPicker mode="vowel" usedLetters={usedLetters} onPick={handleVowelPick} />
             </div>
           );
         }
         return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.totalCash === "number" ? pd.totalCash : undefined}
-          />
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {puzzleBoard}
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is buying a vowel...
+            </p>
+          </div>
         );
       }
 
       case "solve-attempt": {
         if (isMyTurn) {
           return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
+            <div className="flex flex-col gap-3 pb-16 pt-2 animate-fade-in-up">
+              {puzzleBoard}
               <TextInput
                 prompt="Solve the puzzle:"
                 placeholder="Type the full phrase..."
@@ -459,13 +672,98 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Watching a solve attempt...");
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {puzzleBoard}
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is solving...
+            </p>
+          </div>
+        );
+      }
+
+      case "letter-result": {
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {puzzleBoard}
+            {letterResult && (
+              <MobileLetterResult
+                letter={letterResult.letter}
+                count={letterResult.count}
+                inPuzzle={letterResult.inPuzzle}
+                earned={letterResult.earned}
+                vowelCost={letterResult.vowelCost}
+                streak={letterResult.streak ?? streak}
+              />
+            )}
+          </div>
+        );
+      }
+
+      case "round-result": {
+        const rrStandings = roundResult?.standings ?? standings;
+        const winnerName = roundResult?.winnerId ? getPlayerName(roundResult.winnerId) : null;
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            <ConfettiBurst trigger={true} preset="win" />
+            {roundResult?.answer && (
+              <GlassPanel className="mx-4 flex flex-col items-center gap-2 px-4 py-4">
+                <p className="font-body text-xs text-text-muted uppercase tracking-wider">
+                  The answer was
+                </p>
+                <p className="text-center font-display text-lg font-black text-text-primary">
+                  {roundResult.answer}
+                </p>
+              </GlassPanel>
+            )}
+            {winnerName && (
+              <p className="text-center font-display text-base font-bold text-accent-luckyletters">
+                {winnerName} won the round!
+                {roundResult?.roundCashEarned
+                  ? ` +$${roundResult.roundCashEarned.toLocaleString()}`
+                  : ""}
+              </p>
+            )}
+            {rrStandings.length > 0 && (
+              <MobileStandings
+                standings={rrStandings}
+                mySessionId={mySessionId}
+                players={players}
+              />
+            )}
+          </div>
+        );
       }
 
       case "bonus-round": {
+        const bonusName = getPlayerName(bonusPlayerSessionId);
         if (isBonusPlayer) {
+          const pickedLetters = bonusPickConfirmed?.pickedSoFar ?? [];
           return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
+            <div className="flex flex-col gap-3 pb-16 pt-2 animate-fade-in-up">
+              <p
+                className="text-center font-display text-xl font-black uppercase"
+                style={{
+                  color: "oklch(0.78 0.2 85)",
+                  textShadow: "0 0 24px oklch(0.78 0.2 85 / 0.5)",
+                }}
+              >
+                Bonus Round!
+              </p>
+              {puzzleBoard}
+              {pickedLetters.length > 0 && (
+                <div className="flex items-center justify-center gap-1 px-4">
+                  <span className="font-body text-xs text-text-muted">Picked:</span>
+                  {pickedLetters.map((l) => (
+                    <span
+                      key={l}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-accent-luckyletters/40 bg-accent-luckyletters/15 font-display text-xs font-bold text-accent-luckyletters"
+                    >
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              )}
               <LetterPicker
                 mode="bonus"
                 usedLetters={usedLetters}
@@ -485,14 +783,55 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Watching the bonus round...");
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            <p
+              className="text-center font-display text-xl font-black uppercase"
+              style={{
+                color: "oklch(0.78 0.2 85)",
+                textShadow: "0 0 24px oklch(0.78 0.2 85 / 0.5)",
+              }}
+            >
+              Bonus Round!
+            </p>
+            {puzzleBoard}
+            <p className="text-center font-body text-sm text-text-muted">
+              {bonusName} is playing for $25,000!
+            </p>
+          </div>
+        );
       }
 
-      case "round-intro":
-      case "letter-result":
-      case "round-result":
-      case "bonus-reveal":
-        return renderWatchScreen("Watch the main screen!");
+      case "bonus-reveal": {
+        const brSolved = bonusReveal?.solved ?? false;
+        const brAnswer = bonusReveal?.answer ?? "";
+        const brPrize = bonusReveal?.bonusPrize ?? 0;
+        const brPlayerName = bonusReveal?.bonusPlayerId
+          ? getPlayerName(bonusReveal.bonusPlayerId)
+          : "Player";
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            {brSolved && <ConfettiBurst trigger={true} preset="celebration" />}
+            <GlassPanel className="mx-4 flex flex-col items-center gap-3 px-6 py-5">
+              <p
+                className={`font-display text-2xl font-black uppercase ${brSolved ? "text-emerald-400" : "text-red-400"}`}
+              >
+                {brSolved ? "Solved!" : "Not Solved"}
+              </p>
+              {brAnswer && (
+                <p className="text-center font-display text-base font-bold text-text-primary">
+                  {brAnswer}
+                </p>
+              )}
+              {brSolved && brPrize > 0 && (
+                <p className="font-mono text-lg font-bold text-emerald-400">
+                  {brPlayerName} wins ${brPrize.toLocaleString()}!
+                </p>
+              )}
+            </GlassPanel>
+          </div>
+        );
+      }
 
       case "final-scores":
         return renderFinalScoresCard();
@@ -608,6 +947,27 @@ export function GameController({
       default:
         return <WaitingScreen phase={currentPhase} gameId={gameId} />;
     }
+  }
+
+  // ────────────────────────────────────────────────────────────────────
+  // BRAIN BOARD — contextual watch card
+  // ────────────────────────────────────────────────────────────────────
+
+  function renderBrainBoardWatchCard(message: string) {
+    const playerScore = typeof pd.score === "number" ? pd.score : null;
+    return (
+      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
+        <GlassPanel className="flex flex-col items-center gap-3 px-8 py-6">
+          {playerScore !== null && (
+            <span className="font-mono text-xl font-bold text-accent-brainboard">
+              {playerScore.toLocaleString()} pts
+            </span>
+          )}
+          <p className="text-center font-display text-lg font-bold text-text-primary">{message}</p>
+          <p className="text-center font-body text-sm text-text-muted">Watch the main screen!</p>
+        </GlassPanel>
+      </div>
+    );
   }
 
   // ────────────────────────────────────────────────────────────────────

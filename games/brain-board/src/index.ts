@@ -14,7 +14,7 @@ const DOUBLE_DOWN_VALUES = [400, 800, 1200, 1600, 2000];
 const CATEGORIES_PER_BOARD = 6;
 const CLUES_PER_CATEGORY = 5;
 
-const CATEGORY_REVEAL_DELAY_MS = 5000;
+const CATEGORY_REVEAL_DELAY_MS = 30000;
 const CLUE_RESULT_DELAY_MS = 6000;
 const ANSWER_TIMEOUT_MS = 20000;
 const POWER_PLAY_WAGER_TIMEOUT_MS = 20000;
@@ -221,6 +221,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   private finalRound: FinalRoundData | null = null;
 
+  /** All available boards for the current complexity, used for reroll. */
+  private availableBoards: JeopardyBoard[] = [];
+
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
   private resolvingAllAnswers = false;
   private resolvingPowerPlayAnswer = false;
@@ -260,6 +263,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     // Pick two DIFFERENT boards for Round 1 and Round 2
     const banks = getClueBank(complexity);
+    this.availableBoards = banks;
     const shuffledBanks = [...banks];
     shuffleInPlace(shuffledBanks);
     this.round1Board = shuffledBanks[0] ?? banks[0] ?? null;
@@ -280,10 +284,13 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     this.setPhase(state, "category-reveal");
     this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
 
-    // Auto-advance to clue-select after reveal delay
+    // Auto-advance to clue-select after timeout (selector can start earlier)
     this.scheduleDelayed(room, CATEGORY_REVEAL_DELAY_MS, () => {
-      this.goToClueSelect(room, state);
+      if (this.phase === "category-reveal") {
+        this.goToClueSelect(room, state);
+      }
     });
   }
 
@@ -308,6 +315,12 @@ class BrainBoardPlugin extends BaseGamePlugin {
         break;
       case "player:all-in-answer":
         this.handleFinalAnswer(room, state, client, msg);
+        break;
+      case "player:confirm-categories":
+        this.handleConfirmCategories(room, state, client);
+        break;
+      case "player:reroll-board":
+        this.handleRerollBoard(room, state, client);
         break;
       case "host:skip":
         this.handleHostSkip(room, state);
@@ -732,9 +745,13 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.phase = "category-reveal";
     this.setPhase(state, "category-reveal");
     this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
 
+    // Auto-advance to clue-select after timeout (selector can start earlier)
     this.scheduleDelayed(room, CATEGORY_REVEAL_DELAY_MS, () => {
-      this.goToClueSelect(room, state);
+      if (this.phase === "category-reveal") {
+        this.goToClueSelect(room, state);
+      }
     });
   }
 
@@ -984,6 +1001,47 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
   }
 
+  // ─── Category Selection (pre-game) ──────────────────────────────────
+
+  private handleConfirmCategories(room: Room, state: Schema, client: Client): void {
+    if (this.phase !== "category-reveal") return;
+    if (client.sessionId !== this.selectorSessionId) return;
+
+    this.clearPendingTimer();
+    this.goToClueSelect(room, state);
+  }
+
+  private handleRerollBoard(room: Room, state: Schema, client: Client): void {
+    if (this.phase !== "category-reveal") return;
+    if (client.sessionId !== this.selectorSessionId) return;
+    if (!this.board) return;
+
+    // Pick a different random board from available boards
+    const currentBoard = this.board;
+    const otherBoards = this.availableBoards.filter((b) => b !== currentBoard);
+    if (otherBoards.length === 0) return;
+
+    const newBoard = pickRandom(otherBoards) ?? otherBoards[0];
+    if (!newBoard) return;
+
+    if (this.currentRound === 1) {
+      this.round1Board = newBoard;
+    } else {
+      this.round2Board = newBoard;
+    }
+    this.board = newBoard;
+
+    // Re-place Power Plays on the new board
+    this.powerPlays = placePowerPlays(
+      getPowerPlayCount(this.complexity, this.currentRound),
+      CATEGORIES_PER_BOARD,
+      CLUES_PER_CATEGORY,
+    );
+
+    this.broadcastGameState(room, state);
+    this.sendAllPrivateData(room, state);
+  }
+
   // ─── Host Skip ───────────────────────────────────────────────────────
 
   private handleHostSkip(room: Room, state: Schema): void {
@@ -1090,9 +1148,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.finalRound?.wagers.has(sessionId) === true &&
       !this.finalRound?.answers.has(sessionId);
 
-    // Include board data for the selector so the phone can render ClueGrid
+    // Include board data for category-reveal (all players) or clue-select (selector only)
+    const showCategories =
+      this.phase === "category-reveal" || (isSelector && this.phase === "clue-select");
     const categories =
-      isSelector && this.board ? this.board.categories.map((cat) => cat.name) : undefined;
+      showCategories && this.board ? this.board.categories.map((cat) => cat.name) : undefined;
     const answeredClues = isSelector ? [...this.revealedClues] : undefined;
 
     // Send the clue question to ALL players during answering phase
