@@ -59,16 +59,13 @@ export default function HomePage() {
 
       {/* Main content */}
       <motion.div
-        className="relative z-10 flex flex-col items-center gap-8 animate-cinematic-entrance"
+        className="relative z-10 flex flex-col items-center gap-8"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
       >
         {/* Logo with radial spotlight */}
-        <motion.div
-          variants={fadeInUp}
-          className="relative flex flex-col items-center gap-4 animate-hover-float"
-        >
+        <div className="relative flex flex-col items-center gap-4">
           {/* Radial spotlight behind title */}
           <div
             className="pointer-events-none absolute -inset-32 -z-10"
@@ -84,7 +81,7 @@ export default function HomePage() {
             alt="FLIMFLAM Party Game"
             className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
           />
-        </motion.div>
+        </div>
 
         {/* Tagline */}
         <motion.p
