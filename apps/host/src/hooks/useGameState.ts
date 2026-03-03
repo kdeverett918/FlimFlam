@@ -44,8 +44,12 @@ function deriveScreenView(phase: string): ScreenView {
 export function useGameState({ state, players, gameData }: UseGameStateParams): GameUIState {
   const playerList = useMemo(() => {
     const list: PlayerData[] = [];
-    for (const [, player] of players) {
-      list.push(player);
+    for (const [sessionId, player] of players) {
+      list.push({
+        ...player,
+        // Colyseus schema values can briefly lag; map key is authoritative.
+        sessionId: player.sessionId || sessionId,
+      });
     }
     return list.sort((a, b) => b.score - a.score);
   }, [players]);

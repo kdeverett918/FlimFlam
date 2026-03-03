@@ -2,6 +2,7 @@ export interface AIRequestOptions {
   maxTokens?: number;
   timeoutMs?: number;
   retries?: number;
+  model?: string;
 }
 
 export interface AIResponse<T> {

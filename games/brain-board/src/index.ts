@@ -1,5 +1,7 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
+import { aiRequest, buildAnswerJudgePrompt, enqueueAIRequest } from "@flimflam/ai";
 import { BaseGamePlugin } from "@flimflam/game-engine";
+import { AnswerJudgeSchema } from "@flimflam/shared";
 import type { Complexity, GameManifest } from "@flimflam/shared";
 import { fuzzyMatch, pickRandom, shuffleInPlace } from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
@@ -23,6 +25,9 @@ const ALL_IN_ANSWER_TIMEOUT_MS = 30000;
 const ALL_IN_REVEAL_DELAY_MS = 8000;
 
 const FUZZY_THRESHOLD = 0.7;
+const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 4000;
+const BRAIN_BOARD_JUDGE_MODEL =
+  process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL ?? "claude-haiku-4-5-latest";
 
 /** Power Play counts per round. Round 1 always has 1, Round 2 always has 2. */
 function getPowerPlayCount(_complexity: Complexity, round: number): number {
@@ -60,6 +65,33 @@ interface FinalRoundData {
   clue: JeopardyClue;
   wagers: Map<string, number>;
   answers: Map<string, string>;
+}
+
+type AnswerJudgeSource = "local" | "ai" | "fallback";
+
+interface JudgedAnswer {
+  correct: boolean;
+  judgedBy: AnswerJudgeSource;
+  judgeExplanation: string | null;
+}
+
+interface ClueResultEntry {
+  sessionId: string;
+  answer: string;
+  correct: boolean;
+  delta: number;
+  judgedBy?: AnswerJudgeSource;
+  judgeExplanation?: string;
+}
+
+interface AllInRevealResultEntry {
+  sessionId: string;
+  answer: string;
+  correct: boolean;
+  wager: number;
+  delta: number;
+  judgedBy?: AnswerJudgeSource;
+  judgeExplanation?: string;
 }
 
 // ─── Helpers (exported for testing) ────────────────────────────────────────
@@ -190,6 +222,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private finalRound: FinalRoundData | null = null;
 
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
+  private resolvingAllAnswers = false;
+  private resolvingPowerPlayAnswer = false;
+  private resolvingFinalAnswers = false;
 
   createState(): Schema {
     return null as unknown as Schema;
@@ -205,6 +240,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.selectorIndex = 0;
     this.playerAnswers.clear();
     this.powerPlayWager = 5;
+    this.resolvingAllAnswers = false;
+    this.resolvingPowerPlayAnswer = false;
+    this.resolvingFinalAnswers = false;
 
     // Build player order (exclude host)
     const hostId = this.getHostSessionId(state);
@@ -386,6 +424,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private goToAnswering(room: Room, state: Schema): void {
     this.phase = "answering";
     this.playerAnswers.clear();
+    this.resolvingAllAnswers = false;
 
     this.setPhase(state, "answering");
     this.broadcastGameState(room, state);
@@ -394,7 +433,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     // Answer timeout — resolve whatever we have
     this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
       if (this.phase === "answering") {
-        this.resolveAllAnswers(room, state);
+        void this.resolveAllAnswers(room, state);
       }
     });
   }
@@ -432,44 +471,66 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     if (this.playerAnswers.size >= connectedCount) {
       this.clearPendingTimer();
-      this.resolveAllAnswers(room, state);
+      void this.resolveAllAnswers(room, state);
     }
   }
 
-  private resolveAllAnswers(room: Room, state: Schema): void {
+  private async resolveAllAnswers(room: Room, state: Schema): Promise<void> {
+    if (this.phase !== "answering") return;
+    if (this.resolvingAllAnswers) return;
+    this.resolvingAllAnswers = true;
+
     if (!this.currentClue) {
+      this.resolvingAllAnswers = false;
       this.goToClueResult(room, state, []);
       return;
     }
 
-    const value = this.currentClue.value;
-    const results: Array<{
-      sessionId: string;
-      answer: string;
-      correct: boolean;
-      delta: number;
-    }> = [];
+    try {
+      const value = this.currentClue.value;
+      const results: ClueResultEntry[] = [];
 
-    for (const sessionId of this.playerOrder) {
-      const answer = this.playerAnswers.get(sessionId) ?? "";
-      const isCorrect = answer.length > 0 && judgeAnswer(answer, this.currentClue.answer);
+      for (const sessionId of this.playerOrder) {
+        const answer = this.playerAnswers.get(sessionId) ?? "";
+        const judged =
+          answer.length > 0
+            ? await this.judgeAnswerWithModeration(
+                room,
+                this.currentClue.question,
+                this.currentClue.answer,
+                answer,
+              )
+            : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+        const isCorrect = judged.correct;
 
-      let delta = 0;
-      if (isCorrect) {
-        delta = value;
-      } else if (answer.length > 0 && this.complexity !== "kids") {
-        // Only penalize if they actually submitted a wrong answer (not blank)
-        delta = -value;
+        let delta = 0;
+        if (isCorrect) {
+          delta = value;
+        } else if (answer.length > 0 && this.complexity !== "kids") {
+          // Only penalize if they actually submitted a wrong answer (not blank)
+          delta = -value;
+        }
+
+        if (delta !== 0) {
+          this.adjustScore(state, sessionId, delta);
+        }
+
+        results.push({
+          sessionId,
+          answer,
+          correct: isCorrect,
+          delta,
+          judgedBy: judged.judgedBy,
+          ...(judged.judgeExplanation ? { judgeExplanation: judged.judgeExplanation } : {}),
+        });
       }
 
-      if (delta !== 0) {
-        this.adjustScore(state, sessionId, delta);
+      if (this.phase === "answering") {
+        this.goToClueResult(room, state, results);
       }
-
-      results.push({ sessionId, answer, correct: isCorrect, delta });
+    } finally {
+      this.resolvingAllAnswers = false;
     }
-
-    this.goToClueResult(room, state, results);
   }
 
   // ─── Power Play ─────────────────────────────────────────────────────
@@ -498,6 +559,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.powerPlayWager = wager;
 
     this.phase = "power-play-answer";
+    this.resolvingPowerPlayAnswer = false;
     this.setPhase(state, "power-play-answer");
 
     room.broadcast("game-data", {
@@ -510,7 +572,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     this.scheduleDelayed(room, ANSWER_TIMEOUT_MS, () => {
       if (this.phase === "power-play-answer") {
-        this.processPowerPlayAnswer(room, state, "", false);
+        this.processPowerPlayAnswer(room, state, "", {
+          correct: false,
+          judgedBy: "local",
+          judgeExplanation: null,
+        } as JudgedAnswer);
       }
     });
   }
@@ -526,58 +592,82 @@ class BrainBoardPlugin extends BaseGamePlugin {
     if (!this.currentClue) return;
 
     const answer = typeof data.answer === "string" ? data.answer : "";
-    const isCorrect = judgeAnswer(answer, this.currentClue.answer);
 
-    this.processPowerPlayAnswer(room, state, answer, isCorrect);
+    // Stop the timeout while AI moderation runs.
+    this.clearPendingTimer();
+    void (async () => {
+      const judged =
+        answer.length > 0
+          ? await this.judgeAnswerWithModeration(
+              room,
+              this.currentClue?.question ?? "",
+              this.currentClue?.answer ?? "",
+              answer,
+            )
+          : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+      this.processPowerPlayAnswer(room, state, answer, judged);
+    })();
   }
 
   private processPowerPlayAnswer(
     room: Room,
     state: Schema,
     _answer: string,
-    isCorrect: boolean,
+    judged: JudgedAnswer,
   ): void {
-    this.clearPendingTimer();
+    if (this.phase !== "power-play-answer") return;
+    if (this.resolvingPowerPlayAnswer) return;
+    this.resolvingPowerPlayAnswer = true;
+    try {
+      this.clearPendingTimer();
 
-    const wager = this.powerPlayWager;
-    const sessionId = this.selectorSessionId;
+      const wager = this.powerPlayWager;
+      const sessionId = this.selectorSessionId;
+      const isCorrect = judged.correct;
 
-    if (sessionId) {
-      if (isCorrect) {
-        this.adjustScore(state, sessionId, wager);
-      } else if (this.complexity !== "kids") {
-        this.adjustScore(state, sessionId, -wager);
+      if (sessionId) {
+        if (isCorrect) {
+          this.adjustScore(state, sessionId, wager);
+        } else if (this.complexity !== "kids") {
+          this.adjustScore(state, sessionId, -wager);
+        }
       }
+
+      const results = sessionId
+        ? [
+            {
+              sessionId,
+              answer: _answer,
+              correct: isCorrect,
+              delta: isCorrect ? wager : this.complexity === "kids" ? 0 : -wager,
+              judgedBy: judged.judgedBy,
+              ...(judged.judgeExplanation ? { judgeExplanation: judged.judgeExplanation } : {}),
+            },
+          ]
+        : [];
+
+      this.goToClueResult(room, state, results);
+    } finally {
+      this.resolvingPowerPlayAnswer = false;
     }
-
-    const results = sessionId
-      ? [
-          {
-            sessionId,
-            answer: _answer,
-            correct: isCorrect,
-            delta: isCorrect ? wager : this.complexity === "kids" ? 0 : -wager,
-          },
-        ]
-      : [];
-
-    this.goToClueResult(room, state, results);
   }
 
   // ─── Clue Result ─────────────────────────────────────────────────────
 
-  private goToClueResult(
-    room: Room,
-    state: Schema,
-    results: Array<{ sessionId: string; answer: string; correct: boolean; delta: number }>,
-  ): void {
+  private goToClueResult(room: Room, state: Schema, results: ClueResultEntry[]): void {
     this.clearPendingTimer();
     this.phase = "clue-result";
     this.setPhase(state, "clue-result");
+    const correctCount = results.filter((entry) => entry.correct).length;
+    const anyCorrect = correctCount > 0;
 
     room.broadcast("game-data", {
       type: "clue-result",
       results,
+      correctCount,
+      anyCorrect,
+      // Backward-compat fallback for host clients that still read `correct`.
+      correct: anyCorrect,
       correctAnswer: this.currentClue?.answer ?? "",
       question: this.currentClue?.question ?? "",
       value: this.currentClue?.value ?? 0,
@@ -740,13 +830,14 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   private goToFinalAnswer(room: Room, state: Schema): void {
     this.phase = "all-in-answer";
+    this.resolvingFinalAnswers = false;
     this.setPhase(state, "all-in-answer");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
 
     this.scheduleDelayed(room, ALL_IN_ANSWER_TIMEOUT_MS, () => {
       if (this.phase === "all-in-answer") {
-        this.finalizeFinalAnswers(room, state);
+        void this.finalizeFinalAnswers(room, state);
       }
     });
   }
@@ -766,48 +857,113 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     if (this.finalRound.answers.size >= this.finalRound.wagers.size) {
       this.clearPendingTimer();
-      this.finalizeFinalAnswers(room, state);
+      void this.finalizeFinalAnswers(room, state);
     }
   }
 
-  private finalizeFinalAnswers(room: Room, state: Schema): void {
+  private async finalizeFinalAnswers(room: Room, state: Schema): Promise<void> {
+    if (this.phase !== "all-in-answer") return;
+    if (this.resolvingFinalAnswers) return;
+    this.resolvingFinalAnswers = true;
+
     if (!this.finalRound) {
+      this.resolvingFinalAnswers = false;
       this.goToFinalScores(room, state);
       return;
     }
 
-    const results: Array<{
-      sessionId: string;
-      answer: string;
-      correct: boolean;
-      wager: number;
-      delta: number;
-    }> = [];
+    try {
+      const results: AllInRevealResultEntry[] = [];
 
-    for (const [sessionId, wager] of this.finalRound.wagers) {
-      const answer = this.finalRound.answers.get(sessionId) ?? "";
-      const isCorrect = judgeAnswer(answer, this.finalRound.clue.answer);
-      const delta = isCorrect ? wager : this.complexity === "kids" ? 0 : -wager;
+      for (const [sessionId, wager] of this.finalRound.wagers) {
+        const answer = this.finalRound.answers.get(sessionId) ?? "";
+        const judged =
+          answer.length > 0
+            ? await this.judgeAnswerWithModeration(
+                room,
+                this.finalRound.clue.question,
+                this.finalRound.clue.answer,
+                answer,
+              )
+            : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+        const isCorrect = judged.correct;
+        const delta = isCorrect ? wager : this.complexity === "kids" ? 0 : -wager;
 
-      this.adjustScore(state, sessionId, delta);
-      results.push({ sessionId, answer, correct: isCorrect, wager, delta });
+        this.adjustScore(state, sessionId, delta);
+        results.push({
+          sessionId,
+          answer,
+          correct: isCorrect,
+          wager,
+          delta,
+          judgedBy: judged.judgedBy,
+          ...(judged.judgeExplanation ? { judgeExplanation: judged.judgeExplanation } : {}),
+        });
+      }
+
+      if (this.phase !== "all-in-answer") return;
+
+      this.phase = "all-in-reveal";
+      this.setPhase(state, "all-in-reveal");
+
+      room.broadcast("game-data", {
+        type: "all-in-reveal",
+        correctAnswer: this.finalRound.clue.answer,
+        question: this.finalRound.clue.question,
+        results,
+      });
+
+      this.broadcastGameState(room, state);
+
+      this.scheduleDelayed(room, ALL_IN_REVEAL_DELAY_MS, () => {
+        this.goToFinalScores(room, state);
+      });
+    } finally {
+      this.resolvingFinalAnswers = false;
+    }
+  }
+
+  private async judgeAnswerWithModeration(
+    room: Room,
+    clueAnswer: string,
+    correctQuestion: string,
+    playerAnswer: string,
+  ): Promise<JudgedAnswer> {
+    const answer = playerAnswer.trim();
+    if (answer.length === 0) {
+      return { correct: false, judgedBy: "local", judgeExplanation: null };
     }
 
-    this.phase = "all-in-reveal";
-    this.setPhase(state, "all-in-reveal");
+    // Preserve existing local behavior, then use AI only for borderline misses.
+    if (judgeAnswer(answer, correctQuestion)) {
+      return { correct: true, judgedBy: "local", judgeExplanation: null };
+    }
 
-    room.broadcast("game-data", {
-      type: "all-in-reveal",
-      correctAnswer: this.finalRound.clue.answer,
-      question: this.finalRound.clue.question,
-      results,
-    });
+    try {
+      const { system, user } = buildAnswerJudgePrompt(clueAnswer, correctQuestion, answer);
+      const response = await enqueueAIRequest(room.roomId, () =>
+        aiRequest(system, user, AnswerJudgeSchema, {
+          model: BRAIN_BOARD_JUDGE_MODEL,
+          timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
+          retries: 0,
+          maxTokens: 180,
+        }),
+      );
+      return {
+        correct: response.parsed.correct,
+        judgedBy: "ai",
+        judgeExplanation: this.normalizeJudgeExplanation(response.parsed.explanation),
+      };
+    } catch {
+      return { correct: false, judgedBy: "fallback", judgeExplanation: null };
+    }
+  }
 
-    this.broadcastGameState(room, state);
-
-    this.scheduleDelayed(room, ALL_IN_REVEAL_DELAY_MS, () => {
-      this.goToFinalScores(room, state);
-    });
+  private normalizeJudgeExplanation(explanation: string | undefined): string | null {
+    if (typeof explanation !== "string") return null;
+    const normalized = explanation.replace(/\s+/g, " ").trim();
+    if (!normalized) return null;
+    return normalized.slice(0, 160);
   }
 
   // ─── Final Scores ───────────────────────────────────────────────────
@@ -838,7 +994,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         this.goToClueSelect(room, state);
         break;
       case "answering":
-        this.resolveAllAnswers(room, state);
+        void this.resolveAllAnswers(room, state);
         break;
       case "clue-result":
         this.advanceAfterClue(room, state);
@@ -847,7 +1003,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
         this.processPowerPlayWager(room, state, 5);
         break;
       case "power-play-answer":
-        this.processPowerPlayAnswer(room, state, "", false);
+        this.processPowerPlayAnswer(room, state, "", {
+          correct: false,
+          judgedBy: "local",
+          judgeExplanation: null,
+        } as JudgedAnswer);
         break;
       case "round-transition":
         this.startRound2(room, state);
@@ -859,7 +1019,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         this.finalizeFinalWagers(room, state);
         break;
       case "all-in-answer":
-        this.finalizeFinalAnswers(room, state);
+        void this.finalizeFinalAnswers(room, state);
         break;
       case "all-in-reveal":
         this.goToFinalScores(room, state);

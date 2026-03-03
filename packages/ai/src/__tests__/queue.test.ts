@@ -59,4 +59,12 @@ describe("ai/queue", () => {
     clearRoomQueue("room-size-b");
     expect(getQueueSize()).toBeGreaterThanOrEqual(0);
   });
+
+  it("cleans up completed room queues", async () => {
+    clearRoomQueue("room-cleanup");
+    await enqueueAIRequest("room-cleanup", async () => "done");
+    // Flush the queue cleanup microtask.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(getQueueSize()).toBe(0);
+  });
 });
