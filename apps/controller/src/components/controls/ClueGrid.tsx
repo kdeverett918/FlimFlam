@@ -28,28 +28,21 @@ export function ClueGrid({ categories, answeredClues, onSelect }: ClueGridProps)
     [answeredSet, onSelect],
   );
 
-  // Abbreviate category names to fit in compact grid
-  const abbreviate = (name: string): string => {
-    if (name.length <= 6) return name;
-    return `${name.slice(0, 5)}\u2026`;
-  };
-
   return (
     <div className="flex w-full flex-col gap-2 px-2">
       <p className="text-center font-body text-lg font-medium text-text-primary">Pick a clue</p>
 
       {/* Category headers */}
       <div
-        className="grid gap-1"
+        className="grid gap-1.5"
         style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }}
       >
         {categories.map((cat) => (
           <div
             key={cat}
-            className="truncate rounded-md bg-accent-brainboard/20 px-1 py-1 text-center font-display text-[10px] font-bold text-accent-brainboard uppercase leading-tight"
-            title={cat}
+            className="flex min-h-[36px] items-center justify-center rounded-md border border-accent-brainboard/30 bg-accent-brainboard/15 px-1 py-1 text-center font-display text-xs font-bold text-accent-brainboard uppercase leading-tight backdrop-blur-sm"
           >
-            {abbreviate(cat)}
+            {cat}
           </div>
         ))}
       </div>
@@ -58,7 +51,7 @@ export function ClueGrid({ categories, answeredClues, onSelect }: ClueGridProps)
       {CLUE_VALUES.map((value) => (
         <div
           key={`row-${value}`}
-          className="grid gap-1"
+          className="grid gap-1.5"
           style={{ gridTemplateColumns: `repeat(${categories.length}, minmax(0, 1fr))` }}
         >
           {categories.map((_cat, catIdx) => {
@@ -74,8 +67,8 @@ export function ClueGrid({ categories, answeredClues, onSelect }: ClueGridProps)
                 onClick={() => handleSelect(clueId)}
                 className={`flex min-h-[48px] items-center justify-center rounded-lg font-mono text-sm font-bold transition-all active:scale-95 ${
                   isAnswered
-                    ? "bg-white/[0.02] text-text-dim opacity-30"
-                    : "border border-accent-brainboard/30 bg-accent-brainboard/10 text-accent-brainboard"
+                    ? "border border-white/10 bg-bg-surface/50 text-text-dim line-through"
+                    : "border border-accent-brainboard/30 bg-accent-brainboard/10 text-accent-3 backdrop-blur-sm"
                 }`}
                 style={{ touchAction: "manipulation" }}
                 aria-label={`${categories[catIdx]} for ${value}`}

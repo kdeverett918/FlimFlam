@@ -34,6 +34,8 @@ interface UseRoomReturn {
   state: RoomState | null;
   players: PlayerData[];
   privateData: PrivateData | null;
+  gameEvents: Record<string, Record<string, unknown>>;
+  mySessionId: string | null;
   joinRoom: (code: string, name: string, color: string) => Promise<boolean>;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
   error: string | null;
@@ -55,6 +57,7 @@ export function useRoom(): UseRoomReturn {
   const [everConnected, setEverConnected] = useState(false);
   const [myPlayer, setMyPlayer] = useState<PlayerData | null>(null);
   const [ready, setReady] = useState(false);
+  const [gameEvents, setGameEvents] = useState<Record<string, Record<string, unknown>>>({});
   const previousPhaseRef = useRef<string | null>(null);
   const roomRef = useRef<Room | null>(null);
   const reconnectAttempted = useRef(false);
@@ -156,6 +159,12 @@ export function useRoom(): UseRoomReturn {
       activeRoom.onMessage("error", (data: { message: string }) => {
         setError(data.message);
         setErrorNonce((prev) => prev + 1);
+      });
+
+      // Game-data broadcasts (puzzle display, spin results, standings, etc.)
+      activeRoom.onMessage("game-data", (data: Record<string, unknown>) => {
+        const msgType = typeof data.type === "string" ? data.type : "unknown";
+        setGameEvents((prev) => ({ ...prev, [msgType]: data }));
       });
 
       // Connection handlers
@@ -371,6 +380,8 @@ export function useRoom(): UseRoomReturn {
     state,
     players,
     privateData,
+    gameEvents,
+    mySessionId: room?.sessionId ?? null,
     joinRoom,
     sendMessage,
     error,
