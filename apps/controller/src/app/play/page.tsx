@@ -24,6 +24,8 @@ export default function PlayPage() {
     state,
     players,
     privateData,
+    gameEvents,
+    mySessionId,
     sendMessage,
     connected,
     everConnected,
@@ -160,6 +162,9 @@ export default function PlayPage() {
             round={round}
             totalRounds={totalRounds}
             privateData={privateData}
+            gameEvents={gameEvents}
+            players={players}
+            mySessionId={mySessionId}
             errorNonce={errorNonce}
             sendMessage={sendMessage}
           />

@@ -42,6 +42,8 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "board-reveal": 4_000,
   answering: 15_000,
   "clue-result": 3_000,
+  // Lucky Letters
+  "bonus-solve": 10_000,
 };
 
 export const REACTION_EMOJIS = ["😂", "🔥", "👏", "😱", "💀", "🎉", "👀", "💯"] as const;

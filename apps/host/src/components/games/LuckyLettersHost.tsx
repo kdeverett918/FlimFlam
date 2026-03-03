@@ -201,6 +201,66 @@ function PuzzleBoard({
 
 // ─── Wheel Spinner Visual ───────────────────────────────────────────────────
 
+// Segment colors by type — cycling greens for cash, red for bust, orange for pass, purple for wild
+const CASH_COLORS = [
+  "#16a34a",
+  "#059669",
+  "#2563eb",
+  "#0891b2",
+  "#15803d",
+  "#0d9488",
+  "#2563eb",
+  "#0891b2",
+];
+function getSegmentColor(type: string, cashIndex: number): string {
+  switch (type) {
+    case "bust":
+      return "#dc2626";
+    case "pass":
+      return "#ea580c";
+    case "wild":
+      return "#7c3aed";
+    default:
+      return CASH_COLORS[cashIndex % CASH_COLORS.length] ?? "#16a34a";
+  }
+}
+
+// Must match WHEEL_SEGMENTS from games/lucky-letters/src/wheel.ts (source of truth: 24 segments)
+const WHEEL_VISUAL_SEGMENTS: Array<{ type: string; label: string; color: string }> = (() => {
+  const segments = [
+    { type: "cash", label: "$500" },
+    { type: "cash", label: "$550" },
+    { type: "cash", label: "$600" },
+    { type: "cash", label: "$650" },
+    { type: "cash", label: "$700" },
+    { type: "cash", label: "$800" },
+    { type: "cash", label: "$900" },
+    { type: "cash", label: "$2,500" },
+    { type: "bust", label: "BUST" },
+    { type: "cash", label: "$500" },
+    { type: "cash", label: "$600" },
+    { type: "cash", label: "$700" },
+    { type: "cash", label: "$300" },
+    { type: "cash", label: "$450" },
+    { type: "cash", label: "$350" },
+    { type: "wild", label: "WILD" },
+    { type: "cash", label: "$500" },
+    { type: "cash", label: "$850" },
+    { type: "cash", label: "$550" },
+    { type: "pass", label: "PASS" },
+    { type: "cash", label: "$650" },
+    { type: "cash", label: "$750" },
+    { type: "bust", label: "BUST" },
+    { type: "cash", label: "$400" },
+  ];
+  let cashIdx = 0;
+  return segments.map((s) => {
+    const color = getSegmentColor(s.type, cashIdx);
+    if (s.type === "cash") cashIdx++;
+    return { ...s, color };
+  });
+})();
+
 function WheelSpinner({
   spinning,
   angle,
@@ -208,20 +268,7 @@ function WheelSpinner({
   spinning: boolean;
   angle: number;
 }) {
-  const segments = [
-    { color: "#2563eb", label: "$500" },
-    { color: "#dc2626", label: "BUST" },
-    { color: "#16a34a", label: "$600" },
-    { color: "#eab308", label: "$700" },
-    { color: "#7c3aed", label: "$800" },
-    { color: "#0891b2", label: "$300" },
-    { color: "#ea580c", label: "PASS" },
-    { color: "#059669", label: "$900" },
-    { color: "#2563eb", label: "$400" },
-    { color: "#dc2626", label: "BUST" },
-    { color: "#f59e0b", label: "$1000" },
-    { color: "#6366f1", label: "WILD" },
-  ];
+  const segments = WHEEL_VISUAL_SEGMENTS;
   const segAngle = 360 / segments.length;
 
   return (
@@ -276,7 +323,7 @@ function WheelSpinner({
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="white"
-                  fontSize="7"
+                  fontSize="5"
                   fontWeight="bold"
                   transform={`rotate(${textRot}, ${textX}, ${textY})`}
                 >
@@ -344,7 +391,8 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
 
   useEffect(() => {
     if (!room) return;
-    room.onMessage("game-data", handleMessage);
+    const unsub = room.onMessage("game-data", handleMessage);
+    return () => unsub();
   }, [room, handleMessage]);
 
   if (!gameState) {
