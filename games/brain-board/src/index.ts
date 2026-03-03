@@ -1160,6 +1160,10 @@ class BrainBoardPlugin extends BaseGamePlugin {
     const clueCategory = this.phase === "answering" ? this.currentCategoryName : null;
     const clueValue = this.phase === "answering" ? (this.currentClue?.value ?? null) : null;
 
+    // Compute max wager for Power Play: max of score and highest clue value for current round
+    const highestClueValue = this.currentRound === 2 ? 2000 : 1000;
+    const maxWager = Math.max(score, highestClueValue);
+
     room.send(client, "private-data", {
       type: "player-state",
       score,
@@ -1169,6 +1173,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
       canWagerFinal,
       canAnswerFinal,
       isPowerPlayPlayer: this.isPowerPlay && isSelector,
+      maxWager,
       categories,
       answeredClues,
       clueQuestion,

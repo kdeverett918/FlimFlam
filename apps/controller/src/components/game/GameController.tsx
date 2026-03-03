@@ -1,6 +1,5 @@
 "use client";
 
-import { BuzzButton } from "@/components/controls/BuzzButton";
 import { CategoryReveal } from "@/components/controls/CategoryReveal";
 import { ClueGrid } from "@/components/controls/ClueGrid";
 import { LetterPicker } from "@/components/controls/LetterPicker";
@@ -9,6 +8,7 @@ import { MobilePuzzleBoard } from "@/components/controls/MobilePuzzleBoard";
 import { MobileSpinResult } from "@/components/controls/MobileSpinResult";
 import { MobileStandings } from "@/components/controls/MobileStandings";
 import { NumberInput } from "@/components/controls/NumberInput";
+import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
 import { SpinButton } from "@/components/controls/SpinButton";
 import { TextInput } from "@/components/controls/TextInput";
 import type { PlayerData } from "@flimflam/shared";
@@ -74,10 +74,6 @@ export function GameController({
     },
     [sendMessage],
   );
-
-  const handleBuzz = useCallback(() => {
-    sendMessage("player:buzz", { timestamp: Date.now() });
-  }, [sendMessage]);
 
   const handleClueSelect = useCallback(
     (clueId: string) => {
@@ -319,7 +315,7 @@ export function GameController({
 
       case "power-play-wager": {
         if (pd.isPowerPlayPlayer) {
-          const maxWager = typeof pd.score === "number" ? Math.max(pd.score, 1000) : 1000;
+          const maxWager = typeof pd.maxWager === "number" ? pd.maxWager : 1000;
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
               <p
@@ -534,16 +530,29 @@ export function GameController({
         const gsRound = typeof gs.round === "number" ? gs.round : round;
         const gsTotalRounds = typeof gs.totalRounds === "number" ? gs.totalRounds : totalRounds;
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
-            <p className="text-center font-display text-xl font-black text-accent-luckyletters uppercase">
-              Round {gsRound} of {gsTotalRounds}
-            </p>
-            {category && (
-              <p className="text-center font-display text-sm font-bold text-text-primary uppercase tracking-wider">
-                {category}
+          <div className="flex flex-col items-center gap-5 px-4 pb-16 pt-6 animate-fade-in-up">
+            <GlassPanel glow className="flex w-full max-w-sm flex-col items-center gap-4 px-6 py-6">
+              {/* Round badge */}
+              <div className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-accent-luckyletters/40 bg-accent-luckyletters/15">
+                <span className="font-display text-xl font-black text-accent-luckyletters">
+                  {gsRound}
+                </span>
+              </div>
+              <p className="font-display text-lg font-bold text-text-primary uppercase tracking-wider">
+                Round {gsRound} of {gsTotalRounds}
               </p>
-            )}
-            {hint && <p className="text-center font-body text-sm text-text-muted">{hint}</p>}
+              {category && (
+                <span className="rounded-full bg-accent-luckyletters/15 px-4 py-1.5 font-display text-sm font-bold text-accent-luckyletters uppercase tracking-wider">
+                  {category}
+                </span>
+              )}
+              {hint && (
+                <p className="text-center font-body text-sm text-text-muted italic">
+                  &ldquo;{hint}&rdquo;
+                </p>
+              )}
+              <p className="font-body text-xs text-text-dim">Get ready!</p>
+            </GlassPanel>
             {standings.length > 0 && (
               <MobileStandings
                 standings={standings}
@@ -852,11 +861,7 @@ export function GameController({
   // ────────────────────────────────────────────────────────────────────
 
   function renderSurveySmash(currentPhase: string): React.ReactNode {
-    const isFaceOffPlayer =
-      pd.action === "face-off-your-turn" ||
-      (Array.isArray(pd.faceOffPlayers) &&
-        typeof pd.yourSessionId === "string" &&
-        (pd.faceOffPlayers as unknown[]).includes(pd.yourSessionId));
+    const isFaceOffPlayer = pd.action === "face-off-your-turn";
     const isCurrentGuesser = pd.action === "your-turn-to-guess";
     const isSnagTeam = pd.action === "snag-your-turn";
     const isLightningPlayer = pd.action === "lightning-question";
@@ -864,12 +869,16 @@ export function GameController({
     switch (currentPhase) {
       case "face-off": {
         if (isFaceOffPlayer) {
+          const question = typeof pd.question === "string" ? pd.question : "Name the top answer!";
           return (
-            <BuzzButton
-              onBuzz={() => {
-                handleBuzz();
-              }}
-            />
+            <div className="flex flex-col gap-4 pb-16 pt-4">
+              <TextInput
+                prompt={question}
+                placeholder="Type your answer..."
+                onSubmit={handleTextSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
           );
         }
         return renderWatchScreen("Face-off happening...");
@@ -922,11 +931,10 @@ export function GameController({
                   {qIndex}/{totalQ}
                 </span>
               </div>
-              <TextInput
+              <QuickGuessInput
                 prompt={question}
                 placeholder="Quick! Type your answer..."
                 onSubmit={handleTextSubmit}
-                resetNonce={errorNonce}
               />
             </div>
           );

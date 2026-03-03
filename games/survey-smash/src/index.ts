@@ -732,6 +732,22 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const survey = this.gs.currentSurvey;
     if (!survey) return;
 
+    // Check if the guess matches an already-revealed answer (duplicate)
+    const isDuplicate = this.gs.revealedAnswers.some((r) =>
+      fuzzyMatch(content, r.text, FUZZY_THRESHOLD),
+    );
+    if (isDuplicate) {
+      // Notify the player it's a duplicate — no strike
+      this._sendPrivateToPlayer(room, client.sessionId, {
+        action: "duplicate-answer",
+        message: "Already on the board!",
+      });
+      this.resetSubmissions(state);
+      this._broadcastGameData(room);
+      this._notifyCurrentGuesser(room);
+      return;
+    }
+
     const matched = findMatchingAnswer(content, survey, this.gs.revealedAnswers);
     if (matched) {
       // Correct guess
