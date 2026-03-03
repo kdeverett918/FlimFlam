@@ -654,11 +654,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   // ─── Clue Result ─────────────────────────────────────────────────────
 
-  private goToClueResult(
-    room: Room,
-    state: Schema,
-    results: ClueResultEntry[],
-  ): void {
+  private goToClueResult(room: Room, state: Schema, results: ClueResultEntry[]): void {
     this.clearPendingTimer();
     this.phase = "clue-result";
     this.setPhase(state, "clue-result");

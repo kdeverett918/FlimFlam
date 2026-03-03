@@ -464,7 +464,9 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
   if (phase === "clue-result" && clueResult) {
     const correctCountFromResults = clueResult.results.filter((result) => result.correct).length;
     const correctCount =
-      typeof clueResult.correctCount === "number" ? clueResult.correctCount : correctCountFromResults;
+      typeof clueResult.correctCount === "number"
+        ? clueResult.correctCount
+        : correctCountFromResults;
     const anyCorrect =
       typeof clueResult.anyCorrect === "boolean"
         ? clueResult.anyCorrect
