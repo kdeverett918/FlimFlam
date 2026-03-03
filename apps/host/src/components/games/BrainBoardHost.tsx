@@ -33,13 +33,24 @@ interface Standing {
   score: number;
 }
 
-interface ClueResultData {
+interface ClueResultEntry {
+  sessionId: string;
+  answer: string;
   correct: boolean;
-  winnerId: string | null;
+  delta: number;
+  judgedBy?: "local" | "ai" | "fallback";
+  judgeExplanation?: string;
+}
+
+interface ClueResultData {
   correctAnswer: string;
   question: string;
   value: number;
   isPowerPlay: boolean;
+  results: ClueResultEntry[];
+  anyCorrect?: boolean;
+  correctCount?: number;
+  correct?: boolean;
 }
 
 interface FinalRevealResult {
@@ -48,6 +59,8 @@ interface FinalRevealResult {
   correct: boolean;
   wager: number;
   delta: number;
+  judgedBy?: "local" | "ai" | "fallback";
+  judgeExplanation?: string;
 }
 
 interface FinalRevealData {
@@ -139,7 +152,11 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
     if (type === "game-state") {
       setGameState(data as unknown as BrainBoardGameState);
     } else if (type === "clue-result") {
-      setClueResult(data as unknown as ClueResultData);
+      const results = Array.isArray(data.results) ? (data.results as ClueResultEntry[]) : [];
+      setClueResult({
+        ...(data as unknown as ClueResultData),
+        results,
+      });
     } else if (type === "all-in-reveal") {
       setFinalReveal(data as unknown as FinalRevealData);
     } else if (type === "power-play-wager-set") {
@@ -217,46 +234,48 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
         </div>
 
         {/* Board grid */}
-        <div className="grid w-full max-w-[1400px] grid-cols-6 gap-2">
-          {/* Category headers */}
-          {gameState.board.map((cat) => (
-            <div
-              key={cat.name}
-              className="flex min-h-[80px] items-center justify-center rounded-lg bg-accent-brainboard/20 border border-accent-brainboard/30 p-2"
-            >
-              <span className="font-display text-[clamp(14px,1.5vw,20px)] font-bold text-accent-brainboard text-center uppercase leading-tight">
-                {cat.name}
-              </span>
-            </div>
-          ))}
+        <div className="w-full overflow-x-auto pb-2">
+          <div className="mx-auto grid min-w-[740px] max-w-[1400px] grid-cols-6 gap-2">
+            {/* Category headers */}
+            {gameState.board.map((cat) => (
+              <div
+                key={cat.name}
+                className="flex min-h-[64px] sm:min-h-[80px] items-center justify-center rounded-lg bg-accent-brainboard/20 border border-accent-brainboard/30 p-1.5 sm:p-2"
+              >
+                <span className="font-display text-[clamp(10px,1.3vw,20px)] font-bold text-accent-brainboard text-center uppercase leading-tight break-words">
+                  {cat.name}
+                </span>
+              </div>
+            ))}
 
-          {/* Value cells - 5 rows x 6 columns */}
-          {values.map((value, rowIdx) =>
-            gameState.board.map((_, colIdx) => {
-              const key = `${colIdx},${rowIdx}`;
-              const isRevealed = revealedSet.has(key);
+            {/* Value cells - 5 rows x 6 columns */}
+            {values.map((value, rowIdx) =>
+              gameState.board.map((_, colIdx) => {
+                const key = `${colIdx},${rowIdx}`;
+                const isRevealed = revealedSet.has(key);
 
-              return (
-                <motion.div
-                  key={key}
-                  className={`flex min-h-[80px] items-center justify-center rounded-lg border transition-all ${
-                    isRevealed
-                      ? "bg-bg-surface/50 border-white/10"
-                      : "bg-accent-brainboard/20 border-accent-brainboard/35 hover:bg-accent-brainboard/30"
-                  }`}
-                  whileHover={!isRevealed ? { scale: 1.03 } : undefined}
-                >
-                  <span
-                    className={`font-display text-[clamp(20px,2.5vw,36px)] font-bold ${
-                      isRevealed ? "text-text-dim line-through" : "text-accent-3"
+                return (
+                  <motion.div
+                    key={key}
+                    className={`flex min-h-[64px] sm:min-h-[80px] items-center justify-center rounded-lg border transition-all ${
+                      isRevealed
+                        ? "bg-bg-surface/50 border-white/10"
+                        : "bg-accent-brainboard/20 border-accent-brainboard/35 hover:bg-accent-brainboard/30"
                     }`}
+                    whileHover={!isRevealed ? { scale: 1.03 } : undefined}
                   >
-                    ${value}
-                  </span>
-                </motion.div>
-              );
-            }),
-          )}
+                    <span
+                      className={`font-display text-[clamp(14px,2vw,36px)] font-bold ${
+                        isRevealed ? "text-text-dim line-through" : "text-accent-3"
+                      }`}
+                    >
+                      ${value}
+                    </span>
+                  </motion.div>
+                );
+              }),
+            )}
+          </div>
         </div>
 
         {/* Standings bar */}
@@ -443,8 +462,20 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
 
   // ── Clue Result ─────────────────────────────────────────────────────────
   if (phase === "clue-result" && clueResult) {
-    const winnerName = clueResult.winnerId ? getPlayerName(players, clueResult.winnerId) : null;
-    const winnerColor = clueResult.winnerId ? getPlayerColor(players, clueResult.winnerId) : "#999";
+    const correctCountFromResults = clueResult.results.filter((result) => result.correct).length;
+    const correctCount =
+      typeof clueResult.correctCount === "number" ? clueResult.correctCount : correctCountFromResults;
+    const anyCorrect =
+      typeof clueResult.anyCorrect === "boolean"
+        ? clueResult.anyCorrect
+        : typeof clueResult.correct === "boolean"
+          ? clueResult.correct
+          : correctCountFromResults > 0;
+    const aiReviewed = clueResult.results.filter((result) => result.judgedBy === "ai");
+    const sampleAiReview = aiReviewed.find((result) => !!result.judgeExplanation);
+    const sampleAiReviewer = sampleAiReview
+      ? getPlayerName(players, sampleAiReview.sessionId)
+      : null;
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
@@ -476,29 +507,46 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
           </span>
         </motion.div>
 
-        {winnerName && (
+        {aiReviewed.length > 0 && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl">
+            <GlassPanel className="px-6 py-4 border border-accent-brainboard/35">
+              <div className="flex flex-col items-center gap-1 text-center">
+                <span className="font-display text-[clamp(16px,2vw,24px)] uppercase tracking-wider text-accent-brainboard">
+                  AI Judge Used
+                </span>
+                <span className="font-body text-[clamp(14px,1.7vw,20px)] text-text-muted">
+                  {aiReviewed.length === 1
+                    ? "Reviewed 1 borderline answer."
+                    : `Reviewed ${aiReviewed.length} borderline answers.`}
+                </span>
+                {sampleAiReview?.judgeExplanation && sampleAiReviewer && (
+                  <span className="font-body text-[clamp(14px,1.5vw,18px)] text-text-primary">
+                    {sampleAiReviewer}: {sampleAiReview.judgeExplanation}
+                  </span>
+                )}
+              </div>
+            </GlassPanel>
+          </motion.div>
+        )}
+
+        {anyCorrect && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="flex items-center gap-4"
+            className="flex flex-col items-center gap-2"
           >
-            <PlayerAvatar name={winnerName} color={winnerColor} size={56} />
             <span className="font-display text-[clamp(28px,3.5vw,40px)] font-bold text-text-primary">
-              {winnerName}
+              {correctCount > 0
+                ? correctCount === 1
+                  ? "1 player got it!"
+                  : `${correctCount} players got it!`
+                : "Correct answer found!"}
             </span>
-            <motion.span
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: -10 }}
-              transition={{ delay: 0.5 }}
-              className="font-mono text-[clamp(28px,3.5vw,40px)] font-bold text-success"
-            >
-              +${clueResult.value.toLocaleString()}
-            </motion.span>
           </motion.div>
         )}
 
-        {!clueResult.correct && !clueResult.winnerId && (
+        {!anyCorrect && (
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -508,7 +556,7 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
           </motion.span>
         )}
 
-        <ConfettiBurst trigger={clueResult.correct} preset="correct" />
+        <ConfettiBurst trigger={anyCorrect} preset="correct" />
       </div>
     );
   }
@@ -618,6 +666,11 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
       const bScore = gameState.standings.find((s) => s.sessionId === b.sessionId)?.score ?? 0;
       return aScore - bScore;
     });
+    const aiReviewed = finalReveal.results.filter((result) => result.judgedBy === "ai");
+    const sampleAiReview = aiReviewed.find((result) => !!result.judgeExplanation);
+    const sampleAiReviewer = sampleAiReview
+      ? getPlayerName(players, sampleAiReview.sessionId)
+      : null;
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
@@ -670,6 +723,26 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
             })}
           </AnimatePresence>
         </div>
+
+        {aiReviewed.length > 0 && (
+          <GlassPanel className="max-w-3xl w-full px-6 py-4 border border-accent-brainboard/35">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="font-display text-[clamp(16px,2vw,24px)] uppercase tracking-wider text-accent-brainboard">
+                AI Judge Used
+              </span>
+              <span className="font-body text-[clamp(14px,1.7vw,20px)] text-text-muted">
+                {aiReviewed.length === 1
+                  ? "Reviewed 1 all-in answer."
+                  : `Reviewed ${aiReviewed.length} all-in answers.`}
+              </span>
+              {sampleAiReview?.judgeExplanation && sampleAiReviewer && (
+                <span className="font-body text-[clamp(14px,1.5vw,18px)] text-text-primary">
+                  {sampleAiReviewer}: {sampleAiReview.judgeExplanation}
+                </span>
+              )}
+            </div>
+          </GlassPanel>
+        )}
 
         <div className="mt-4">
           <span className="font-display text-[clamp(20px,2vw,28px)] text-text-muted">

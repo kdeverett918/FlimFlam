@@ -21,6 +21,12 @@ export function enqueueAIRequest<T>(roomId: string, requestFn: RequestFn<T>): Pr
     /* swallow for chain continuity */
   });
   roomQueues.set(roomId, chainEnd);
+  void chainEnd.finally(() => {
+    // Only clear if no newer chain replaced this one.
+    if (roomQueues.get(roomId) === chainEnd) {
+      roomQueues.delete(roomId);
+    }
+  });
 
   return next;
 }

@@ -8,7 +8,7 @@ import {
 import type { ZodSchema } from "zod";
 import { parseAIResponse } from "./parser";
 
-const MODEL = "claude-sonnet-4-5-20250929";
+const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
 
 let anthropicClient: Anthropic | null = null;
 
@@ -81,6 +81,7 @@ export async function aiRequest<T>(
   const timeoutMs = options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS;
   const maxRetries = options?.retries ?? AI_MAX_RETRIES;
   const maxTokens = options?.maxTokens ?? 4096;
+  const model = options?.model ?? process.env.FLIMFLAM_AI_MODEL ?? DEFAULT_MODEL;
 
   let lastError: Error | null = null;
 
@@ -93,7 +94,7 @@ export async function aiRequest<T>(
       const client = getClient();
       const response = await client.messages.create(
         {
-          model: MODEL,
+          model,
           max_tokens: maxTokens,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
