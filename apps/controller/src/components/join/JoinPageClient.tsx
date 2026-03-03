@@ -34,6 +34,12 @@ const fadeInUp = {
 export function JoinPageClient({ initialCode }: JoinPageClientProps) {
   const router = useRouter();
   const { joinRoom, error, connected } = useRoom();
+  const safeAreaPadding = {
+    paddingTop: "max(2rem, env(safe-area-inset-top))",
+    paddingRight: "max(1.5rem, env(safe-area-inset-right))",
+    paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
+    paddingLeft: "max(1.5rem, env(safe-area-inset-left))",
+  } as const;
 
   const handleJoin = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
@@ -50,7 +56,10 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
 
   if (connected) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-8">
+      <main
+        className="relative flex min-h-[100svh] w-full flex-col items-center justify-center py-8"
+        style={safeAreaPadding}
+      >
         <AnimatedBackground variant="subtle" />
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-primary" />
@@ -62,16 +71,13 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
 
   return (
     <main
-      className="flex min-h-dvh flex-col items-center justify-center px-6 py-8"
-      style={{
-        paddingTop: "max(2rem, env(safe-area-inset-top))",
-        paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
-      }}
+      className="relative flex min-h-[100svh] w-full flex-col items-center justify-center py-8"
+      style={safeAreaPadding}
     >
       <AnimatedBackground variant="subtle" />
 
       <motion.div
-        className="mb-10 flex flex-col items-center gap-3"
+        className="mb-8 flex w-full max-w-sm flex-col items-center gap-3"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
