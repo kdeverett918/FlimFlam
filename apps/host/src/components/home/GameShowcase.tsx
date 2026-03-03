@@ -8,15 +8,15 @@ import { useState } from "react";
 import { GamePreviewDialog } from "./GamePreviewDialog";
 
 const ACCENT_COLORS: Record<string, string> = {
-  "brain-board": "oklch(0.68 0.22 265 / 0.20)",
+  "brain-board": "oklch(0.68 0.22 300 / 0.20)",
   "lucky-letters": "oklch(0.82 0.18 85 / 0.20)",
-  "survey-smash": "oklch(0.74 0.25 25 / 0.20)",
+  "survey-smash": "oklch(0.66 0.18 235 / 0.20)",
 };
 
 const ACCENT_SOLID_COLORS: Record<string, string> = {
-  "brain-board": "oklch(0.68 0.22 265)",
+  "brain-board": "oklch(0.68 0.22 300)",
   "lucky-letters": "oklch(0.82 0.18 85)",
-  "survey-smash": "oklch(0.74 0.25 25)",
+  "survey-smash": "oklch(0.66 0.18 235)",
 };
 
 const ACCENT_TEXT: Record<string, string> = {

@@ -70,7 +70,7 @@ export const GAME_MANIFESTS: GameManifest[] = [
     aiRequired: false,
     complexityLevels: ["kids", "standard", "advanced"],
     tags: ["trivia", "buzzer", "classic"],
-    icon: "❓",
+    icon: "🧠",
   },
   {
     id: "lucky-letters",
