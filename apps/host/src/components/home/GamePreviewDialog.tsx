@@ -46,7 +46,10 @@ export function GamePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[85vh] overflow-y-auto"
+        style={{ maxHeight: "85vh", overflowY: "auto", width: "min(calc(100vw - 2rem), 42rem)" }}
+      >
         {/* Top accent strip */}
         <div
           className="absolute inset-x-0 top-0 h-[3px] rounded-t-xl"

@@ -11,13 +11,21 @@ const DialogClose = DialogPrimitive.Close;
 const DialogOverlay = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
       "fixed inset-0 z-50 bg-bg-deep/80 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 50,
+      backgroundColor: "oklch(0.09 0.02 250 / 0.8)",
+      backdropFilter: "blur(4px)",
+      ...style,
+    }}
     {...props}
   />
 ));
@@ -36,9 +44,18 @@ const DialogContent = React.forwardRef<
         className,
       )}
       style={{
+        position: "fixed",
+        zIndex: 60,
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
+        width: "min(calc(100vw - 2rem), 42rem)",
+        borderRadius: "1rem",
+        border: "2px solid oklch(1 0 0 / 0.15)",
+        backgroundColor: "oklch(0.16 0.03 245 / 0.95)",
+        padding: "1.5rem",
+        boxShadow: "0 25px 50px -12px oklch(0 0 0 / 0.6)",
+        backdropFilter: "blur(20px)",
         ...style,
       }}
       {...props}

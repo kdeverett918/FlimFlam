@@ -31,7 +31,7 @@ const GAME_ACCENT_GRADIENT: Record<string, string> = {
 export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
   return (
     <div className="relative w-full">
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 px-2 py-6">
+      <div className="grid grid-cols-1 gap-8 px-2 py-6 sm:grid-cols-2 lg:grid-cols-3">
         {GAME_MANIFESTS.map((game) => {
           const isSelected = game.id === selectedGameId;
           const icon = GAME_ICONS[game.id];
@@ -82,7 +82,7 @@ export function GameSelector({ selectedGameId, onSelect }: GameSelectorProps) {
                     {icon ?? <HelpCircle className="h-10 w-10 text-text-muted shrink-0" />}
                   </div>
                   <div className="flex flex-col items-start min-w-0">
-                    <span className="font-display text-[26px] sm:text-[30px] font-bold text-text-primary truncate w-full leading-tight">
+                    <span className="w-full font-display text-[24px] font-bold leading-tight text-text-primary sm:text-[28px]">
                       {game.name}
                     </span>
                     <div className="flex items-center gap-2 flex-wrap">
