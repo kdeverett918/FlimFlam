@@ -95,7 +95,7 @@ export default function HomePage() {
             textShadow: "0 2px 12px oklch(0.09 0.02 250 / 0.8)",
           }}
         >
-          Games that get weird.
+          Your favorite game shows — at your fingertips.
         </motion.p>
 
         {/* Value proposition subtitle */}
@@ -105,7 +105,6 @@ export default function HomePage() {
           style={{ textShadow: "0 2px 8px oklch(0.09 0.02 250 / 0.6)" }}
         >
           Host on a shared screen. Players join from their phones. No app downloads. No accounts.
-          Just chaos.
         </motion.p>
 
         {/* Create room button */}
