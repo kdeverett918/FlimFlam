@@ -100,10 +100,10 @@ function LobbyContent({
           <Image
             src="/flimflam-logo.png"
             alt="FLIMFLAM Party Game"
-            width={480}
-            height={120}
+            width={688}
+            height={384}
             priority
-            className="h-auto w-full max-w-[480px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
+            className="h-auto w-full max-w-[480px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.3)]"
           />
         </div>
 
