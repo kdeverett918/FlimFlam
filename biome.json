@@ -35,12 +35,16 @@
       "node_modules",
       "dist",
       ".next",
+      ".next-e2e-*",
       ".turbo",
       "coverage",
       "playwright-report",
       "playwright-report-production",
       "playwright-report-production-remote",
       "test-results",
+      "outputs",
+      "artifacts",
+      ".codex",
       ".cache/ms-playwright",
       "*.tsbuildinfo"
     ]

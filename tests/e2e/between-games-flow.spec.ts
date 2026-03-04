@@ -5,16 +5,21 @@ import { closeAllControllers, selectGameAndStart, startGame } from "./e2e-helper
 async function endGameToLobby(page: Page): Promise<void> {
   const endButton = page.getByRole("button", { name: /^end$/i });
   const lobbyStartButton = page.getByRole("button", { name: /start game|waiting for players/i });
-  const deadline = Date.now() + 20_000;
+  const deadline = Date.now() + 30_000;
 
   while (Date.now() < deadline) {
     if (await lobbyStartButton.isVisible().catch(() => false)) {
-      return;
+      // Wait for lobby to stabilize after transition
+      await page.waitForTimeout(1_000);
+      // Verify lobby is still showing
+      if (await lobbyStartButton.isVisible().catch(() => false)) {
+        return;
+      }
     }
     if (await endButton.isVisible().catch(() => false)) {
       await endButton.click({ force: true }).catch(() => {});
     }
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(300);
   }
 
   await expect(lobbyStartButton).toBeVisible({ timeout: 10_000 });

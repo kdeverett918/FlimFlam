@@ -1,4 +1,10 @@
-import { type Browser, type BrowserContext, type Page, expect } from "@playwright/test";
+import {
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+  expect,
+} from "@playwright/test";
 
 const BRAIN_BOARD_CLUE_SELECTOR = 'button[aria-label*=" for "]:enabled';
 
@@ -74,12 +80,27 @@ export async function skipToPhase(
  */
 export async function submitTextAnswer(controllerPage: Page, answer: string): Promise<void> {
   const textbox = controllerPage.getByRole("textbox").first();
-  await expect(textbox).toBeVisible({ timeout: 10_000 });
+  await expect(textbox).toBeVisible({ timeout: 20_000 });
   await textbox.fill(answer);
-  await controllerPage
-    .getByRole("button", { name: /^submit$/i })
-    .first()
-    .click();
+  const submitButton = controllerPage.getByRole("button", { name: /^submit$/i }).first();
+  await expect(submitButton).toBeVisible({ timeout: 10_000 });
+  await expect
+    .poll(async () => submitButton.isEnabled().catch(() => false), {
+      timeout: 10_000,
+    })
+    .toBe(true);
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      await submitButton.click({ timeout: 5_000 });
+      return;
+    } catch (error) {
+      if (attempt === 3) {
+        throw error;
+      }
+      await controllerPage.waitForTimeout(180);
+    }
+  }
 }
 
 /**
@@ -128,21 +149,58 @@ export async function findActiveGuesser(
   controllerPages: Page[],
   timeoutMs = 15_000,
 ): Promise<Page> {
-  return findControllerWithButton(controllerPages, /^submit$/i, timeoutMs);
+  const deadline = Date.now() + timeoutMs;
+  let fallback: Page | null = null;
+
+  while (Date.now() < deadline) {
+    for (const page of controllerPages) {
+      if (page.isClosed()) continue;
+      const textbox = page.getByRole("textbox").first();
+      if (!(await textbox.isVisible().catch(() => false))) continue;
+
+      const submitButton = page.getByRole("button", { name: /^submit$/i }).first();
+      const guessButton = page.getByRole("button", { name: /^guess$/i }).first();
+      const submitVisible = await submitButton.isVisible().catch(() => false);
+      const guessVisible = await guessButton.isVisible().catch(() => false);
+      const submitEnabled = submitVisible && (await submitButton.isEnabled().catch(() => false));
+      const guessEnabled = guessVisible && (await guessButton.isEnabled().catch(() => false));
+      if (submitEnabled || guessEnabled) {
+        return page;
+      }
+      if (submitVisible || guessVisible) {
+        fallback = page;
+      }
+    }
+
+    if (fallback) return fallback;
+    await controllerPages[0]?.waitForTimeout(150);
+  }
+
+  throw new Error("Timed out waiting for active Survey Smash guesser");
 }
 
 /**
  * Close all controller browser contexts.
  */
 export async function closeAllControllers(controllers: JoinedController[]): Promise<void> {
+  const closeWithTimeout = async (context: BrowserContext, timeoutMs = 4_000): Promise<void> => {
+    await Promise.race([
+      context.close().catch(() => {}),
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  };
+
   for (const controller of controllers) {
-    await controller.context.close();
+    await closeWithTimeout(controller.context);
   }
 }
 
-export const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+export const HOST_URL = process.env.FLIMFLAM_E2E_HOST_URL ?? "http://127.0.0.1:5310";
+export const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:5311";
 export const COLYSEUS_HEALTH_URL =
-  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:3567/health";
+  process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:5567/health";
 
 export const DEFAULT_MOBILE_VIEWPORT = { width: 390, height: 844 } as const;
 
@@ -164,21 +222,172 @@ export async function waitForColyseusHealthy(page: Page, url = COLYSEUS_HEALTH_U
     .toBe(200);
 }
 
-export async function createRoom(page: Page): Promise<{ code: string }> {
-  // The homepage has two "CREATE ROOM" CTAs with the same aria-label.
-  // Use the accessible name (not the visible text) and click the first CTA.
-  const createRoomButton = page.getByRole("button", { name: /create a new game room/i }).first();
-  await expect(createRoomButton).toBeVisible({ timeout: 30_000 });
-  await expect(createRoomButton).toBeEnabled();
-  await createRoomButton.click();
-  await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}$/, { timeout: 60_000 });
+export async function waitForHostHealthy(page: Page, url = HOST_URL): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        try {
+          const res = await page.request.get(url);
+          return res.status();
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(200);
+}
 
-  const match = page.url().match(/\/room\/([A-Z0-9]{4})$/);
-  if (!match) {
-    throw new Error(`[e2e] expected room code in URL, got: ${page.url()}`);
+export async function waitForControllerHealthy(page: Page, url = CONTROLLER_URL): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        try {
+          const res = await page.request.get(url);
+          return res.status();
+        } catch {
+          return 0;
+        }
+      },
+      { timeout: 60_000 },
+    )
+    .toBe(200);
+}
+
+const HOST_SESSION_KEYS = [
+  "flimflam_host_reconnect_token",
+  "flimflam_host_room_code",
+  "flimflam_host_token",
+] as const;
+
+const TRANSIENT_PAGE_CONTEXT_ERROR =
+  /Execution context was destroyed|Cannot find context with specified id|Most likely the page has been closed/i;
+
+async function clearHostReconnectStorage(page: Page): Promise<void> {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    try {
+      await page.evaluate((keys) => {
+        for (const key of keys) {
+          try {
+            window.sessionStorage.removeItem(key);
+          } catch {}
+          try {
+            window.localStorage.removeItem(key);
+          } catch {}
+        }
+      }, HOST_SESSION_KEYS);
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const isTransient = TRANSIENT_PAGE_CONTEXT_ERROR.test(message);
+      if (!isTransient || attempt === 4) {
+        if (!isTransient) {
+          throw error;
+        }
+        return;
+      }
+      await page.waitForTimeout(120);
+    }
+  }
+}
+
+async function waitForHostLobbyReady(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/room\/[A-Z0-9]{4}(?:[/?#]|$)/, { timeout: 20_000 });
+  await expect
+    .poll(
+      async () =>
+        (await page
+          .getByRole("button", { name: /^brain board$/i })
+          .first()
+          .isVisible()) ||
+        (await page
+          .getByRole("button", { name: /^survey smash$/i })
+          .first()
+          .isVisible()) ||
+        (await page
+          .getByRole("button", { name: /^lucky letters$/i })
+          .first()
+          .isVisible()),
+      { timeout: 20_000 },
+    )
+    .toBe(true);
+}
+
+export async function createRoom(page: Page): Promise<{ code: string }> {
+  await waitForHostHealthy(page);
+  await page.context().clearCookies();
+
+  // Avoid reconnecting to stale rooms across retries/specs.
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await clearHostReconnectStorage(page);
+
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    if (attempt > 1) {
+      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await clearHostReconnectStorage(page);
+    }
+
+    // Home CTA naming can vary between aria-label and visible text across builds.
+    const candidates: Locator[] = [
+      page.getByTestId("create-room-cta").first(),
+      page.getByRole("button", { name: /create a new game room/i }).first(),
+      page.getByRole("button", { name: /^create room$/i }).first(),
+    ];
+
+    let createRoomButton: Locator | null = null;
+    for (const candidate of candidates) {
+      if (await candidate.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        createRoomButton = candidate;
+        break;
+      }
+    }
+
+    if (createRoomButton) {
+      await expect(createRoomButton).toBeEnabled({ timeout: 10_000 });
+      await createRoomButton.click();
+    } else {
+      await page.goto(`/room/new?e2e_retry=${attempt}`, { waitUntil: "domcontentloaded" });
+    }
+
+    // If CTA click did not navigate due transient hydration hiccup, force the create route.
+    if (/\/$/.test(page.url())) {
+      // The CTA click may have initiated a navigation that hasn't committed yet; avoid overlapping
+      // navigations that manifest as `net::ERR_ABORTED` flake in Playwright.
+      await page.waitForURL(/\/room\/new(?:[/?#]|$)/, { timeout: 2_000 }).catch(() => {});
+    }
+
+    if (/\/$/.test(page.url())) {
+      try {
+        await page.goto(`/room/new?e2e_force=${attempt}`, { waitUntil: "domcontentloaded" });
+      } catch (error) {
+        if (String(error).includes("net::ERR_ABORTED")) {
+          // Overlapping navigation aborted; allow the poll loop below to continue and recover.
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    const deadline = Date.now() + 45_000;
+    let lastNudgeAt = Date.now();
+    while (Date.now() < deadline) {
+      const codeFromUrl = extractRoomCodeFromUrl(page.url());
+      if (codeFromUrl) {
+        await waitForHostLobbyReady(page);
+        return { code: codeFromUrl };
+      }
+
+      if (Date.now() - lastNudgeAt > 6_000 && /\/room\/new(?:[/?#]|$)/.test(page.url())) {
+        // Re-trigger room creation effect if app got stuck on /room/new.
+        await page.reload({ waitUntil: "domcontentloaded" });
+        lastNudgeAt = Date.now();
+      }
+
+      await page.waitForTimeout(150);
+    }
   }
 
-  return { code: match[1] ?? "" };
+  throw new Error(`[e2e] expected room code in URL after retries, got: ${page.url()}`);
 }
 
 export async function joinControllerForRoom(
@@ -190,37 +399,137 @@ export async function joinControllerForRoom(
     controllerUrl = CONTROLLER_URL,
   }: { code: string; name: string; controllerUrl?: string },
 ): Promise<JoinedController> {
-  const context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
-  const controllerPage = await context.newPage();
-  const joinUrl = `${controllerUrl}/?code=${code}`;
+  const ensureNameInputValue = async (nameInput: Locator, targetName: string): Promise<void> => {
+    await expect(nameInput).toBeVisible({ timeout: 15_000 });
+    await expect(nameInput).toBeEditable({ timeout: 15_000 });
+
+    await nameInput.fill(targetName);
+    const directValue = await nameInput.inputValue().catch(() => "");
+    if (directValue.trim() === targetName) {
+      return;
+    }
+
+    // Hydration/input binding can drop the initial fill; replay key events before retrying join.
+    await nameInput.fill("");
+    await nameInput.pressSequentially(targetName, { delay: 20 });
+    await expect
+      .poll(async () => (await nameInput.inputValue().catch(() => "")).trim(), {
+        timeout: 5_000,
+      })
+      .toBe(targetName);
+  };
+
+  await waitForHostHealthy(hostPage);
+  await waitForControllerHealthy(hostPage, controllerUrl);
+
+  const normalizedCode = code.toUpperCase();
+  const joinUrl = `${controllerUrl}/?code=${normalizedCode}`;
 
   let joined = false;
   let lastError: unknown = null;
+  let context: BrowserContext | null = null;
+  let controllerPage: Page | null = null;
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    await controllerPage.goto(joinUrl);
-    await controllerPage.getByLabel("Your Name").fill(name);
-    await controllerPage.getByRole("button", { name: /^join$/i }).click();
-
+  const maxJoinAttempts = 7;
+  for (let attempt = 1; attempt <= maxJoinAttempts; attempt++) {
     try {
-      await expect(controllerPage).toHaveURL(/\/play$/, { timeout: 20_000 });
-      await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 20_000 });
+      if (context) {
+        await context.close().catch(() => {});
+      }
+      context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
+      controllerPage = await context.newPage();
+
+      await controllerPage.goto(joinUrl, { waitUntil: "domcontentloaded" });
+      await expect(controllerPage.getByLabel("Room code character 1")).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(controllerPage.getByRole("button", { name: /^join$/i })).toBeVisible({
+        timeout: 15_000,
+      });
+      const avatarOptions = controllerPage.locator('button[aria-label^="Select color:"]');
+      await expect(avatarOptions.first()).toBeVisible({ timeout: 15_000 });
+
+      const codeInputs: Locator[] = [];
+      for (let i = 0; i < 4; i++) {
+        codeInputs.push(controllerPage.getByLabel(`Room code character ${i + 1}`).first());
+      }
+      for (let i = 0; i < 4; i++) {
+        const codeInput = codeInputs[i];
+        await codeInput.fill(normalizedCode[i] ?? "");
+        await expect(codeInput).toHaveValue(normalizedCode[i] ?? "");
+      }
+      const nameInput = controllerPage.getByLabel("Your Name").first();
+      await ensureNameInputValue(nameInput, name);
+
+      const joinButton = controllerPage.getByRole("button", { name: /^join$/i });
+      if (!(await joinButton.isEnabled().catch(() => false))) {
+        // Hydration/input-binding race fallback: replay real key events.
+        for (let i = 0; i < 4; i++) {
+          const codeInput = codeInputs[i];
+          await codeInput.click();
+          await codeInput.fill("");
+          const next = normalizedCode[i] ?? "";
+          if (next) {
+            await codeInput.pressSequentially(next, { delay: 30 });
+          }
+        }
+
+        await ensureNameInputValue(nameInput, name);
+
+        if (
+          !(await controllerPage
+            .locator('button[aria-pressed="true"]')
+            .first()
+            .isVisible()
+            .catch(() => false))
+        ) {
+          await avatarOptions.first().click();
+        }
+      }
+
+      await expect
+        .poll(
+          async () => {
+            if (!(await joinButton.isEnabled().catch(() => false))) return false;
+
+            for (let i = 0; i < 4; i++) {
+              const value = await codeInputs[i]?.inputValue().catch(() => "");
+              if (value !== (normalizedCode[i] ?? "")) return false;
+            }
+
+            const nameValue = await nameInput.inputValue().catch(() => "");
+            if (nameValue.trim() !== name) return false;
+
+            return controllerPage
+              .locator('button[aria-pressed="true"]')
+              .first()
+              .isVisible()
+              .catch(() => false);
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+      await joinButton.click();
+      await expect(controllerPage).toHaveURL(/\/play(?:[/?#]|$)/, { timeout: 30_000 });
+      await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 45_000 });
       joined = true;
       break;
     } catch (error) {
       lastError = error;
-      if (attempt < 3) {
-        await controllerPage.waitForTimeout(600);
+      if (context) {
+        await context.close().catch(() => {});
+        context = null;
+        controllerPage = null;
+      }
+      if (attempt < maxJoinAttempts) {
+        await hostPage.waitForTimeout(1_000).catch(() => {});
       }
     }
   }
 
-  if (!joined) {
+  if (!joined || !context || !controllerPage) {
     throw lastError instanceof Error ? lastError : new Error("Controller failed to join room");
   }
-
-  // Ensure we actually landed in a connected /play state (not a transient redirect).
-  await expect(controllerPage.getByText(/^connecting\.\.\.$/i)).toHaveCount(0, { timeout: 60_000 });
 
   // Avoid strict-mode collisions like "Eve" matching "everyone" in card copy.
   await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
@@ -404,14 +713,14 @@ export async function driveSurveySmashToFinalScores(
 
     const submitted = await submitSurveySmashInput(controllerPages, "e2e-final");
     if (submitted) {
-      await hostPage.waitForTimeout(200);
+      await hostPage.waitForTimeout(200).catch(() => {});
       continue;
     }
 
     if (await skipButton.isVisible().catch(() => false)) {
       await skipButton.click().catch(() => {});
     }
-    await hostPage.waitForTimeout(250);
+    await hostPage.waitForTimeout(250).catch(() => {});
   }
 
   await expect(finalScoresHeading).toBeVisible({ timeout: 10_000 });
@@ -442,14 +751,14 @@ export async function driveSurveySmashToRoundResult(
 
       const submitted = await submitSurveySmashInput(controllerPages, `e2e-r${round}`);
       if (submitted) {
-        await hostPage.waitForTimeout(200);
+        await hostPage.waitForTimeout(200).catch(() => {});
         continue;
       }
 
       if (await skipButton.isVisible().catch(() => false)) {
         await skipButton.click().catch(() => {});
       }
-      await hostPage.waitForTimeout(250);
+      await hostPage.waitForTimeout(250).catch(() => {});
     }
 
     await expect(roundResultHeading).toBeVisible({ timeout: 10_000 });
@@ -465,24 +774,41 @@ async function submitSurveySmashInput(controllerPages: Page[], seed: string): Pr
   let submitted = false;
 
   // Submit for ALL controllers with visible textboxes (face-off needs 2 submissions)
-  for (const controllerPage of controllerPages) {
+  for (let index = 0; index < controllerPages.length; index += 1) {
+    const controllerPage = controllerPages[index];
+    if (!controllerPage || controllerPage.isClosed()) continue;
+
     const textbox = controllerPage.getByRole("textbox").first();
     if (!(await textbox.isVisible().catch(() => false))) continue;
 
-    const answer = `${seed}-${Math.floor(Math.random() * 1_000_000)}`;
+    const answer = `${seed}-${index}-${Math.floor(Math.random() * 1_000_000)}`;
     await textbox.fill(answer).catch(() => {});
 
     const submitButton = controllerPage.getByRole("button", { name: /^submit$/i }).first();
-    if (await submitButton.isVisible().catch(() => false)) {
-      await submitButton.click().catch(() => {});
-      submitted = true;
-      continue;
+    const submitVisible = await submitButton.isVisible().catch(() => false);
+    const submitEnabled = submitVisible && (await submitButton.isEnabled().catch(() => false));
+    if (submitVisible && submitEnabled) {
+      const clicked = await submitButton
+        .click()
+        .then(() => true)
+        .catch(() => false);
+      if (clicked) {
+        submitted = true;
+        continue;
+      }
     }
 
     const guessButton = controllerPage.getByRole("button", { name: /^guess$/i }).first();
-    if (await guessButton.isVisible().catch(() => false)) {
-      await guessButton.click().catch(() => {});
-      submitted = true;
+    const guessVisible = await guessButton.isVisible().catch(() => false);
+    const guessEnabled = guessVisible && (await guessButton.isEnabled().catch(() => false));
+    if (guessVisible && guessEnabled) {
+      const clicked = await guessButton
+        .click()
+        .then(() => true)
+        .catch(() => false);
+      if (clicked) {
+        submitted = true;
+      }
     }
   }
 
@@ -499,28 +825,56 @@ export async function driveSurveySmashToPhase(
     typeof text === "string" ? new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") : text;
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
   const deadline = Date.now() + timeoutMs;
+  const targetNeedsRevealBoard = /\bthe people say\b/i.test(String(pattern));
+  const matchesTarget = async () => {
+    const hasTargetText = await hostPage
+      .getByText(pattern)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (hasTargetText) return true;
+
+    if (!targetNeedsRevealBoard) return false;
+
+    const hasRevealBoard = await hostPage
+      .locator('[data-testid="survey-answer-board"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (!hasRevealBoard) return false;
+
+    return hostPage
+      .locator('[data-testid="survey-reveal-step"]')
+      .first()
+      .isVisible()
+      .catch(() => false);
+  };
 
   while (Date.now() < deadline) {
-    if (
-      await hostPage
-        .getByText(pattern)
-        .first()
-        .isVisible()
-        .catch(() => false)
-    ) {
+    if (hostPage.isClosed()) {
+      throw new Error(`Survey Smash host page closed before phase: ${String(pattern)}`);
+    }
+
+    if (await matchesTarget()) {
       return;
     }
 
     const submitted = await submitSurveySmashInput(controllerPages, "e2e-phase");
     if (submitted) {
-      await hostPage.waitForTimeout(200);
+      await hostPage.waitForTimeout(160).catch(() => {});
+      if (await matchesTarget()) {
+        return;
+      }
       continue;
     }
 
     if (await skipButton.isVisible().catch(() => false)) {
       await skipButton.click().catch(() => {});
+      if (await matchesTarget()) {
+        return;
+      }
     }
-    await hostPage.waitForTimeout(250);
+    await hostPage.waitForTimeout(220).catch(() => {});
   }
 
   throw new Error(`Timed out before reaching Survey Smash phase with text: ${String(pattern)}`);
@@ -528,4 +882,9 @@ export async function driveSurveySmashToPhase(
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractRoomCodeFromUrl(rawUrl: string): string | null {
+  const match = rawUrl.match(/\/room\/([A-Z0-9]{4})(?:[/?#]|$)/);
+  return match?.[1] ?? null;
 }

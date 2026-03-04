@@ -19,6 +19,7 @@ const MAX_STRIKES = 3;
 const LIGHTNING_QUESTION_COUNT = 5;
 const LIGHTNING_BONUS_THRESHOLD = 200;
 const LIGHTNING_BONUS_POINTS = 10_000;
+const GUESS_ALONG_BONUS_POINTS = 150;
 
 const ROUND_COUNTS: Record<Complexity, number> = {
   kids: 3,
@@ -70,6 +71,14 @@ interface FastMoneyAnswer {
   matched: boolean;
 }
 
+interface RoundGuessEntry {
+  sessionId: string;
+  answer: string;
+  source: "face-off" | "guessing" | "steal";
+  outcome: "match" | "miss" | "duplicate";
+  matchedRank: number | null;
+}
+
 // ─── Game State (internal, not a Colyseus Schema) ───────────────────
 
 interface SurveySmashInternalState {
@@ -99,6 +108,13 @@ interface SurveySmashInternalState {
   // Guessing rotation
   guessingOrder: string[];
   currentGuesserIndex: number;
+  roundGuesses: RoundGuessEntry[];
+  guessAlongGuesses: Map<string, string>;
+  guessAlongEligible: number;
+  guessAlongSubmissions: number;
+  guessAlongPoints: Map<string, number>;
+  lastGuessAlongWinners: string[];
+  lastGuessAlongAnswer: string | null;
 
   // Steal
   stealTeamId: string;
@@ -177,17 +193,30 @@ function buildHostData(gs: SurveySmashInternalState): Record<string, unknown> {
     })),
     guessingOrder: gs.guessingOrder,
     currentGuesserIndex: gs.currentGuesserIndex,
+    roundGuesses: gs.phase === "round-result" ? gs.roundGuesses : [],
     stealTeamId: gs.stealTeamId,
     lightningPlayerId: gs.lightningPlayerId,
     lightningCurrentIndex: gs.lightningCurrentIndex,
     lightningAnswers: gs.lightningAnswers,
     lightningTotalPoints: gs.lightningTotalPoints,
+    guessAlongEligible: gs.guessAlongEligible,
+    guessAlongSubmissions: gs.guessAlongSubmissions,
+    guessAlongPoints: gs.allPlayerIds.map((sessionId) => ({
+      sessionId,
+      points: gs.guessAlongPoints.get(sessionId) ?? 0,
+    })),
+    lastGuessAlongWinners: gs.lastGuessAlongWinners,
+    lastGuessAlongAnswer: gs.lastGuessAlongAnswer,
     allAnswers:
-      gs.phase === "answer-reveal" || gs.phase === "lightning-round-reveal"
+      gs.phase === "answer-reveal" ||
+      gs.phase === "lightning-round-reveal" ||
+      gs.phase === "round-result"
         ? (gs.currentSurvey?.answers ?? [])
         : [],
   };
 }
+
+export const buildPublicGameView = buildHostData;
 
 // ─── Team assignment helpers (exported for testing) ─────────────────
 
@@ -293,6 +322,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
       faceOffResolved: false,
       guessingOrder: [],
       currentGuesserIndex: 0,
+      roundGuesses: [],
+      guessAlongGuesses: new Map(),
+      guessAlongEligible: 0,
+      guessAlongSubmissions: 0,
+      guessAlongPoints: new Map(),
+      lastGuessAlongWinners: [],
+      lastGuessAlongAnswer: null,
       stealTeamId: "",
       lightningPlayerId: "",
       lightningQuestions: [],
@@ -378,6 +414,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
       if (key === hostSessionId) return;
       const p = player as Record<string, unknown>;
       this.scoringEngine.initPlayer(key, p.name as string);
+      this.gs.guessAlongPoints.set(key, 0);
     });
 
     // Start first round
@@ -406,6 +443,8 @@ class SurveySmashPlugin extends BaseGamePlugin {
       case "guessing":
         if (type === "player:submit") {
           this._handleGuess(room, state, client, data);
+        } else if (type === "player:guess-along") {
+          this._handleGuessAlong(room, client, data);
         }
         break;
       case "steal-chance":
@@ -468,14 +507,11 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const hostSessionId = (state as unknown as Record<string, unknown>).hostSessionId as string;
     if (client.sessionId === hostSessionId) return;
 
-    const teamId = this.gs.playerTeamMap.get(client.sessionId) ?? "";
-    this._sendPrivateData(room, client, {
+    this._sendPrivateToPlayer(room, client.sessionId, {
       action: "survey-smash-reconnect",
       phase: this.gs.phase,
       round: this.gs.round,
       totalRounds: this.gs.totalRounds,
-      teamMode: this.gs.teamMode,
-      yourTeamId: teamId,
       question: this.gs.currentSurvey?.question ?? "",
       revealedAnswers: this.gs.revealedAnswers,
       strikes: this.gs.strikes,
@@ -516,6 +552,17 @@ class SurveySmashPlugin extends BaseGamePlugin {
     );
   }
 
+  private _buildPlayerContext(sessionId: string): Record<string, unknown> {
+    const teamId = this.gs.playerTeamMap.get(sessionId) ?? "";
+    const team = this.gs.teams.find((t) => t.id === teamId);
+    return {
+      teamMode: this.gs.teamMode,
+      yourTeamId: teamId,
+      teamMembers: team?.members ?? [],
+      guessAlongPoints: this.gs.guessAlongPoints.get(sessionId) ?? 0,
+    };
+  }
+
   private _sendPrivateToPlayer(
     room: Room,
     sessionId: string,
@@ -524,7 +571,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const clients = (room as unknown as { clients: Client[] }).clients;
     for (const c of clients) {
       if (c.sessionId === sessionId) {
-        this._sendPrivateData(room, c, payload);
+        this._sendPrivateData(room, c, { ...this._buildPlayerContext(sessionId), ...payload });
         break;
       }
     }
@@ -555,6 +602,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this._phaseTimeout = this._room.clock.setTimeout(callback, scaledDelay);
   }
 
+  private _recordRoundGuess(entry: RoundGuessEntry): void {
+    this.gs.roundGuesses.push(entry);
+    if (this.gs.roundGuesses.length > 16) {
+      this.gs.roundGuesses = this.gs.roundGuesses.slice(-16);
+    }
+  }
+
   // ─── Phase Transitions ─────────────────────────────────────────────
 
   private _startRound(room: Room, state: Schema): void {
@@ -582,6 +636,12 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.faceOffResolved = false;
     this.gs.guessingOrder = [];
     this.gs.currentGuesserIndex = 0;
+    this.gs.roundGuesses = [];
+    this.gs.guessAlongGuesses.clear();
+    this.gs.guessAlongEligible = 0;
+    this.gs.guessAlongSubmissions = 0;
+    this.gs.lastGuessAlongWinners = [];
+    this.gs.lastGuessAlongAnswer = null;
     this.gs.stealTeamId = "";
 
     this.resetSubmissions(state);
@@ -638,6 +698,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
     if (!survey) return;
 
     const matched = findMatchingAnswer(content, survey, []);
+    this._recordRoundGuess({
+      sessionId: client.sessionId,
+      answer: content.trim(),
+      source: "face-off",
+      outcome: matched ? "match" : "miss",
+      matchedRank: matched?.rank ?? null,
+    });
     this.gs.faceOffEntries.push({
       sessionId: client.sessionId,
       answer: content,
@@ -728,6 +795,10 @@ class SurveySmashPlugin extends BaseGamePlugin {
     } else {
       this.gs.guessingOrder = [];
     }
+    if (this.gs.guessingOrder.length === 0) {
+      this._goToAnswerReveal(room, state);
+      return;
+    }
     this.gs.currentGuesserIndex = 0;
 
     this.resetSubmissions(state);
@@ -735,6 +806,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
     // Notify current guesser
     this._notifyCurrentGuesser(room);
+    this._startGuessAlongWindow(room);
 
     // Timer
     this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
@@ -752,6 +824,105 @@ class SurveySmashPlugin extends BaseGamePlugin {
         revealedAnswers: this.gs.revealedAnswers,
         strikes: this.gs.strikes,
       });
+    }
+  }
+
+  private _startGuessAlongWindow(room: Room): void {
+    const currentGuesser = this.gs.guessingOrder[this.gs.currentGuesserIndex] ?? null;
+    const roomState = this._roomState;
+    const activePlayers = roomState ? new Set(this.getActivePlayers(roomState)) : null;
+    const eligible = this.gs.allPlayerIds.filter((pid) => {
+      if (pid === currentGuesser) return false;
+      if (activePlayers) {
+        return activePlayers.has(pid);
+      }
+      return true;
+    });
+
+    this.gs.guessAlongGuesses.clear();
+    this.gs.guessAlongEligible = eligible.length;
+    this.gs.guessAlongSubmissions = 0;
+
+    for (const pid of eligible) {
+      this._sendPrivateToPlayer(room, pid, {
+        action: "guess-along",
+        question: this.gs.currentSurvey?.question ?? "",
+        currentGuesserId: currentGuesser,
+        guessAlongSubmitted: false,
+      });
+    }
+
+    this._broadcastGameData(room);
+  }
+
+  private _clearGuessAlongWindow(): void {
+    this.gs.guessAlongGuesses.clear();
+    this.gs.guessAlongEligible = 0;
+    this.gs.guessAlongSubmissions = 0;
+  }
+
+  private _handleGuessAlong(room: Room, client: Client, data: unknown): void {
+    const currentGuesser = this.gs.guessingOrder[this.gs.currentGuesserIndex] ?? null;
+    if (client.sessionId === currentGuesser) return;
+    if (!this.gs.allPlayerIds.includes(client.sessionId)) return;
+
+    const content =
+      typeof (data as Record<string, unknown>)?.content === "string"
+        ? ((data as Record<string, unknown>).content as string)
+        : "";
+    if (!content.trim()) return;
+
+    this.gs.guessAlongGuesses.set(client.sessionId, content.trim());
+    this.gs.guessAlongSubmissions = this.gs.guessAlongGuesses.size;
+
+    this._sendPrivateToPlayer(room, client.sessionId, {
+      action: "guess-along",
+      question: this.gs.currentSurvey?.question ?? "",
+      currentGuesserId: currentGuesser,
+      guessAlongSubmitted: true,
+      guessAlongGuess: content.trim(),
+    });
+
+    this._broadcastGameData(room);
+  }
+
+  private _resolveGuessAlong(room: Room, state: Schema, answerText: string | null): void {
+    const winners: string[] = [];
+
+    if (answerText) {
+      for (const [sessionId, guess] of this.gs.guessAlongGuesses) {
+        if (fuzzyMatch(guess, answerText, FUZZY_THRESHOLD)) {
+          winners.push(sessionId);
+        }
+      }
+    }
+
+    if (winners.length > 0) {
+      for (const sessionId of winners) {
+        this.addPoints(state, sessionId, GUESS_ALONG_BONUS_POINTS, "Guess Along bonus");
+        const prev = this.gs.guessAlongPoints.get(sessionId) ?? 0;
+        this.gs.guessAlongPoints.set(sessionId, prev + GUESS_ALONG_BONUS_POINTS);
+      }
+    }
+
+    this.gs.lastGuessAlongWinners = winners;
+    this.gs.lastGuessAlongAnswer = answerText;
+
+    room.broadcast("game-data", {
+      type: "guess-along-result",
+      answer: answerText,
+      winners: winners.map((sessionId) => ({
+        sessionId,
+        points: GUESS_ALONG_BONUS_POINTS,
+      })),
+    });
+
+    this._clearGuessAlongWindow();
+    this._broadcastGameData(room);
+
+    // Refresh per-player private context (guessAlongPoints).
+    for (const pid of this.gs.allPlayerIds) {
+      this._sendPrivateToPlayer(room, pid, {});
     }
   }
 
@@ -773,11 +944,19 @@ class SurveySmashPlugin extends BaseGamePlugin {
       fuzzyMatch(content, r.text, FUZZY_THRESHOLD),
     );
     if (isDuplicate) {
+      this._recordRoundGuess({
+        sessionId: client.sessionId,
+        answer: content.trim(),
+        source: "guessing",
+        outcome: "duplicate",
+        matchedRank: null,
+      });
       // Notify the player it's a duplicate — no strike
       this._sendPrivateToPlayer(room, client.sessionId, {
         action: "duplicate-answer",
         message: "Already on the board!",
       });
+      this._startGuessAlongWindow(room);
       this.resetSubmissions(state);
       this._broadcastGameData(room);
       this._notifyCurrentGuesser(room);
@@ -786,6 +965,14 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
     const matched = findMatchingAnswer(content, survey, this.gs.revealedAnswers);
     if (matched) {
+      this._resolveGuessAlong(room, state, matched.text);
+      this._recordRoundGuess({
+        sessionId: client.sessionId,
+        answer: content.trim(),
+        source: "guessing",
+        outcome: "match",
+        matchedRank: matched.rank,
+      });
       // Correct guess
       this.gs.revealedAnswers.push({
         text: matched.text,
@@ -815,6 +1002,14 @@ class SurveySmashPlugin extends BaseGamePlugin {
         this._recordStrike(room, state);
       });
     } else {
+      this._resolveGuessAlong(room, state, null);
+      this._recordRoundGuess({
+        sessionId: client.sessionId,
+        answer: content.trim(),
+        source: "guessing",
+        outcome: "miss",
+        matchedRank: null,
+      });
       // Wrong guess: strike
       this._recordStrike(room, state);
     }
@@ -841,6 +1036,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
         this.setPhase(state, "guessing");
         this.gs.currentGuesserIndex =
           (this.gs.currentGuesserIndex + 1) % this.gs.guessingOrder.length;
+        this._startGuessAlongWindow(room);
         this.resetSubmissions(state);
         this._broadcastGameData(room);
         this._notifyCurrentGuesser(room);
@@ -908,6 +1104,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
     const matched = findMatchingAnswer(content, survey, this.gs.revealedAnswers);
     if (matched) {
+      this._recordRoundGuess({
+        sessionId: client.sessionId,
+        answer: content.trim(),
+        source: "steal",
+        outcome: "match",
+        matchedRank: matched.rank,
+      });
       // Successful steal!
       this.gs.revealedAnswers.push({
         text: matched.text,
@@ -917,6 +1120,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
       this.gs.roundPoints += matched.points;
       this._resolveSteal(room, state, true);
     } else {
+      this._recordRoundGuess({
+        sessionId: client.sessionId,
+        answer: content.trim(),
+        source: "steal",
+        outcome: "miss",
+        matchedRank: null,
+      });
       // Failed steal: controlling team keeps points
       this._resolveSteal(room, state, false);
     }
@@ -933,6 +1143,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
   private _goToAnswerReveal(room: Room, state: Schema): void {
     this._clearPhaseTimeout();
+    this._clearGuessAlongWindow();
 
     // If no steal phase happened (all answers found during guessing), award points to controlling team
     if (this.gs.stealTeamId === "" && this.gs.controllingTeamId) {
@@ -1213,6 +1424,7 @@ export type {
   RevealedAnswer,
   FaceOffEntry,
   FastMoneyAnswer,
+  RoundGuessEntry,
   SurveySmashInternalState,
 };
 export {

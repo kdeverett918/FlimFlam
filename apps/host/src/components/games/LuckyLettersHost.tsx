@@ -2,9 +2,18 @@
 
 import type { PlayerData } from "@flimflam/shared";
 import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
-import { ConfettiBurst, GlassPanel } from "@flimflam/ui";
+import {
+  ANIMATION_DURATIONS,
+  ANIMATION_EASINGS,
+  AnimatedCounter,
+  ConfettiBurst,
+  GlassPanel,
+  emitMotionEvent,
+  sounds,
+  useReducedMotion,
+} from "@flimflam/ui";
 import type { Room } from "colyseus.js";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useState } from "react";
 import { FinalScoresLayout, buildScores } from "../game/FinalScoresLayout";
 import { Timer } from "../game/Timer";
@@ -106,10 +115,12 @@ function PuzzleBoard({
   display,
   category,
   highlightLetters,
+  reducedMotion = false,
 }: {
   display: string;
   category: string;
   highlightLetters?: Set<string>;
+  reducedMotion?: boolean;
 }) {
   // Build cells from the display string, preserving word boundaries
   const cells: Array<{ char: string; pos: number; isSpace: boolean }> = [];
@@ -163,6 +174,8 @@ function PuzzleBoard({
                 return (
                   <motion.div
                     key={cellKey}
+                    data-testid="lucky-letter-tile"
+                    data-reveal-style={reducedMotion ? "fade" : "flip"}
                     className={`flex items-center justify-center rounded-md border-2 ${
                       isBlank
                         ? "border-accent-luckyletters/30 bg-white/10"
@@ -176,17 +189,39 @@ function PuzzleBoard({
                     }}
                     animate={
                       isHighlighted
-                        ? { scale: [1, 1.15, 1], transition: { duration: 0.5 } }
+                        ? reducedMotion
+                          ? {
+                              opacity: [1, 0.82, 1],
+                              transition: { duration: ANIMATION_DURATIONS.reveal },
+                            }
+                          : { scale: [1, 1.15, 1], transition: { duration: 0.5 } }
                         : undefined
                     }
                   >
                     {!isBlank && (
-                      <span
-                        className="font-display font-bold text-text-primary"
-                        style={{ fontSize: "clamp(24px, 3.5vw, 48px)" }}
-                      >
-                        {ch}
-                      </span>
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={`${cellKey}-${ch}`}
+                          initial={reducedMotion ? { opacity: 0 } : { rotateX: -90, opacity: 0 }}
+                          animate={reducedMotion ? { opacity: 1 } : { rotateX: 0, opacity: 1 }}
+                          exit={reducedMotion ? { opacity: 0 } : { rotateX: 90, opacity: 0 }}
+                          transition={{
+                            duration: reducedMotion
+                              ? ANIMATION_DURATIONS.standard
+                              : ANIMATION_DURATIONS.reveal,
+                            ease: reducedMotion
+                              ? ANIMATION_EASINGS.smoothInOut
+                              : ANIMATION_EASINGS.crispOut,
+                          }}
+                          className="font-display font-bold text-text-primary"
+                          style={{
+                            fontSize: "clamp(24px, 3.5vw, 48px)",
+                            transformOrigin: reducedMotion ? undefined : "center bottom",
+                          }}
+                        >
+                          {ch}
+                        </motion.span>
+                      </AnimatePresence>
                     )}
                   </motion.div>
                 );
@@ -275,7 +310,11 @@ function WheelSpinner({
   const wheelSize = 420;
 
   return (
-    <div className="relative" style={{ width: wheelSize, height: wheelSize }}>
+    <div
+      data-testid="lucky-wheel"
+      className="relative"
+      style={{ width: wheelSize, height: wheelSize }}
+    >
       {/* Pointer */}
       <div
         className="absolute -top-4 left-1/2 z-10 -translate-x-1/2"
@@ -334,7 +373,7 @@ function WheelSpinner({
 
             return (
               // biome-ignore lint/suspicious/noArrayIndexKey: static wheel segments never reorder
-              <g key={`seg-${i}`}>
+              <g key={`seg-${i}`} data-testid="lucky-wheel-segment" data-segment-index={i}>
                 <path
                   d={`M100,100 L${x1},${y1} A98,98 0 ${largeArc},1 ${x2},${y2} Z`}
                   fill={`url(#seg-grad-${i})`}
@@ -388,6 +427,12 @@ interface LuckyLettersHostProps {
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLettersHostProps) {
+  const reducedMotion = useReducedMotion();
+  const effectiveReducedMotion =
+    reducedMotion ||
+    (typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [gameState, setGameState] = useState<WheelGameState | null>(null);
   const [letterResult, setLetterResult] = useState<LetterResultData | null>(null);
   const [spinResult, setSpinResult] = useState<SpinResultData | null>(null);
@@ -406,19 +451,43 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
       const lr = data as unknown as LetterResultData;
       setLetterResult(lr);
       if (lr.inPuzzle) {
+        sounds.correct();
+      } else {
+        sounds.buzz();
+      }
+      if (lr.inPuzzle) {
         setHighlightLetters(new Set([lr.letter]));
         setTimeout(() => setHighlightLetters(new Set()), 2000);
       }
     } else if (type === "spin-result") {
-      setSpinResult(data as unknown as SpinResultData);
+      const spin = data as unknown as SpinResultData;
+      setSpinResult(spin);
       setIsSpinning(true);
-      setTimeout(() => setIsSpinning(false), 3500);
+      emitMotionEvent("lucky.wheel.spin.start", {
+        angle: spin.angle,
+      });
+      sounds.whoosh();
+      setTimeout(() => {
+        setIsSpinning(false);
+        emitMotionEvent("lucky.wheel.spin.stop", {
+          angle: spin.angle,
+        });
+      }, 3500);
     } else if (type === "round-result") {
-      setRoundResult(data as unknown as RoundResultData);
+      const rr = data as unknown as RoundResultData;
+      setRoundResult(rr);
+      if (rr.winnerId) sounds.win();
     } else if (type === "bonus-reveal") {
-      setBonusReveal(data as unknown as BonusRevealData);
+      const br = data as unknown as BonusRevealData;
+      setBonusReveal(br);
+      if (br.solved) {
+        sounds.win();
+      } else {
+        sounds.buzz();
+      }
     } else if (type === "bonus-letters-revealed") {
       const letters = (data.letters as string[]) ?? [];
+      sounds.reveal();
       setHighlightLetters(new Set(letters));
       setTimeout(() => setHighlightLetters(new Set()), 2000);
     }
@@ -457,13 +526,19 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
           >
             <PlayerAvatar name={name} color={color} size={32} />
             <span className="font-body text-[18px] text-text-primary">{name}</span>
-            <span className="font-mono text-[18px] text-accent-luckyletters">
-              ${s.totalCash.toLocaleString()}
-            </span>
+            <AnimatedCounter
+              value={s.totalCash}
+              duration={900}
+              className="text-[18px] font-bold text-accent-luckyletters"
+              format={(v) => `$${v.toLocaleString()}`}
+            />
             {s.roundCash > 0 && (
-              <span className="font-mono text-[14px] text-text-muted">
-                (${s.roundCash.toLocaleString()})
-              </span>
+              <AnimatedCounter
+                value={s.roundCash}
+                duration={700}
+                className="text-[14px] text-text-muted"
+                format={(v) => `($${v.toLocaleString()})`}
+              />
             )}
           </div>
         );
@@ -525,6 +600,7 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
           display={gameState.puzzleDisplay}
           category={gameState.category}
           highlightLetters={highlightLetters}
+          reducedMotion={effectiveReducedMotion}
         />
 
         <div className="flex items-center gap-6 mt-4">
@@ -578,7 +654,11 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-        <PuzzleBoard display={gameState.puzzleDisplay} category={gameState.category} />
+        <PuzzleBoard
+          display={gameState.puzzleDisplay}
+          category={gameState.category}
+          reducedMotion={effectiveReducedMotion}
+        />
 
         <div className="flex items-center gap-4 mt-4">
           <PlayerAvatar name={currentName} color={currentColor} size={56} />
@@ -613,7 +693,11 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-        <PuzzleBoard display={gameState.puzzleDisplay} category={gameState.category} />
+        <PuzzleBoard
+          display={gameState.puzzleDisplay}
+          category={gameState.category}
+          reducedMotion={effectiveReducedMotion}
+        />
 
         <div className="flex items-center gap-4 mt-4">
           <PlayerAvatar name={currentName} color={currentColor} size={56} />
@@ -642,7 +726,11 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
-        <PuzzleBoard display={gameState.puzzleDisplay} category={gameState.category} />
+        <PuzzleBoard
+          display={gameState.puzzleDisplay}
+          category={gameState.category}
+          reducedMotion={effectiveReducedMotion}
+        />
 
         <div className="flex items-center gap-4 mt-4">
           <PlayerAvatar name={currentName} color={currentColor} size={56} />
@@ -672,6 +760,7 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
           display={letterResult.puzzleDisplay}
           category={gameState.category}
           highlightLetters={highlightLetters}
+          reducedMotion={effectiveReducedMotion}
         />
 
         <motion.div
@@ -791,6 +880,7 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
           display={gameState.puzzleDisplay}
           category={gameState.category}
           highlightLetters={highlightLetters}
+          reducedMotion={effectiveReducedMotion}
         />
 
         <div className="flex items-center gap-4 mt-2">

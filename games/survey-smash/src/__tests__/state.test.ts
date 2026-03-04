@@ -11,6 +11,7 @@ import {
   type SurveySmashInternalState,
   type TeamInfo,
   assignTeams,
+  buildPublicGameView,
   findMatchingAnswer,
   pickFaceOffPlayers,
 } from "../index";
@@ -39,6 +40,13 @@ function makeState(overrides: Partial<SurveySmashInternalState> = {}): SurveySma
     faceOffResolved: false,
     guessingOrder: [],
     currentGuesserIndex: 0,
+    roundGuesses: [],
+    guessAlongGuesses: new Map(),
+    guessAlongEligible: 0,
+    guessAlongSubmissions: 0,
+    guessAlongPoints: new Map(),
+    lastGuessAlongWinners: [],
+    lastGuessAlongAnswer: null,
     stealTeamId: "",
     lightningPlayerId: "",
     lightningQuestions: [],
@@ -61,6 +69,47 @@ const SAMPLE_SURVEY: Survey = {
     { text: "Set alarm", points: 8, rank: 6 },
   ],
 };
+
+describe("Public game view redaction", () => {
+  it("hides allAnswers outside reveal phases", () => {
+    const hiddenPhases: SurveySmashInternalState["phase"][] = [
+      "question-reveal",
+      "face-off",
+      "guessing",
+      "strike",
+      "steal-chance",
+      "lightning-round",
+      "final-scores",
+    ];
+
+    for (const phase of hiddenPhases) {
+      const payload = buildPublicGameView(
+        makeState({
+          phase,
+          currentSurvey: SAMPLE_SURVEY,
+        }),
+      ) as { allAnswers: unknown[] };
+      expect(payload.allAnswers).toEqual([]);
+    }
+  });
+
+  it("includes full ranked answers during answer-reveal", () => {
+    const payload = buildPublicGameView(
+      makeState({
+        phase: "answer-reveal",
+        currentSurvey: SAMPLE_SURVEY,
+      }),
+    ) as { allAnswers: Array<{ text: string; rank: number; points: number }> };
+
+    expect(payload.allAnswers).toHaveLength(SAMPLE_SURVEY.answers.length);
+    expect(payload.allAnswers.map((answer) => answer.rank)).toEqual(
+      SAMPLE_SURVEY.answers.map((answer) => answer.rank),
+    );
+    expect(payload.allAnswers.map((answer) => answer.points)).toEqual(
+      SAMPLE_SURVEY.answers.map((answer) => answer.points),
+    );
+  });
+});
 
 // ═══════════════════════════════════════════════════════════════════
 // Team Assignment
