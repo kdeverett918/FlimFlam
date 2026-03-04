@@ -99,12 +99,12 @@ export function JoinPageClient({ initialCode }: JoinPageClientProps) {
             <Image
               src="/flimflam-logo.png"
               alt="FLIMFLAM Party Game"
-              width={300}
-              height={75}
+              width={688}
+              height={384}
               priority
-              className="h-auto w-full max-w-[260px] min-[390px]:max-w-[300px] object-contain"
+              className="h-auto w-full max-w-[280px] min-[390px]:max-w-[320px] object-contain"
               style={{
-                filter: "drop-shadow(0 0 32px oklch(0.75 0.22 25 / 0.4))",
+                filter: "drop-shadow(0 0 24px oklch(0.75 0.22 25 / 0.25))",
               }}
               aria-hidden="true"
             />

@@ -80,10 +80,10 @@ export default function HomePage() {
           <Image
             src="/flimflam-logo.png"
             alt="FLIMFLAM Party Game"
-            width={560}
-            height={140}
+            width={688}
+            height={384}
             priority
-            className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)]"
+            className="h-auto w-full max-w-[560px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.3)]"
           />
           <span className="sr-only">FLIMFLAM</span>
         </h1>
@@ -115,6 +115,7 @@ export default function HomePage() {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
           type="button"
+          data-testid="create-room-cta"
           onClick={handleCreateRoom}
           disabled={loading}
           aria-label="Create a new game room"
