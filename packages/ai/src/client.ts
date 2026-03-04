@@ -9,6 +9,7 @@ import type { ZodSchema } from "zod";
 import { parseAIResponse } from "./parser";
 
 const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const MODEL_FALLBACKS = ["claude-sonnet-4-5-latest", "claude-3-5-sonnet-latest"] as const;
 
 let anthropicClient: Anthropic | null = null;
 
@@ -62,6 +63,29 @@ export function getTokenUsage(): { input: number; output: number } {
   return { input: totalInputTokens, output: totalOutputTokens };
 }
 
+export function buildModelCandidates(explicitModel?: string): string[] {
+  const models = [
+    explicitModel,
+    process.env.FLIMFLAM_AI_MODEL,
+    DEFAULT_MODEL,
+    ...MODEL_FALLBACKS,
+  ].filter((model): model is string => typeof model === "string" && model.trim().length > 0);
+  return [...new Set(models)];
+}
+
+export function isModelUnavailableError(error: AIApiError): boolean {
+  if (![400, 403, 404].includes(error.statusCode)) return false;
+  const text = error.message.toLowerCase();
+  return (
+    text.includes("model") &&
+    (text.includes("not found") ||
+      text.includes("does not exist") ||
+      text.includes("access") ||
+      text.includes("permission") ||
+      text.includes("unsupported"))
+  );
+}
+
 // ─── Main Request Function ──────────────────────────────────────────────
 
 /**
@@ -81,70 +105,78 @@ export async function aiRequest<T>(
   const timeoutMs = options?.timeoutMs ?? AI_REQUEST_TIMEOUT_MS;
   const maxRetries = options?.retries ?? AI_MAX_RETRIES;
   const maxTokens = options?.maxTokens ?? 4096;
-  const model = options?.model ?? process.env.FLIMFLAM_AI_MODEL ?? DEFAULT_MODEL;
+  const modelCandidates = buildModelCandidates(options?.model);
 
   let lastError: Error | null = null;
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const startTime = Date.now();
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const client = getClient();
-      const response = await client.messages.create(
-        {
-          model,
-          max_tokens: maxTokens,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-        },
-        { signal: controller.signal },
-      );
-
-      clearTimeout(timeoutId);
-
-      const latencyMs = Date.now() - startTime;
-      const tokensUsed = {
-        input: response.usage.input_tokens,
-        output: response.usage.output_tokens,
-      };
-
-      totalInputTokens += tokensUsed.input;
-      totalOutputTokens += tokensUsed.output;
-
-      // Extract text content from response
-      let rawText = "";
-      for (const block of response.content) {
-        if (block.type === "text") {
-          rawText += block.text;
-        }
-      }
+  for (const model of modelCandidates) {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const startTime = Date.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
-        const parsed = parseAIResponse(rawText, zodSchema);
-        return { raw: rawText, parsed, tokensUsed, latencyMs };
-      } catch (parseError) {
-        lastError = new AIParseError(
-          `Failed to parse AI response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
-          rawText,
+        const client = getClient();
+        const response = await client.messages.create(
+          {
+            model,
+            max_tokens: maxTokens,
+            system: systemPrompt,
+            messages: [{ role: "user", content: userPrompt }],
+          },
+          { signal: controller.signal },
         );
-      }
-    } catch (error) {
-      clearTimeout(timeoutId);
 
-      if (error instanceof Error && error.name === "AbortError") {
-        lastError = new AITimeoutError(timeoutMs);
-        continue;
-      }
+        clearTimeout(timeoutId);
 
-      if (error instanceof Anthropic.APIError || (error instanceof Error && "status" in error)) {
-        const status = (error as { status?: number }).status ?? 500;
-        lastError = new AIApiError(error.message, status);
-        continue;
-      }
+        const latencyMs = Date.now() - startTime;
+        const tokensUsed = {
+          input: response.usage.input_tokens,
+          output: response.usage.output_tokens,
+        };
 
-      lastError = error instanceof Error ? error : new AIError(String(error));
+        totalInputTokens += tokensUsed.input;
+        totalOutputTokens += tokensUsed.output;
+
+        // Extract text content from response
+        let rawText = "";
+        for (const block of response.content) {
+          if (block.type === "text") {
+            rawText += block.text;
+          }
+        }
+
+        try {
+          const parsed = parseAIResponse(rawText, zodSchema);
+          return { raw: rawText, parsed, tokensUsed, latencyMs };
+        } catch (parseError) {
+          lastError = new AIParseError(
+            `Failed to parse AI response: ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+            rawText,
+          );
+        }
+      } catch (error) {
+        clearTimeout(timeoutId);
+
+        if (error instanceof Error && error.name === "AbortError") {
+          lastError = new AITimeoutError(timeoutMs);
+          continue;
+        }
+
+        if (error instanceof Anthropic.APIError || (error instanceof Error && "status" in error)) {
+          const status = (error as { status?: number }).status ?? 500;
+          const apiError = new AIApiError(error.message, status);
+          lastError = apiError;
+
+          // If this model is unavailable for this key/account, move to the next candidate.
+          if (isModelUnavailableError(apiError)) {
+            break;
+          }
+          continue;
+        }
+
+        lastError = error instanceof Error ? error : new AIError(String(error));
+      }
     }
   }
 
