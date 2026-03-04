@@ -15,8 +15,8 @@ export default function RoomPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const routeCode = (params.code as string)?.toUpperCase() ?? "";
-  const preselectedGame = useRef(searchParams.get("game"));
+  const routeCode = (params?.code as string)?.toUpperCase() ?? "";
+  const preselectedGame = useRef(searchParams?.get("game") ?? null);
   const {
     room,
     state,
