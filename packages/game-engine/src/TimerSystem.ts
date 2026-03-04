@@ -23,7 +23,18 @@ export function computePhaseDuration(phase: string, complexity: Complexity): num
   const scale = rawScale ? Number(rawScale) : 1;
   const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
 
-  return Math.max(250, Math.round(resolvedMs * multiplier * safeScale));
+  const scaledMs = Math.max(250, Math.round(resolvedMs * multiplier * safeScale));
+
+  // In non-E2E environments, keep Brain Board topic chat visible long enough
+  // for players to actually interact even if global timer scaling is aggressive.
+  if (phase === "topic-chat" && process.env.FLIMFLAM_E2E !== "1") {
+    const rawFloor = process.env.FLIMFLAM_TOPIC_CHAT_MIN_MS;
+    const configuredFloor = rawFloor ? Number(rawFloor) : 20_000;
+    const safeFloor = Number.isFinite(configuredFloor) ? Math.max(0, configuredFloor) : 20_000;
+    return Math.max(scaledMs, safeFloor);
+  }
+
+  return scaledMs;
 }
 
 /**

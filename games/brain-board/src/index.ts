@@ -40,6 +40,18 @@ const FUZZY_THRESHOLD = 0.7;
 const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 4000;
 const BRAIN_BOARD_JUDGE_MODEL =
   process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL ?? "claude-haiku-4-5-latest";
+const TOPIC_CHAT_FALLBACK_TOPICS = [
+  "movies",
+  "music",
+  "sports",
+  "science",
+  "history",
+  "pop culture",
+  "food",
+  "travel",
+  "technology",
+  "animals",
+];
 
 /** Power Play counts per round. Round 1 always has 1, Round 2 always has 2. */
 function getPowerPlayCount(_complexity: Complexity, round: number): number {
@@ -1354,76 +1366,85 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     const chatContext = this._chatMessages.map((m) => `${m.sender}: ${m.message}`).join("\n");
 
-    if (playerMessages.length > 0) {
-      // Show generating phase while AI builds the board
-      this.phase = "generating-board";
-      this.setPhase(state, "generating-board");
-      room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
+    // Show generating phase while AI builds the board
+    this.phase = "generating-board";
+    this.setPhase(state, "generating-board");
+    room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
 
-      try {
-        const playerNames = this.playerOrder.map((sid) => {
-          const player = (
-            (state as unknown as Record<string, unknown>).players as MapSchema | undefined
-          )?.get(sid);
-          return player
-            ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
-            : "Player";
-        });
+    try {
+      const playerNames = this.playerOrder.map((sid) => {
+        const player = (
+          (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+        )?.get(sid);
+        return player
+          ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+          : "Player";
+      });
 
-        // Extract topic keywords from player messages
-        const topics = playerMessages
-          .join(" ")
-          .split(/[,.\n!?]+/)
-          .map((t) => t.trim())
-          .filter((t) => t.length > 2 && t.length < 50);
+      // Extract topic keywords from player messages.
+      // If players don't send chat (or the phase is skipped quickly), seed with sensible defaults.
+      const extractedTopics = playerMessages
+        .join(" ")
+        .split(/[,.\n!?]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 2 && t.length < 50);
+      const promptTopics =
+        extractedTopics.length > 0
+          ? extractedTopics.slice(0, 15)
+          : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
 
-        const prompt = buildBrainBoardGenerationPrompt(
-          topics.slice(0, 15),
-          this.complexity,
-          playerNames,
-          chatContext.slice(0, 2000),
-        );
-
-        const result = await enqueueAIRequest(room.roomId, () =>
-          aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
-            model: "claude-sonnet-4-5-20250929",
-            maxTokens: 4096,
-            timeoutMs: 15000,
-            retries: 1,
-          }),
-        );
-
-        const aiBoard: JeopardyBoard = {
-          categories: result.parsed.categories.map((cat) => ({
-            name: cat.name.trim() || "Unknown",
-            clues: cat.clues.map((c, i) => ({
-              question: c.question.trim(),
-              answer: c.answer.trim(),
-              value: CLUE_VALUES[i] ?? (i + 1) * 200,
-            })),
-          })),
-        };
-
-        // Override the Round 1 board with the AI-generated one.
-        this.round1Board = aiBoard;
-        this.board = aiBoard;
-        this._aiGeneratedBoard = true;
-
-        // Re-place Power Plays on the new board.
-        this.powerPlays = placePowerPlays(
-          getPowerPlayCount(this.complexity, 1),
-          CATEGORIES_PER_BOARD,
-          CLUES_PER_CATEGORY,
-        );
-
+      if (playerMessages.length === 0) {
         console.log(
-          "[BrainBoard] AI-generated board accepted with",
-          aiBoard.categories.length,
-          "categories",
+          "[BrainBoard] No player topic messages collected; generating board from fallback topic seeds.",
         );
-      } catch (error) {
-        console.error("[BrainBoard] AI board generation failed, using static board:", error);
       }
+
+      const prompt = buildBrainBoardGenerationPrompt(
+        promptTopics,
+        this.complexity,
+        playerNames,
+        chatContext.slice(0, 2000),
+      );
+
+      const result = await enqueueAIRequest(room.roomId, () =>
+        aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
+          model: "claude-sonnet-4-5-20250929",
+          maxTokens: 4096,
+          timeoutMs: 15000,
+          retries: 1,
+        }),
+      );
+
+      const aiBoard: JeopardyBoard = {
+        categories: result.parsed.categories.map((cat) => ({
+          name: cat.name.trim() || "Unknown",
+          clues: cat.clues.map((c, i) => ({
+            question: c.question.trim(),
+            answer: c.answer.trim(),
+            value: CLUE_VALUES[i] ?? (i + 1) * 200,
+          })),
+        })),
+      };
+
+      // Override the Round 1 board with the AI-generated one.
+      this.round1Board = aiBoard;
+      this.board = aiBoard;
+      this._aiGeneratedBoard = true;
+
+      // Re-place Power Plays on the new board.
+      this.powerPlays = placePowerPlays(
+        getPowerPlayCount(this.complexity, 1),
+        CATEGORIES_PER_BOARD,
+        CLUES_PER_CATEGORY,
+      );
+
+      console.log(
+        "[BrainBoard] AI-generated board accepted with",
+        aiBoard.categories.length,
+        "categories",
+      );
+    } catch (error) {
+      console.error("[BrainBoard] AI board generation failed, using static board:", error);
     }
 
     // Proceed to the normal category-reveal flow
