@@ -177,6 +177,8 @@ export default function PlayPage() {
         score={myScore}
         rank={myRank}
         totalPlayers={players.length}
+        players={players}
+        mySessionId={mySessionId}
       />
     </main>
   );

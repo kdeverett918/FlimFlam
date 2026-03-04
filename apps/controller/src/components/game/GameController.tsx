@@ -1,5 +1,8 @@
 "use client";
 
+import { BrainBoardChat } from "@/components/controls/BrainBoardChat";
+import { BrainBoardClueResult } from "@/components/controls/BrainBoardClueResult";
+import { BrainBoardStandings } from "@/components/controls/BrainBoardStandings";
 import { CategoryReveal } from "@/components/controls/CategoryReveal";
 import { ClueGrid } from "@/components/controls/ClueGrid";
 import { LetterPicker } from "@/components/controls/LetterPicker";
@@ -14,7 +17,7 @@ import { TextInput } from "@/components/controls/TextInput";
 import type { PlayerData } from "@flimflam/shared";
 import { ConfettiBurst, GameThemeProvider, GlassPanel } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
-import { Monitor, Trophy } from "lucide-react";
+import { Monitor, Trophy, Zap } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { ReactionBar } from "./ReactionBar";
 import { WaitingScreen } from "./WaitingScreen";
@@ -172,6 +175,13 @@ export function GameController({
     sendMessage("player:reroll-board");
   }, [sendMessage]);
 
+  const handleChatMessage = useCallback(
+    (text: string) => {
+      sendMessage("player:chat-message", { message: text });
+    },
+    [sendMessage],
+  );
+
   // ─── Lucky Letters action chooser helpers ──────────────────────
 
   const handleChooseBuyVowel = useCallback(() => {
@@ -243,16 +253,87 @@ export function GameController({
   // ────────────────────────────────────────────────────────────────────
 
   function renderBrainBoard(currentPhase: string): React.ReactNode {
+    // ─── Shared game state extraction ──────────────────────
+    const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const boardCategories = Array.isArray(gs.board)
+      ? (gs.board as Array<{ name?: string }>)
+          .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
+          .filter((name) => name.length > 0)
+      : [];
+    const bbStandings = Array.isArray(gs.standings)
+      ? (gs.standings as Array<{ sessionId: string; score: number }>)
+      : [];
+    const currentRound = typeof gs.currentRound === "number" ? gs.currentRound : 1;
+    const doubleDownValues = gs.doubleDownValues === true;
+    const answeredCount = typeof gs.answeredCount === "number" ? gs.answeredCount : 0;
+    const totalPlayerCount = typeof gs.totalPlayerCount === "number" ? gs.totalPlayerCount : 0;
+    const selectorName = (() => {
+      const sid = typeof gs.selectorSessionId === "string" ? gs.selectorSessionId : null;
+      if (!sid) return null;
+      return players.find((p) => p.sessionId === sid)?.name ?? null;
+    })();
+
+    // Chat messages for topic-chat phase
+    const chatMessages = Array.isArray(gs.chatMessages)
+      ? (gs.chatMessages as Array<{
+          id: string;
+          sender: string;
+          senderSessionId: string;
+          message: string;
+          isAI: boolean;
+          timestamp: number;
+        }>)
+      : [];
+
+    const serverTimeOffset = typeof gs.serverTimeOffset === "number" ? gs.serverTimeOffset : 0;
+    const timerEndsAt = typeof gs.timerEndsAt === "number" ? gs.timerEndsAt : 0;
+
     switch (currentPhase) {
+      // ─── Pre-Game AI Chat ────────────────────────────────
+      case "topic-chat": {
+        return (
+          <div
+            className="flex flex-col gap-2 pb-16 pt-2"
+            style={{ minHeight: "calc(100dvh - 120px)" }}
+          >
+            <BrainBoardChat
+              messages={chatMessages}
+              players={players}
+              mySessionId={mySessionId}
+              onSendMessage={handleChatMessage}
+              timerEndsAt={timerEndsAt}
+              serverTimeOffset={serverTimeOffset}
+            />
+          </div>
+        );
+      }
+
+      case "generating-board": {
+        return (
+          <div className="flex flex-col items-center gap-6 px-4 pb-16 pt-8 animate-fade-in-up">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.68 0.22 265 / 0.3)"
+              className="flex flex-col items-center gap-5 px-8 py-8"
+            >
+              <div className="relative">
+                <div className="h-12 w-12 animate-spin-slow rounded-full border-2 border-accent-brainboard/30 border-t-accent-brainboard" />
+                <Zap className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 text-accent-brainboard" />
+              </div>
+              <p className="font-display text-lg font-bold text-text-primary">
+                Building Your Board
+              </p>
+              <p className="text-center font-body text-sm text-text-muted">
+                AI is crafting custom trivia from your topics...
+              </p>
+            </GlassPanel>
+          </div>
+        );
+      }
+
       case "category-reveal": {
         const revealCategories = Array.isArray(pd.categories)
           ? pd.categories.filter((c): c is string => typeof c === "string")
-          : [];
-        const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
-        const boardCategories = Array.isArray(gs.board)
-          ? (gs.board as Array<{ name?: string }>)
-              .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
-              .filter((name) => name.length > 0)
           : [];
 
         if (pd.isSelector === true && revealCategories.length > 0) {
@@ -272,13 +353,6 @@ export function GameController({
       }
 
       case "clue-select": {
-        const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
-        const boardCategories = Array.isArray(gs.board)
-          ? (gs.board as Array<{ name?: string }>)
-              .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
-              .filter((name) => name.length > 0)
-          : [];
-
         if (pd.isSelector) {
           const categories = Array.isArray(pd.categories)
             ? pd.categories.filter((c): c is string => typeof c === "string")
@@ -288,7 +362,12 @@ export function GameController({
             : [];
 
           return (
-            <div className="flex flex-col gap-4 pb-16 pt-4">
+            <div className="flex flex-col gap-4 pb-16 pt-4 animate-slide-up-spring">
+              <div className="mx-4 flex justify-center">
+                <span className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-1.5 font-display text-xs font-bold text-accent-brainboard uppercase">
+                  Your pick!
+                </span>
+              </div>
               <ClueGrid
                 categories={categories}
                 answeredClues={answeredClues}
@@ -297,21 +376,69 @@ export function GameController({
             </div>
           );
         }
-        return renderBrainBoardGridWatchCard(
-          "Watch the board while the selector picks.",
-          boardCategories,
+        // Non-selector sees read-only board with standings
+        const answeredClues = Array.isArray(gs.revealedClues) ? (gs.revealedClues as string[]) : [];
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+            <div className="mx-4 flex justify-center">
+              <span className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-1.5 font-display text-xs font-bold text-accent-brainboard uppercase">
+                {selectorName ? `${selectorName}'s pick` : "Selector is picking..."}
+              </span>
+            </div>
+            <ClueGrid
+              categories={boardCategories}
+              answeredClues={answeredClues}
+              onSelect={handleClueSelect}
+              readOnly
+            />
+            {bbStandings.length > 0 && (
+              <div className="mt-2">
+                <BrainBoardStandings
+                  standings={bbStandings}
+                  players={players}
+                  mySessionId={mySessionId}
+                  currentRound={currentRound}
+                  doubleDownValues={doubleDownValues}
+                />
+              </div>
+            )}
+          </div>
         );
       }
 
       case "answering": {
         if (pd.hasAnswered) {
-          return renderBrainBoardWatchCard("Answer submitted! Waiting for others...");
+          const gs2 = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+          const clueQ = typeof gs2.currentClueQuestion === "string" ? gs2.currentClueQuestion : "";
+          return (
+            <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-4 animate-fade-in-up">
+              <GlassPanel className="flex w-full max-w-sm flex-col items-center gap-3 px-6 py-5">
+                <p className="font-display text-lg font-bold text-accent-brainboard">Locked In!</p>
+                <p className="text-center font-body text-sm text-text-muted">{clueQ}</p>
+                {totalPlayerCount > 0 && (
+                  <div className="mt-2 flex flex-col items-center gap-1">
+                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-accent-brainboard transition-all duration-500"
+                        style={{
+                          width: `${totalPlayerCount > 0 ? (answeredCount / totalPlayerCount) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="font-mono text-xs text-text-dim">
+                      {answeredCount}/{totalPlayerCount} answered
+                    </p>
+                  </div>
+                )}
+              </GlassPanel>
+            </div>
+          );
         }
         const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
         const clueCat = typeof pd.clueCategory === "string" ? pd.clueCategory : "";
         const clueVal = typeof pd.clueValue === "number" ? pd.clueValue : 0;
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4">
+          <div className="flex flex-col gap-4 pb-16 pt-4 animate-slide-up-spring">
             {clueCat && (
               <div className="mx-4 flex justify-center">
                 <span className="rounded-lg border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-2 font-display text-sm font-bold text-accent-brainboard uppercase">
@@ -343,15 +470,24 @@ export function GameController({
           const maxWager = typeof pd.maxWager === "number" ? pd.maxWager : 1000;
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <p
-                className="text-center font-display text-2xl font-black uppercase"
-                style={{
-                  color: "oklch(0.82 0.2 85)",
-                  textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
-                }}
-              >
-                Power Play!
-              </p>
+              <div className="mx-4 rounded-2xl border border-amber-400/30 animate-power-play-pulse">
+                <div className="flex flex-col items-center gap-3 px-6 py-5">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-6 w-6" style={{ color: "oklch(0.82 0.2 85)" }} />
+                    <p
+                      className="font-display text-2xl font-black uppercase"
+                      style={{
+                        color: "oklch(0.82 0.2 85)",
+                        textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
+                      }}
+                    >
+                      Power Play!
+                    </p>
+                    <Zap className="h-6 w-6" style={{ color: "oklch(0.82 0.2 85)" }} />
+                  </div>
+                  <p className="font-body text-sm text-text-muted">Only you can answer this one</p>
+                </div>
+              </div>
               <NumberInput
                 min={5}
                 max={maxWager}
@@ -366,17 +502,28 @@ export function GameController({
 
       case "power-play-answer": {
         if (pd.isPowerPlayPlayer) {
+          const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <p
-                className="text-center font-display text-2xl font-black uppercase"
-                style={{
-                  color: "oklch(0.82 0.2 85)",
-                  textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
-                }}
-              >
-                Power Play!
-              </p>
+              <div className="mx-4 rounded-2xl border border-amber-400/30 animate-power-play-pulse">
+                <div className="flex flex-col items-center gap-2 px-6 py-4">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" style={{ color: "oklch(0.82 0.2 85)" }} />
+                    <p
+                      className="font-display text-xl font-black uppercase"
+                      style={{
+                        color: "oklch(0.82 0.2 85)",
+                        textShadow: "0 0 24px oklch(0.82 0.2 85 / 0.5)",
+                      }}
+                    >
+                      Power Play!
+                    </p>
+                  </div>
+                  {clueQ && (
+                    <p className="text-center font-body text-sm text-text-primary">{clueQ}</p>
+                  )}
+                </div>
+              </div>
               <TextInput
                 prompt="Your answer:"
                 placeholder="Answer..."
@@ -395,19 +542,24 @@ export function GameController({
           const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <p
-                className="text-center font-display text-2xl font-black uppercase text-accent-brainboard"
-                style={{
-                  textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
-                }}
-              >
-                All-In Round
-              </p>
-              {allInCat && (
-                <p className="text-center font-display text-sm font-bold text-accent-brainboard uppercase">
-                  {allInCat}
-                </p>
-              )}
+              <div className="mx-4 rounded-2xl border border-accent-brainboard/30 animate-all-in-glow">
+                <div className="flex flex-col items-center gap-2 px-6 py-5">
+                  <p
+                    className="font-display text-2xl font-black uppercase text-accent-brainboard"
+                    style={{
+                      textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
+                    }}
+                  >
+                    All-In Round
+                  </p>
+                  {allInCat && (
+                    <p className="font-display text-sm font-bold text-accent-brainboard uppercase">
+                      {allInCat}
+                    </p>
+                  )}
+                  <p className="font-body text-xs text-text-muted">Risk it all on one final clue</p>
+                </div>
+              </div>
               <NumberInput
                 min={0}
                 max={playerScore}
@@ -423,21 +575,29 @@ export function GameController({
       case "all-in-answer": {
         if (pd.canAnswerFinal) {
           const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
+          const allInQ = typeof gs.allInQuestion === "string" ? gs.allInQuestion : "";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
-              <p
-                className="text-center font-display text-2xl font-black uppercase text-accent-brainboard"
-                style={{
-                  textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
-                }}
-              >
-                All-In Round
-              </p>
-              {allInCat && (
-                <p className="text-center font-display text-sm font-bold text-accent-brainboard uppercase">
-                  {allInCat}
-                </p>
-              )}
+              <div className="mx-4 rounded-2xl border border-accent-brainboard/30 animate-all-in-glow">
+                <div className="flex flex-col items-center gap-2 px-6 py-4">
+                  <p
+                    className="font-display text-xl font-black uppercase text-accent-brainboard"
+                    style={{
+                      textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)",
+                    }}
+                  >
+                    All-In Round
+                  </p>
+                  {allInCat && (
+                    <p className="font-display text-xs font-bold text-accent-brainboard uppercase">
+                      {allInCat}
+                    </p>
+                  )}
+                  {allInQ && (
+                    <p className="text-center font-body text-sm text-text-primary">{allInQ}</p>
+                  )}
+                </div>
+              </div>
               <TextInput
                 prompt="Your answer:"
                 placeholder="Answer..."
@@ -450,17 +610,146 @@ export function GameController({
         return renderBrainBoardWatchCard("All-In answers being submitted...");
       }
 
-      case "clue-result":
+      case "clue-result": {
+        const clueResultEvent = (gameEvents?.["clue-result"] ?? null) as {
+          results?: Array<{
+            sessionId: string;
+            answer: string;
+            correct: boolean;
+            delta: number;
+            judgedBy?: string;
+            judgeExplanation?: string;
+          }>;
+          correctAnswer?: string;
+          question?: string;
+          value?: number;
+          isPowerPlay?: boolean;
+        } | null;
+
+        if (clueResultEvent?.results && clueResultEvent.correctAnswer) {
+          return (
+            <BrainBoardClueResult
+              clueResult={{
+                results: clueResultEvent.results,
+                correctAnswer: clueResultEvent.correctAnswer,
+                question: clueResultEvent.question ?? "",
+                value: clueResultEvent.value ?? 0,
+                isPowerPlay: clueResultEvent.isPowerPlay ?? false,
+              }}
+              players={players}
+              mySessionId={mySessionId}
+            />
+          );
+        }
         return renderBrainBoardWatchCard("Results are in!");
+      }
+
+      case "round-transition":
+        return (
+          <div className="flex flex-col items-center gap-6 px-4 pb-16 pt-8 animate-cinematic-entrance">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.82 0.18 85 / 0.3)"
+              className="flex flex-col items-center gap-4 px-8 py-8"
+            >
+              <p
+                className="font-display text-3xl font-black uppercase"
+                style={{
+                  color: "oklch(0.82 0.18 85)",
+                  textShadow: "0 0 32px oklch(0.82 0.18 85 / 0.6)",
+                }}
+              >
+                Double Down!
+              </p>
+              <p className="font-body text-sm text-text-muted">
+                Values are doubled. Stakes are higher.
+              </p>
+            </GlassPanel>
+            {bbStandings.length > 0 && (
+              <BrainBoardStandings
+                standings={bbStandings}
+                players={players}
+                mySessionId={mySessionId}
+                currentRound={2}
+                doubleDownValues
+              />
+            )}
+          </div>
+        );
 
       case "all-in-category":
-        return renderBrainBoardWatchCard("All-In Round!");
+        return (
+          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-cinematic-entrance">
+            <GlassPanel
+              glow
+              glowColor="oklch(0.68 0.22 265 / 0.3)"
+              className="flex flex-col items-center gap-4 px-8 py-8 animate-all-in-glow"
+            >
+              <p
+                className="font-display text-2xl font-black uppercase text-accent-brainboard"
+                style={{ textShadow: "0 0 24px oklch(0.68 0.22 265 / 0.5)" }}
+              >
+                All-In Round
+              </p>
+              <p className="font-body text-sm text-text-muted">
+                One final question. Wager everything.
+              </p>
+            </GlassPanel>
+          </div>
+        );
 
-      case "all-in-reveal":
+      case "all-in-reveal": {
+        const allInRevealEvent = (gameEvents?.["all-in-reveal"] ?? null) as {
+          results?: Array<{
+            sessionId: string;
+            answer: string;
+            correct: boolean;
+            delta: number;
+            wager?: number;
+          }>;
+          correctAnswer?: string;
+          question?: string;
+        } | null;
+
+        if (allInRevealEvent?.results && allInRevealEvent.correctAnswer) {
+          return (
+            <BrainBoardClueResult
+              clueResult={{
+                results: allInRevealEvent.results.map((r) => ({
+                  ...r,
+                  judgedBy: undefined,
+                  judgeExplanation: undefined,
+                })),
+                correctAnswer: allInRevealEvent.correctAnswer,
+                question: allInRevealEvent.question ?? "",
+                value: 0,
+                isPowerPlay: false,
+              }}
+              players={players}
+              mySessionId={mySessionId}
+            />
+          );
+        }
         return renderBrainBoardWatchCard("Final Reveal!");
+      }
 
-      case "final-scores":
-        return renderFinalScoresCard();
+      case "final-scores": {
+        // Show standings above the generic final scores card
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-2">
+            {bbStandings.length > 0 && (
+              <BrainBoardStandings
+                standings={bbStandings}
+                players={players}
+                mySessionId={mySessionId}
+                currentRound={currentRound}
+                doubleDownValues={doubleDownValues}
+              />
+            )}
+            {renderFinalScoresCard()}
+          </div>
+        );
+      }
 
       default:
         return renderBrainBoardWatchCard("Watch the board.");

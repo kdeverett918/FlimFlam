@@ -574,6 +574,22 @@ export class PartyRoom extends Room<RoomState> {
       player.currentInput = "";
     });
 
+    // Remove disconnected players
+    const disconnectedIds: string[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (!player.connected) disconnectedIds.push(sessionId);
+    });
+    for (const id of disconnectedIds) {
+      this.state.players.delete(id);
+    }
+    this.setMetadata({
+      code: this._roomCode,
+      gameName: this.state.selectedGameId || "lobby",
+      complexity: this.state.complexity as Complexity,
+      playerCount: this.state.players.size,
+      hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
+    });
+
     this.state.round = 0;
     this.state.totalRounds = 0;
     this.state.timerEndsAt = 0;
@@ -601,6 +617,22 @@ export class PartyRoom extends Room<RoomState> {
       player.progressOrCustomInt = 0;
       player.abilityOrCustomBool = false;
       player.currentInput = "";
+    });
+
+    // Remove disconnected players
+    const disconnectedIds: string[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (!player.connected) disconnectedIds.push(sessionId);
+    });
+    for (const id of disconnectedIds) {
+      this.state.players.delete(id);
+    }
+    this.setMetadata({
+      code: this._roomCode,
+      gameName: this.state.selectedGameId || "lobby",
+      complexity: this.state.complexity as Complexity,
+      playerCount: this.state.players.size,
+      hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
     });
 
     this.state.round = 0;
@@ -632,6 +664,15 @@ export class PartyRoom extends Room<RoomState> {
       player.abilityOrCustomBool = false;
       player.currentInput = "";
     });
+
+    // Remove disconnected players
+    const disconnectedIds: string[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (!player.connected) disconnectedIds.push(sessionId);
+    });
+    for (const id of disconnectedIds) {
+      this.state.players.delete(id);
+    }
 
     // Lock the room during game
     this.lock();

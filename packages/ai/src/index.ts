@@ -29,6 +29,11 @@ export {
 } from "./prompts/brain-battle";
 
 export {
+  buildTopicChatPrompt as buildBrainBoardTopicChatPrompt,
+  buildBoardGenerationPrompt as buildBrainBoardGenerationPrompt,
+} from "./prompts/brain-board";
+
+export {
   FALLBACK_SCENARIOS,
   FALLBACK_BLUFF_PROMPTS,
   FALLBACK_TRIVIA_QUESTIONS,
