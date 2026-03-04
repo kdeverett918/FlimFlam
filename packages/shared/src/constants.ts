@@ -38,6 +38,7 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "results-display": 8_000,
   reveal: 15_000,
   // Brain Board
+  "topic-chat": 60_000,
   "clue-select": 30_000,
   "board-reveal": 4_000,
   answering: 15_000,

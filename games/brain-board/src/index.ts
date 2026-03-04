@@ -1,5 +1,11 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
-import { aiRequest, buildAnswerJudgePrompt, enqueueAIRequest } from "@flimflam/ai";
+import {
+  aiRequest,
+  buildAnswerJudgePrompt,
+  buildBrainBoardGenerationPrompt,
+  buildBrainBoardTopicChatPrompt,
+  enqueueAIRequest,
+} from "@flimflam/ai";
 import { BaseGamePlugin } from "@flimflam/game-engine";
 import { AnswerJudgeSchema } from "@flimflam/shared";
 import type { Complexity, GameManifest } from "@flimflam/shared";
@@ -44,6 +50,8 @@ function getPowerPlayCountLegacy(complexity: Complexity): number {
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type BrainBoardPhase =
+  | "topic-chat"
+  | "generating-board"
   | "category-reveal"
   | "clue-select"
   | "power-play-wager"
@@ -94,6 +102,15 @@ interface AllInRevealResultEntry {
   delta: number;
   judgedBy?: AnswerJudgeSource;
   judgeExplanation?: string;
+}
+
+interface ChatMessage {
+  id: string;
+  sender: string;
+  senderSessionId: string;
+  message: string;
+  isAI: boolean;
+  timestamp: number;
 }
 
 // ─── Helpers (exported for testing) ────────────────────────────────────────
@@ -289,13 +306,18 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private resolvingPowerPlayAnswer = false;
   private resolvingFinalAnswers = false;
 
+  // ─── Topic Chat State ───────────────────────────────────────────────
+  private _chatMessages: ChatMessage[] = [];
+  private _chatDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private _topicSuggestions: string[] = [];
+  private _aiGeneratedBoard = false;
+
   createState(): Schema {
     return null as unknown as Schema;
   }
 
   onGameStart(room: Room, state: Schema, players: MapSchema, complexity: Complexity): void {
     this.complexity = complexity;
-    this.phase = "category-reveal";
     this.currentRound = 1;
     this.revealedClues.clear();
     this.playerScores.clear();
@@ -306,6 +328,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.resolvingAllAnswers = false;
     this.resolvingPowerPlayAnswer = false;
     this.resolvingFinalAnswers = false;
+
+    // Reset topic chat state
+    this._chatMessages = [];
+    this._topicSuggestions = [];
+    this._aiGeneratedBoard = false;
 
     // Build player order (exclude host)
     const hostId = this.getHostSessionId(state);
@@ -321,7 +348,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.playerScores.set(sessionId, 0);
     }
 
-    // Pick two DIFFERENT boards for Round 1 and Round 2
+    // Pre-load static boards as fallback
     const banks = getClueBank(complexity);
     this.availableBoards = banks;
     const shuffledBanks = [...banks];
@@ -329,7 +356,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.round1Board = shuffledBanks[0] ?? banks[0] ?? null;
     this.round2Board = shuffledBanks[1] ?? shuffledBanks[0] ?? banks[0] ?? null;
 
-    // Start with Round 1 board
+    // Start with Round 1 board (may be overridden by AI generation)
     this.board = this.round1Board;
 
     // Place Power Plays for Round 1 (always 1)
@@ -342,6 +369,55 @@ class BrainBoardPlugin extends BaseGamePlugin {
     // First selector is a random player (first in shuffled order)
     this.selectorSessionId = this.playerOrder[0] ?? null;
 
+    // ─── Start with topic-chat phase for AI board generation ──────
+    const playerNames = this.playerOrder.map((sid) => {
+      const player = (
+        (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+      )?.get(sid);
+      return player
+        ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+        : "Player";
+    });
+
+    const greeting: ChatMessage = {
+      id: `ai-${Date.now()}`,
+      sender: "AI Host",
+      senderSessionId: "ai",
+      message: `Welcome to Brain Board, ${playerNames.join(" & ")}! What topics should we build tonight's game around? Movies, sports, science, pop culture... throw out some ideas!`,
+      isAI: true,
+      timestamp: Date.now(),
+    };
+    this._chatMessages.push(greeting);
+
+    this.phase = "topic-chat";
+    this.setPhase(state, "topic-chat");
+    room.broadcast("game-data", {
+      type: "game-state",
+      phase: "topic-chat",
+      chatMessages: this._chatMessages,
+      timerEndsAt: 0,
+      serverTimeOffset: 0,
+    });
+
+    // Start topic chat timer
+    this.startPhaseTimer(room, "topic-chat", complexity, () => {
+      this._endTopicChat(room, state);
+    });
+
+    // Re-broadcast with timer info
+    room.broadcast("game-data", {
+      type: "game-state",
+      phase: "topic-chat",
+      chatMessages: this._chatMessages,
+    });
+  }
+
+  /**
+   * Transition from topic-chat/generating-board into the normal
+   * category-reveal flow (Round 1).
+   */
+  private _startCategoryReveal(room: Room, state: Schema): void {
+    this.phase = "category-reveal";
     this.setPhase(state, "category-reveal");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
@@ -358,6 +434,44 @@ class BrainBoardPlugin extends BaseGamePlugin {
     const msg = data as Record<string, unknown>;
 
     switch (type) {
+      case "player:chat-message": {
+        if (this.phase !== "topic-chat") return;
+        const chatMsg =
+          typeof (data as Record<string, unknown>)?.message === "string"
+            ? ((data as Record<string, unknown>).message as string).slice(0, 200)
+            : "";
+        if (!chatMsg) return;
+
+        const player = (
+          (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+        )?.get(client.sessionId);
+        const chatEntry: ChatMessage = {
+          id: `p-${Date.now()}-${client.sessionId.slice(0, 4)}`,
+          sender: player
+            ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+            : "Player",
+          senderSessionId: client.sessionId,
+          message: chatMsg,
+          isAI: false,
+          timestamp: Date.now(),
+        };
+        this._chatMessages.push(chatEntry);
+
+        // Broadcast updated chat
+        room.broadcast("game-data", {
+          type: "game-state",
+          phase: "topic-chat",
+          chatMessages: this._chatMessages,
+        });
+
+        // Debounce AI response (3 seconds after last player message)
+        if (this._chatDebounceTimer) clearTimeout(this._chatDebounceTimer);
+        this._chatDebounceTimer = setTimeout(() => {
+          void this._generateAIChatResponse(room, state);
+        }, 3000);
+
+        break;
+      }
       case "player:select-clue":
         this.handleSelectClue(room, state, client, msg);
         break;
@@ -423,7 +537,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   onPlayerReconnect(room: Room, state: Schema, client: Client): void {
     this.sendPrivateData(room, state, client.sessionId);
-    this.broadcastGameState(room, state);
+    if (this.phase === "topic-chat") {
+      room.send(client, "game-data", {
+        type: "game-state",
+        phase: "topic-chat",
+        chatMessages: this._chatMessages,
+      });
+    } else {
+      this.broadcastGameState(room, state);
+    }
   }
 
   // ─── Clue Selection ──────────────────────────────────────────────────
@@ -1113,6 +1235,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.clearPendingTimer();
 
     switch (this.phase) {
+      case "topic-chat":
+        this._endTopicChat(room, state);
+        return;
       case "category-reveal":
         this.goToClueSelect(room, state);
         break;
@@ -1150,6 +1275,201 @@ class BrainBoardPlugin extends BaseGamePlugin {
       case "final-scores":
         break;
     }
+  }
+
+  // ─── Topic Chat & AI Board Generation ────────────────────────────────
+
+  private async _generateAIChatResponse(room: Room, state: Schema): Promise<void> {
+    if (this.phase !== "topic-chat") return;
+
+    const playerNames = this.playerOrder.map((sid) => {
+      const player = (
+        (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+      )?.get(sid);
+      return player
+        ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+        : "Player";
+    });
+
+    try {
+      const prompt = buildBrainBoardTopicChatPrompt(
+        playerNames,
+        this._chatMessages,
+        this.complexity,
+      );
+
+      const result = await enqueueAIRequest(room.roomId, () =>
+        aiRequest(prompt.system, prompt.user, AnswerJudgeSchema, {
+          model: "claude-sonnet-4-5-20250929",
+          maxTokens: 256,
+          timeoutMs: 8000,
+          retries: 0,
+        }),
+      );
+
+      // The response from topic chat is free-form text, grab it from raw
+      const responseText =
+        typeof result.raw === "string" && result.raw.length > 0
+          ? result.raw
+          : "Great suggestions! Keep them coming!";
+
+      // Strip any JSON wrapper if the model tried to match the schema
+      const cleanText = responseText.replace(/^\s*\{[\s\S]*\}\s*$/, (match) => {
+        try {
+          const parsed = JSON.parse(match);
+          // If it parsed as JSON with a text-like field, extract it
+          if (typeof parsed.explanation === "string" && parsed.explanation.length > 5) {
+            return parsed.explanation;
+          }
+          if (typeof parsed.response === "string") return parsed.response;
+          if (typeof parsed.message === "string") return parsed.message;
+        } catch {
+          // Not valid JSON, return as-is
+        }
+        return match;
+      });
+
+      if (this.phase !== "topic-chat") return; // phase may have changed while awaiting
+
+      const aiMsg: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        sender: "AI Host",
+        senderSessionId: "ai",
+        message: cleanText.slice(0, 500),
+        isAI: true,
+        timestamp: Date.now(),
+      };
+      this._chatMessages.push(aiMsg);
+
+      room.broadcast("game-data", {
+        type: "game-state",
+        phase: "topic-chat",
+        chatMessages: this._chatMessages,
+      });
+    } catch (error) {
+      console.error("[BrainBoard] AI chat response error:", error);
+    }
+  }
+
+  private async _endTopicChat(room: Room, state: Schema): Promise<void> {
+    this.clearTimer();
+    if (this._chatDebounceTimer) {
+      clearTimeout(this._chatDebounceTimer);
+      this._chatDebounceTimer = null;
+    }
+
+    // Extract topics from player chat messages
+    const playerMessages = this._chatMessages.filter((m) => !m.isAI).map((m) => m.message);
+
+    const chatContext = this._chatMessages.map((m) => `${m.sender}: ${m.message}`).join("\n");
+
+    if (playerMessages.length > 0) {
+      // Show generating phase while AI builds the board
+      this.phase = "generating-board";
+      this.setPhase(state, "generating-board");
+      room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
+
+      try {
+        const playerNames = this.playerOrder.map((sid) => {
+          const player = (
+            (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+          )?.get(sid);
+          return player
+            ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+            : "Player";
+        });
+
+        // Extract topic keywords from player messages
+        const topics = playerMessages
+          .join(" ")
+          .split(/[,.\n!?]+/)
+          .map((t) => t.trim())
+          .filter((t) => t.length > 2 && t.length < 50);
+
+        const prompt = buildBrainBoardGenerationPrompt(
+          topics.slice(0, 15),
+          this.complexity,
+          playerNames,
+          chatContext.slice(0, 2000),
+        );
+
+        const result = await enqueueAIRequest(room.roomId, () =>
+          aiRequest(prompt.system, prompt.user, AnswerJudgeSchema, {
+            model: "claude-sonnet-4-5-20250929",
+            maxTokens: 4096,
+            timeoutMs: 15000,
+            retries: 1,
+          }),
+        );
+
+        // Parse the generated board from raw text
+        const rawText = result.raw ?? "";
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]) as {
+            categories?: Array<{
+              name?: string;
+              clues?: Array<{ question?: string; answer?: string; value?: number }>;
+            }>;
+          };
+
+          if (
+            parsed.categories &&
+            Array.isArray(parsed.categories) &&
+            parsed.categories.length === CATEGORIES_PER_BOARD
+          ) {
+            // Validate each category has the expected number of clues
+            const valid = parsed.categories.every(
+              (cat) =>
+                typeof cat.name === "string" &&
+                Array.isArray(cat.clues) &&
+                cat.clues.length === CLUES_PER_CATEGORY &&
+                cat.clues.every(
+                  (c) => typeof c.question === "string" && typeof c.answer === "string",
+                ),
+            );
+
+            if (valid) {
+              // Build a JeopardyBoard from the AI response
+              const values = CLUE_VALUES;
+              const aiBoard: JeopardyBoard = {
+                categories: parsed.categories.map((cat) => ({
+                  name: cat.name ?? "Unknown",
+                  clues: (cat.clues ?? []).map((c, i) => ({
+                    question: c.question ?? "",
+                    answer: c.answer ?? "",
+                    value: values[i] ?? (i + 1) * 200,
+                  })),
+                })),
+              };
+
+              // Override the Round 1 board with the AI-generated one
+              this.round1Board = aiBoard;
+              this.board = aiBoard;
+              this._aiGeneratedBoard = true;
+
+              // Re-place Power Plays on the new board
+              this.powerPlays = placePowerPlays(
+                getPowerPlayCount(this.complexity, 1),
+                CATEGORIES_PER_BOARD,
+                CLUES_PER_CATEGORY,
+              );
+
+              console.log(
+                "[BrainBoard] AI-generated board accepted with",
+                aiBoard.categories.length,
+                "categories",
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("[BrainBoard] AI board generation failed, using static board:", error);
+      }
+    }
+
+    // Proceed to the normal category-reveal flow
+    this._startCategoryReveal(room, state);
   }
 
   // ─── Broadcast / Private Data ────────────────────────────────────────

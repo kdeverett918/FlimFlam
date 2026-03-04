@@ -198,6 +198,106 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
     );
   }
 
+  // ── Topic Chat (Pre-game AI chat) ──────────────────────────────────────
+  if (phase === "topic-chat") {
+    const chatMessages = Array.isArray(
+      (gameState as unknown as Record<string, unknown>).chatMessages,
+    )
+      ? ((gameState as unknown as Record<string, unknown>).chatMessages as Array<{
+          id: string;
+          sender: string;
+          senderSessionId: string;
+          message: string;
+          isAI: boolean;
+          timestamp: number;
+        }>)
+      : [];
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+        <motion.h1
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="font-display text-[clamp(36px,5vw,56px)] font-bold text-accent-brainboard"
+          style={{ textShadow: "0 0 40px oklch(0.68 0.22 265 / 0.4)" }}
+        >
+          Topic Lab
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="font-body text-[clamp(18px,2.5vw,28px)] text-text-muted"
+        >
+          Players are chatting with AI about tonight's topics...
+        </motion.p>
+
+        {/* Chat feed on TV */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex w-full max-w-3xl flex-col gap-4"
+        >
+          {chatMessages.slice(-8).map((msg, idx) => (
+            <motion.div
+              key={msg.id}
+              initial={{ opacity: 0, x: msg.isAI ? -30 : 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: idx * 0.1, type: "spring", stiffness: 300, damping: 25 }}
+            >
+              <GlassPanel
+                glow={msg.isAI}
+                glowColor={msg.isAI ? "oklch(0.68 0.22 265 / 0.2)" : undefined}
+                className={`px-6 py-4 ${msg.isAI ? "border border-accent-brainboard/30" : ""}`}
+              >
+                <p
+                  className={`font-display text-sm font-bold uppercase tracking-wider ${msg.isAI ? "text-accent-brainboard" : "text-text-muted"}`}
+                >
+                  {msg.isAI ? "AI Host" : msg.sender}
+                </p>
+                <p className="mt-1 font-body text-[clamp(16px,2vw,24px)] text-text-primary">
+                  {msg.message}
+                </p>
+              </GlassPanel>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {timerEndTime && <Timer endTime={timerEndTime} />}
+      </div>
+    );
+  }
+
+  // ── Generating Board (AI board gen in progress) ────────────────────────
+  if (phase === "generating-board") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+          className="h-20 w-20 rounded-full border-4 border-accent-brainboard/30 border-t-accent-brainboard"
+        />
+        <motion.h1
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="font-display text-[clamp(36px,5vw,56px)] font-bold text-accent-brainboard"
+          style={{ textShadow: "0 0 40px oklch(0.68 0.22 265 / 0.4)" }}
+        >
+          Building Your Board
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="font-body text-[clamp(18px,2.5vw,28px)] text-text-muted"
+        >
+          AI is crafting custom trivia from your topics...
+        </motion.p>
+      </div>
+    );
+  }
+
   // ── Category Reveal ─────────────────────────────────────────────────────
   if (phase === "category-reveal") {
     return (
