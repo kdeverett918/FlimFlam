@@ -159,9 +159,32 @@ export const AppealResultSchema = z.object({
   reasoning: z.string(),
 });
 
+// ─── Brain Board Schemas ───────────────────────────────────────────────
+
+const BrainBoardClueSchema = z.object({
+  question: z.string(),
+  answer: z.string(),
+  value: z.number().optional(),
+});
+
+const BrainBoardCategorySchema = z.object({
+  name: z.string(),
+  clues: z.array(BrainBoardClueSchema).length(5),
+});
+
+export const BrainBoardChatResponseSchema = z.object({
+  response: z.string(),
+});
+
+export const BrainBoardGeneratedBoardSchema = z.object({
+  categories: z.array(BrainBoardCategorySchema).length(6),
+});
+
 export type GeneratedBoardRaw = z.infer<typeof GeneratedBoardSchema>;
 export type AnswerJudgeRaw = z.infer<typeof AnswerJudgeSchema>;
 export type AppealResultRaw = z.infer<typeof AppealResultSchema>;
+export type BrainBoardChatResponseRaw = z.infer<typeof BrainBoardChatResponseSchema>;
+export type BrainBoardGeneratedBoardRaw = z.infer<typeof BrainBoardGeneratedBoardSchema>;
 
 export type GeneratedScenarioRaw = z.infer<typeof GeneratedScenarioRawSchema>;
 export type RoundNarrationRaw = z.infer<typeof RoundNarrationRawSchema>;

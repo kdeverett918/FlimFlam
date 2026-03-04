@@ -43,7 +43,7 @@ export function ClueGrid({ categories, answeredClues, onSelect, readOnly }: Clue
       {/* Responsive grid: 3 columns on small phones, full columns on wider screens */}
       <div className="grid grid-cols-3 min-[420px]:grid-cols-6 gap-1.5">
         {categories.map((cat, catIdx) => (
-          <div key={cat} className="flex flex-col gap-1.5">
+          <div key={`${catIdx}-${cat}`} className="flex flex-col gap-1.5">
             {/* Category header */}
             <div
               className="flex min-h-[40px] items-center justify-center rounded-md border border-accent-brainboard/30 bg-accent-brainboard/15 px-1 py-1.5 text-center font-display text-sm font-bold text-accent-brainboard uppercase leading-tight backdrop-blur-sm"

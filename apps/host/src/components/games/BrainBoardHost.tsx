@@ -105,6 +105,8 @@ function getPlayerName(players: PlayerData[], sessionId: string | null): string 
 
 function getPlayerColor(players: PlayerData[], sessionId: string | null): string {
   if (!sessionId) return AVATAR_COLORS[0] ?? "#FF3366";
+  const player = players.find((p) => p.sessionId === sessionId);
+  if (player?.avatarColor) return player.avatarColor;
   const idx = players.findIndex((p) => p.sessionId === sessionId);
   return AVATAR_COLORS[idx >= 0 ? idx % AVATAR_COLORS.length : 0] ?? "#FF3366";
 }
