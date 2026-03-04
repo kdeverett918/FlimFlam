@@ -40,6 +40,8 @@ const FUZZY_THRESHOLD = 0.7;
 const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 4000;
 const BRAIN_BOARD_JUDGE_MODEL =
   process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL ?? "claude-haiku-4-5-latest";
+const BRAIN_BOARD_CHAT_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_CHAT_MODEL;
+const BRAIN_BOARD_GENERATION_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL;
 const TOPIC_CHAT_FALLBACK_TOPICS = [
   "movies",
   "music",
@@ -1320,7 +1322,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
       const result = await enqueueAIRequest(room.roomId, () =>
         aiRequest(prompt.system, prompt.user, BrainBoardChatResponseSchema, {
-          model: "claude-sonnet-4-5-20250929",
+          model: BRAIN_BOARD_CHAT_MODEL,
           maxTokens: 256,
           timeoutMs: 8000,
           retries: 0,
@@ -1351,6 +1353,23 @@ class BrainBoardPlugin extends BaseGamePlugin {
       });
     } catch (error) {
       console.error("[BrainBoard] AI chat response error:", error);
+      if (this.phase !== "topic-chat") return;
+      const aiMsg: ChatMessage = {
+        id: `ai-fallback-${Date.now()}`,
+        sender: "AI Host",
+        senderSessionId: "ai",
+        message: "Love these ideas. Keep them coming and I will tailor the board to your vibe.",
+        isAI: true,
+        timestamp: Date.now(),
+      };
+      this._chatMessages.push(aiMsg);
+      room.broadcast("game-data", {
+        type: "game-state",
+        phase: "topic-chat",
+        chatMessages: this._chatMessages,
+        timerEndsAt: this.getTimerEndsAt(state),
+        serverTimeOffset: 0,
+      });
     }
   }
 
@@ -1408,7 +1427,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
       const result = await enqueueAIRequest(room.roomId, () =>
         aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
-          model: "claude-sonnet-4-5-20250929",
+          model: BRAIN_BOARD_GENERATION_MODEL,
           maxTokens: 4096,
           timeoutMs: 15000,
           retries: 1,
