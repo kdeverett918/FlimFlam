@@ -2,7 +2,16 @@
 
 import type { PlayerData } from "@flimflam/shared";
 import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
-import { ConfettiBurst, GlassPanel } from "@flimflam/ui";
+import {
+  ANIMATION_DURATIONS,
+  ANIMATION_EASINGS,
+  ANIMATION_STAGGERS,
+  AnimatedCounter,
+  ConfettiBurst,
+  GlassPanel,
+  sounds,
+  useReducedMotion,
+} from "@flimflam/ui";
 import type { Room } from "colyseus.js";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -120,6 +129,7 @@ function PlayerAvatar({ name, color, size = 64 }: { name: string; color: string;
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoardHostProps) {
+  const reducedMotion = useReducedMotion();
   const [gameState, setGameState] = useState<BrainBoardGameState | null>(null);
   const [clueResult, setClueResult] = useState<ClueResultData | null>(null);
   const [finalReveal, setFinalReveal] = useState<FinalRevealData | null>(null);
@@ -141,6 +151,7 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
     if (revealIndex >= finalReveal.results.length) return;
     const timer = setTimeout(() => {
       setRevealIndex((i) => i + 1);
+      sounds.reveal();
     }, 3000);
     return () => clearTimeout(timer);
   }, [phase, finalReveal, revealIndex]);
@@ -153,14 +164,21 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
       setGameState(data as unknown as BrainBoardGameState);
     } else if (type === "clue-result") {
       const results = Array.isArray(data.results) ? (data.results as ClueResultEntry[]) : [];
+      if (results.some((r) => r.correct)) {
+        sounds.correct();
+      } else {
+        sounds.buzz();
+      }
       setClueResult({
         ...(data as unknown as ClueResultData),
         results,
       });
     } else if (type === "all-in-reveal") {
       setFinalReveal(data as unknown as FinalRevealData);
+      sounds.reveal();
     } else if (type === "power-play-wager-set") {
       setPowerPlayWager((data.wager as number) ?? null);
+      sounds.tick();
     }
   }, []);
 
@@ -220,6 +238,7 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
     const revealedSet = new Set(gameState.revealedClues);
     const selectorName = getPlayerName(players, gameState.selectorSessionId);
     const selectorColor = getPlayerColor(players, gameState.selectorSessionId);
+    const sortedStandings = [...gameState.standings].sort((a, b) => b.score - a.score);
     const values = gameState.doubleDownValues
       ? [400, 800, 1200, 1600, 2000]
       : [200, 400, 600, 800, 1000];
@@ -281,21 +300,47 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
 
         {/* Standings bar */}
         <div className="mt-4 flex flex-wrap justify-center gap-4">
-          {gameState.standings.map((s) => {
-            const name = getPlayerName(players, s.sessionId);
-            const color = getPlayerColor(players, s.sessionId);
-            return (
-              <div key={s.sessionId} className="flex items-center gap-2">
-                <PlayerAvatar name={name} color={color} size={36} />
-                <span className="font-body text-[20px] text-text-primary">{name}</span>
-                <span
-                  className={`font-mono text-[20px] ${s.score >= 0 ? "text-accent-3" : "text-accent-6"}`}
+          <AnimatePresence mode="popLayout">
+            {sortedStandings.map((s, idx) => {
+              const name = getPlayerName(players, s.sessionId);
+              const color = getPlayerColor(players, s.sessionId);
+              return (
+                <motion.div
+                  key={s.sessionId}
+                  data-testid="leaderboard-row"
+                  data-player-id={s.sessionId}
+                  data-score={s.score}
+                  layout={!reducedMotion}
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                  transition={
+                    reducedMotion
+                      ? {
+                          delay: idx * ANIMATION_STAGGERS.tight,
+                          duration: ANIMATION_DURATIONS.quick,
+                          ease: ANIMATION_EASINGS.smoothInOut,
+                        }
+                      : {
+                          delay: idx * ANIMATION_STAGGERS.tight,
+                          type: "spring",
+                          stiffness: 180,
+                        }
+                  }
+                  className="flex items-center gap-2 rounded-xl border border-white/12 bg-white/6 px-3 py-2"
                 >
-                  ${s.score.toLocaleString()}
-                </span>
-              </div>
-            );
-          })}
+                  <span className="font-mono text-sm text-text-muted">#{idx + 1}</span>
+                  <PlayerAvatar name={name} color={color} size={36} />
+                  <span className="font-body text-[20px] text-text-primary">{name}</span>
+                  <AnimatedCounter
+                    value={s.score}
+                    duration={850}
+                    className={`text-[20px] font-bold ${s.score >= 0 ? "text-accent-3" : "text-accent-6"}`}
+                    format={(v) => `$${v.toLocaleString()}`}
+                  />
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
     );
@@ -305,6 +350,14 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
   if (phase === "answering") {
     const answered = gameState.answeredCount ?? 0;
     const total = gameState.totalPlayerCount ?? 0;
+    const nonHostPlayers = players.filter((player) => !player.isHost);
+    const connectedPlayers = nonHostPlayers.filter((player) => player.connected !== false);
+    const disconnectedPlayers = nonHostPlayers.filter((player) => player.connected === false);
+    const submissionTarget = Math.max(
+      1,
+      connectedPlayers.length > 0 ? connectedPlayers.length : total,
+    );
+    const submitted = Math.min(answered, submissionTarget);
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
@@ -329,19 +382,36 @@ export function BrainBoardHost({ phase, players, timerEndTime, room }: BrainBoar
         </motion.h2>
 
         {/* Progress bar showing how many have answered */}
-        {total > 0 && (
+        {submissionTarget > 0 && (
           <div className="flex flex-col items-center gap-2">
             <div className="h-3 w-64 overflow-hidden rounded-full bg-white/[0.12]">
               <motion.div
                 className="h-full rounded-full bg-accent-brainboard"
                 initial={{ width: 0 }}
-                animate={{ width: `${(answered / total) * 100}%` }}
+                animate={{ width: `${(submitted / submissionTarget) * 100}%` }}
                 transition={{ duration: 0.3 }}
               />
             </div>
-            <span className="font-mono text-[clamp(16px,2vw,24px)] text-text-muted">
-              {answered} / {total} answered
+            <span
+              data-testid="submission-progress"
+              className="font-mono text-[clamp(16px,2vw,24px)] text-text-muted"
+            >
+              {submitted}/{submissionTarget} submitted
             </span>
+            {disconnectedPlayers.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {disconnectedPlayers.map((player) => (
+                  <span
+                    key={`bb-disconnected-${player.sessionId}`}
+                    data-player-id={player.sessionId}
+                    data-status="disconnected"
+                    className="rounded-full border border-accent-6/35 bg-accent-6/10 px-2.5 py-1 font-body text-[11px] text-accent-6"
+                  >
+                    {player.name}: disconnected
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

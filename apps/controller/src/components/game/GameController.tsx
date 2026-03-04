@@ -15,7 +15,7 @@ import type { PlayerData } from "@flimflam/shared";
 import { ConfettiBurst, GameThemeProvider, GlassPanel } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 import { Monitor, Trophy } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ReactionBar } from "./ReactionBar";
 import { WaitingScreen } from "./WaitingScreen";
 
@@ -67,10 +67,21 @@ export function GameController({
   sendMessage,
 }: GameControllerProps) {
   // ─── Common message handlers ──────────────────────────────────────
+  const [isTeamRosterOpen, setIsTeamRosterOpen] = useState(false);
+  const [lastSubmittedText, setLastSubmittedText] = useState<string | null>(null);
 
   const handleTextSubmit = useCallback(
     (text: string) => {
+      setLastSubmittedText(text.trim());
       sendMessage("player:submit", { content: text });
+    },
+    [sendMessage],
+  );
+
+  const handleGuessAlongSubmit = useCallback(
+    (text: string) => {
+      setLastSubmittedText(text.trim());
+      sendMessage("player:guess-along", { content: text });
     },
     [sendMessage],
   );
@@ -93,6 +104,7 @@ export function GameController({
 
   const handleConsonantPick = useCallback(
     (letter: string) => {
+      setLastSubmittedText(letter);
       sendMessage("player:guess-consonant", { letter });
     },
     [sendMessage],
@@ -100,6 +112,7 @@ export function GameController({
 
   const handleVowelPick = useCallback(
     (letter: string) => {
+      setLastSubmittedText(letter);
       sendMessage("player:buy-vowel", { letter });
     },
     [sendMessage],
@@ -107,6 +120,7 @@ export function GameController({
 
   const handleSolveSubmit = useCallback(
     (text: string) => {
+      setLastSubmittedText(text.trim());
       sendMessage("player:solve", { answer: text });
     },
     [sendMessage],
@@ -114,6 +128,7 @@ export function GameController({
 
   const handleBrainBoardAnswer = useCallback(
     (text: string) => {
+      setLastSubmittedText(text.trim());
       sendMessage("player:answer", { answer: text });
     },
     [sendMessage],
@@ -128,6 +143,7 @@ export function GameController({
 
   const handlePowerPlayAnswer = useCallback(
     (text: string) => {
+      setLastSubmittedText(text.trim());
       sendMessage("player:power-play-answer", { answer: text });
     },
     [sendMessage],
@@ -142,6 +158,7 @@ export function GameController({
 
   const handleAllInAnswer = useCallback(
     (text: string) => {
+      setLastSubmittedText(text.trim());
       sendMessage("player:all-in-answer", { answer: text });
     },
     [sendMessage],
@@ -231,7 +248,14 @@ export function GameController({
         const revealCategories = Array.isArray(pd.categories)
           ? pd.categories.filter((c): c is string => typeof c === "string")
           : [];
-        if (revealCategories.length > 0) {
+        const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+        const boardCategories = Array.isArray(gs.board)
+          ? (gs.board as Array<{ name?: string }>)
+              .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
+              .filter((name) => name.length > 0)
+          : [];
+
+        if (pd.isSelector === true && revealCategories.length > 0) {
           return (
             <CategoryReveal
               categories={revealCategories}
@@ -241,16 +265,20 @@ export function GameController({
             />
           );
         }
-        return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.score === "number" ? pd.score : undefined}
-          />
+        return renderBrainBoardGridWatchCard(
+          "Categories revealed. Selector is choosing...",
+          boardCategories.length > 0 ? boardCategories : revealCategories,
         );
       }
 
       case "clue-select": {
+        const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+        const boardCategories = Array.isArray(gs.board)
+          ? (gs.board as Array<{ name?: string }>)
+              .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
+              .filter((name) => name.length > 0)
+          : [];
+
         if (pd.isSelector) {
           const categories = Array.isArray(pd.categories)
             ? pd.categories.filter((c): c is string => typeof c === "string")
@@ -269,18 +297,15 @@ export function GameController({
             </div>
           );
         }
-        return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.score === "number" ? pd.score : undefined}
-          />
+        return renderBrainBoardGridWatchCard(
+          "Watch the board while the selector picks.",
+          boardCategories,
         );
       }
 
       case "answering": {
         if (pd.hasAnswered) {
-          return renderWatchScreen("Answer submitted! Waiting for others...");
+          return renderBrainBoardWatchCard("Answer submitted! Waiting for others...");
         }
         const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
         const clueCat = typeof pd.clueCategory === "string" ? pd.clueCategory : "";
@@ -336,7 +361,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Power Play!");
+        return renderBrainBoardWatchCard("Power Play!");
       }
 
       case "power-play-answer": {
@@ -361,7 +386,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Waiting for the Power Play answer...");
+        return renderBrainBoardWatchCard("Waiting for the Power Play answer...");
       }
 
       case "all-in-wager": {
@@ -392,7 +417,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("All-In wagers being placed...");
+        return renderBrainBoardWatchCard("All-In wagers being placed...");
       }
 
       case "all-in-answer": {
@@ -422,7 +447,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("All-In answers being submitted...");
+        return renderBrainBoardWatchCard("All-In answers being submitted...");
       }
 
       case "clue-result":
@@ -438,13 +463,7 @@ export function GameController({
         return renderFinalScoresCard();
 
       default:
-        return (
-          <WaitingScreen
-            phase={currentPhase}
-            gameId={gameId}
-            score={typeof pd.score === "number" ? pd.score : undefined}
-          />
-        );
+        return renderBrainBoardWatchCard("Watch the board.");
     }
   }
 
@@ -524,6 +543,85 @@ export function GameController({
         totalLetters={totalLetters}
       />
     ) : null;
+
+    const luckyMyResultCard = (() => {
+      if (currentPhase === "letter-result" && letterResult) {
+        const delta = letterResult.earned - (letterResult.vowelCost ?? 0);
+        return (
+          <GlassPanel data-testid="my-result" className="mx-4 rounded-2xl px-4 py-3">
+            <p className="text-center font-display text-xs font-bold uppercase tracking-wider text-accent-luckyletters">
+              My Result
+            </p>
+            <p className="mt-1 text-center font-body text-sm text-text-primary">
+              {lastSubmittedText || letterResult.letter}
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="font-mono text-[10px] uppercase text-text-muted">
+                {letterResult.inPuzzle ? "Hit" : "Miss"}
+              </span>
+              <span
+                className={`font-mono text-xs font-bold ${delta > 0 ? "text-success" : "text-text-muted"}`}
+              >
+                {delta > 0 ? `+${delta}` : `${delta}`}
+              </span>
+            </div>
+          </GlassPanel>
+        );
+      }
+
+      if (currentPhase === "round-result" && roundResult) {
+        const wonRound = mySessionId !== null && roundResult.winnerId === mySessionId;
+        return (
+          <GlassPanel data-testid="my-result" className="mx-4 rounded-2xl px-4 py-3">
+            <p className="text-center font-display text-xs font-bold uppercase tracking-wider text-accent-luckyletters">
+              My Result
+            </p>
+            <p className="mt-1 text-center font-body text-sm text-text-primary">
+              {lastSubmittedText || (wonRound ? roundResult.answer : "No solve submitted")}
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="font-mono text-[10px] uppercase text-text-muted">
+                {wonRound ? "Round Win" : "No Win"}
+              </span>
+              <span
+                className={`font-mono text-xs font-bold ${wonRound ? "text-success" : "text-text-muted"}`}
+              >
+                {wonRound ? `+${roundResult.roundCashEarned}` : "+0"}
+              </span>
+            </div>
+          </GlassPanel>
+        );
+      }
+
+      if (
+        currentPhase === "bonus-reveal" &&
+        bonusReveal &&
+        mySessionId === bonusReveal.bonusPlayerId
+      ) {
+        return (
+          <GlassPanel data-testid="my-result" className="mx-4 rounded-2xl px-4 py-3">
+            <p className="text-center font-display text-xs font-bold uppercase tracking-wider text-accent-luckyletters">
+              My Result
+            </p>
+            <p className="mt-1 text-center font-body text-sm text-text-primary">
+              {lastSubmittedText || bonusReveal.answer}
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="font-mono text-[10px] uppercase text-text-muted">
+                {bonusReveal.solved ? "Solved" : "Miss"}
+              </span>
+              <span
+                className={`font-mono text-xs font-bold ${bonusReveal.solved ? "text-success" : "text-text-muted"}`}
+              >
+                {bonusReveal.solved ? `+${bonusReveal.bonusPrize}` : "+0"}
+              </span>
+            </div>
+          </GlassPanel>
+        );
+      }
+
+      return null;
+    })();
 
     switch (currentPhase) {
       case "round-intro": {
@@ -609,7 +707,10 @@ export function GameController({
           );
         }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+          >
             {puzzleBoard}
             <p className="text-center font-body text-sm text-text-muted">
               {turnPlayerName}&apos;s turn
@@ -639,7 +740,10 @@ export function GameController({
           );
         }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+          >
             {puzzleBoard}
             <p className="text-center font-body text-sm text-text-muted">
               {turnPlayerName} is picking a consonant...
@@ -658,7 +762,10 @@ export function GameController({
           );
         }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+          >
             {puzzleBoard}
             <p className="text-center font-body text-sm text-text-muted">
               {turnPlayerName} is buying a vowel...
@@ -682,7 +789,10 @@ export function GameController({
           );
         }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+          >
             {puzzleBoard}
             <p className="text-center font-body text-sm text-text-muted">
               {turnPlayerName} is solving...
@@ -705,6 +815,7 @@ export function GameController({
                 streak={letterResult.streak ?? streak}
               />
             )}
+            {luckyMyResultCard}
           </div>
         );
       }
@@ -740,6 +851,7 @@ export function GameController({
                 players={players}
               />
             )}
+            {luckyMyResultCard}
           </div>
         );
       }
@@ -793,7 +905,10 @@ export function GameController({
           );
         }
         return (
-          <div className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+          >
             <p
               className="text-center font-display text-xl font-black uppercase"
               style={{
@@ -838,6 +953,7 @@ export function GameController({
                 </p>
               )}
             </GlassPanel>
+            {luckyMyResultCard}
           </div>
         );
       }
@@ -865,6 +981,88 @@ export function GameController({
     const isCurrentGuesser = pd.action === "your-turn-to-guess";
     const isSnagTeam = pd.action === "snag-your-turn";
     const isLightningPlayer = pd.action === "lightning-question";
+    const isGuessAlongPlayer = pd.action === "guess-along";
+    const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const surveyTeams = Array.isArray(gs.teams)
+      ? (gs.teams as Array<{ id: string; members: string[]; score: number }>)
+      : [];
+    const teamFromPrivateData = typeof pd.yourTeamId === "string" ? pd.yourTeamId : null;
+    const myPlayer = players.find((p) => p.sessionId === mySessionId);
+    const myRoleTeam = typeof myPlayer?.role === "string" ? myPlayer.role : null;
+    const myTeamId =
+      teamFromPrivateData ??
+      myRoleTeam ??
+      surveyTeams.find((team) => team.members.includes(mySessionId ?? ""))?.id ??
+      null;
+    const myTeamLabel =
+      myTeamId === "team-a"
+        ? "Team A"
+        : myTeamId === "team-b"
+          ? "Team B"
+          : myTeamId
+            ? "Solo"
+            : null;
+    const guessAlongPoints = typeof pd.guessAlongPoints === "number" ? pd.guessAlongPoints : null;
+    const teamBadge =
+      myTeamLabel || surveyTeams.length > 0 ? (
+        <div className="flex flex-col items-center gap-2">
+          <button
+            type="button"
+            data-testid="team-pill"
+            onClick={() => setIsTeamRosterOpen((open) => !open)}
+            className="rounded-full border border-accent-surveysmash/35 bg-accent-surveysmash/15 px-3 py-1 font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash transition-all active:scale-95"
+          >
+            {myTeamLabel ?? "Team"}
+          </button>
+          {isTeamRosterOpen && (
+            <GlassPanel
+              data-testid="team-roster-sheet"
+              className="w-[min(92vw,360px)] rounded-2xl border border-accent-surveysmash/30 px-4 py-3"
+            >
+              <p className="mb-2 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash">
+                Team Roster
+              </p>
+              <div className="flex flex-col gap-2">
+                {surveyTeams.map((team, teamIndex) => {
+                  const label =
+                    team.id === "team-a"
+                      ? "Team A"
+                      : team.id === "team-b"
+                        ? "Team B"
+                        : `Team ${teamIndex + 1}`;
+                  const isMine = myTeamId !== null && team.id === myTeamId;
+                  const names =
+                    team.members.length > 0
+                      ? team.members
+                          .map(
+                            (sessionId) =>
+                              players.find((player) => player.sessionId === sessionId)?.name ??
+                              "Player",
+                          )
+                          .join(", ")
+                      : "No players";
+                  return (
+                    <div
+                      key={`roster-${team.id}`}
+                      className={`rounded-lg border px-3 py-2 ${
+                        isMine
+                          ? "border-accent-surveysmash/45 bg-accent-surveysmash/12"
+                          : "border-white/10 bg-white/5"
+                      }`}
+                    >
+                      <p className="font-display text-[11px] font-bold uppercase tracking-wide text-text-primary">
+                        {label}
+                        {isMine ? " (You)" : ""}
+                      </p>
+                      <p className="font-body text-xs text-text-muted">{names}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </GlassPanel>
+          )}
+        </div>
+      ) : null;
 
     switch (currentPhase) {
       case "face-off": {
@@ -872,6 +1070,7 @@ export function GameController({
           const question = typeof pd.question === "string" ? pd.question : "Name the top answer!";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              {teamBadge}
               <TextInput
                 prompt={question}
                 placeholder="Type your answer..."
@@ -881,7 +1080,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Face-off happening...");
+        return renderSurveySmashWatchCard(currentPhase);
       }
 
       case "guessing": {
@@ -889,10 +1088,35 @@ export function GameController({
           const question = typeof pd.question === "string" ? pd.question : "Name something...";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              {teamBadge}
               <TextInput
                 prompt={question}
                 placeholder="Type your answer..."
                 onSubmit={handleTextSubmit}
+                resetNonce={errorNonce}
+              />
+            </div>
+          );
+        }
+        if (isGuessAlongPlayer) {
+          const question = typeof pd.question === "string" ? pd.question : "Predict an answer...";
+          return (
+            <div
+              data-testid="controller-context-card"
+              className="flex flex-col gap-4 pb-16 pt-4 animate-fade-in-up"
+            >
+              {teamBadge}
+              {guessAlongPoints !== null && (
+                <div className="mx-4 flex justify-center">
+                  <span className="rounded-full border border-accent-surveysmash/30 bg-accent-surveysmash/12 px-3 py-1 font-mono text-xs font-bold text-accent-surveysmash">
+                    Guess Along: {guessAlongPoints.toLocaleString()} pts
+                  </span>
+                </div>
+              )}
+              <TextInput
+                prompt={`Guess Along: ${question}`}
+                placeholder="Predict a board answer..."
+                onSubmit={handleGuessAlongSubmit}
                 resetNonce={errorNonce}
               />
             </div>
@@ -907,6 +1131,7 @@ export function GameController({
             typeof pd.question === "string" ? pd.question : "Snag it! Name an answer...";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              {teamBadge}
               <TextInput
                 prompt={`Snag it! ${question}`}
                 placeholder="Type your snag answer..."
@@ -926,6 +1151,7 @@ export function GameController({
           const totalQ = typeof pd.totalQuestions === "number" ? pd.totalQuestions : "?";
           return (
             <div className="flex flex-col gap-4 pb-16 pt-4">
+              {teamBadge}
               <div className="flex justify-center">
                 <span className="rounded-full bg-accent-surveysmash/15 px-3 py-1 font-mono text-xs font-bold text-accent-surveysmash">
                   {qIndex}/{totalQ}
@@ -939,7 +1165,7 @@ export function GameController({
             </div>
           );
         }
-        return renderWatchScreen("Lightning Round!");
+        return renderSurveySmashWatchCard(currentPhase);
       }
 
       case "question-reveal":
@@ -963,14 +1189,35 @@ export function GameController({
 
   function renderSurveySmashWatchCard(currentPhase: string) {
     const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const guessAlongResult = (gameEvents?.["guess-along-result"] ?? {}) as Record<string, unknown>;
     const question = typeof gs.question === "string" ? gs.question : "";
     const strikes = typeof gs.strikes === "number" ? gs.strikes : 0;
     const revealedAnswers = Array.isArray(gs.revealedAnswers)
       ? (gs.revealedAnswers as Array<{ text: string; points: number; rank: number }>)
       : [];
+    const roundGuesses = Array.isArray(gs.roundGuesses)
+      ? (gs.roundGuesses as Array<{
+          sessionId: string;
+          answer: string;
+          source: "face-off" | "guessing" | "steal";
+          outcome: "match" | "miss" | "duplicate";
+          matchedRank: number | null;
+        }>)
+      : [];
     const answerCount = typeof gs.answerCount === "number" ? gs.answerCount : 0;
+    const allAnswers = Array.isArray(gs.allAnswers)
+      ? (gs.allAnswers as Array<{ text: string; points: number; rank: number }>)
+      : [];
     const teams = Array.isArray(gs.teams)
       ? (gs.teams as Array<{ id: string; members: string[]; score: number }>)
+      : [];
+    const faceOffPlayers = Array.isArray(gs.faceOffPlayers) ? (gs.faceOffPlayers as string[]) : [];
+    const faceOffEntries = Array.isArray(gs.faceOffEntries)
+      ? (gs.faceOffEntries as Array<{
+          sessionId: string;
+          answer: string;
+          matchedRank: number | null;
+        }>)
       : [];
     const guessingOrder = Array.isArray(gs.guessingOrder) ? (gs.guessingOrder as string[]) : [];
     const currentGuesserIndex =
@@ -986,6 +1233,42 @@ export function GameController({
       : null;
     const lightningTotalPoints =
       typeof gs.lightningTotalPoints === "number" ? gs.lightningTotalPoints : 0;
+    const guessAlongEligible =
+      typeof gs.guessAlongEligible === "number" ? Math.max(0, gs.guessAlongEligible) : 0;
+    const guessAlongSubmissions =
+      typeof gs.guessAlongSubmissions === "number" ? Math.max(0, gs.guessAlongSubmissions) : 0;
+    const guessAlongPoints = Array.isArray(gs.guessAlongPoints)
+      ? (gs.guessAlongPoints as Array<{ sessionId: string; points: number }>)
+      : [];
+    const myTeamFromPrivate = typeof pd.yourTeamId === "string" ? pd.yourTeamId : null;
+    const myPlayer = players.find((p) => p.sessionId === mySessionId);
+    const myTeamId =
+      myTeamFromPrivate ?? (typeof myPlayer?.role === "string" ? myPlayer.role : null);
+    const myTeam = teams.find((t) => t.id === myTeamId);
+    const myTeamLabel =
+      myTeamId === "team-a"
+        ? "Team A"
+        : myTeamId === "team-b"
+          ? "Team B"
+          : myTeamId
+            ? "Solo"
+            : null;
+    const myTeamMates =
+      myTeam?.members
+        .filter((sid) => sid !== mySessionId)
+        .map((sid) => players.find((p) => p.sessionId === sid)?.name ?? "Player") ?? [];
+    const myGuessAlongPoints =
+      guessAlongPoints.find((entry) => entry.sessionId === mySessionId)?.points ??
+      (typeof pd.guessAlongPoints === "number" ? pd.guessAlongPoints : 0);
+    const recentGuessAlongWinners = Array.isArray(guessAlongResult.winners)
+      ? (guessAlongResult.winners as Array<{ sessionId: string; points: number }>).map(
+          (winner) => players.find((p) => p.sessionId === winner.sessionId)?.name ?? "Player",
+        )
+      : [];
+    const faceOffSubmitted = faceOffEntries.length;
+    const faceOffTotal = Math.max(2, faceOffPlayers.length || 2);
+    const getSurveyPlayerName = (sessionId: string) =>
+      players?.find((p) => p.sessionId === sessionId)?.name ?? "Player";
 
     // Strike indicators
     const strikeDisplay =
@@ -1021,6 +1304,110 @@ export function GameController({
         </div>
       ) : null;
 
+    const myTeamBadge = myTeamLabel ? (
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          data-testid="team-pill"
+          onClick={() => setIsTeamRosterOpen((open) => !open)}
+          className="rounded-full border border-accent-surveysmash/30 bg-accent-surveysmash/12 px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wider text-accent-surveysmash transition-all active:scale-95"
+        >
+          {myTeamLabel}
+        </button>
+        {myTeamMates.length > 0 && (
+          <span className="font-body text-[11px] text-text-dim">
+            With: {myTeamMates.join(", ")}
+          </span>
+        )}
+        {isTeamRosterOpen && (
+          <GlassPanel
+            data-testid="team-roster-sheet"
+            className="w-[min(92vw,360px)] rounded-2xl border border-accent-surveysmash/30 px-4 py-3"
+          >
+            <p className="mb-2 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash">
+              Team Roster
+            </p>
+            <div className="flex flex-col gap-2">
+              {teams.map((team, teamIndex) => {
+                const teamLabel =
+                  team.id === "team-a"
+                    ? "Team A"
+                    : team.id === "team-b"
+                      ? "Team B"
+                      : `Team ${teamIndex + 1}`;
+                const isMine = myTeamId !== null && team.id === myTeamId;
+                const memberNames =
+                  team.members.length > 0
+                    ? team.members
+                        .map(
+                          (sessionId) =>
+                            players.find((p) => p.sessionId === sessionId)?.name ?? "Player",
+                        )
+                        .join(", ")
+                    : "No players";
+
+                return (
+                  <div
+                    key={`watch-roster-${team.id}`}
+                    className={`rounded-lg border px-3 py-2 ${
+                      isMine
+                        ? "border-accent-surveysmash/45 bg-accent-surveysmash/12"
+                        : "border-white/10 bg-white/5"
+                    }`}
+                  >
+                    <p className="font-display text-[11px] font-bold uppercase tracking-wide text-text-primary">
+                      {teamLabel}
+                      {isMine ? " (You)" : ""}
+                    </p>
+                    <p className="font-body text-xs text-text-muted">{memberNames}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </GlassPanel>
+        )}
+      </div>
+    ) : null;
+
+    const guessAlongStatus =
+      currentPhase === "guessing" && guessAlongEligible > 0 ? (
+        <div className="flex w-full max-w-xs flex-col items-center gap-1.5 rounded-xl border border-accent-surveysmash/20 bg-accent-surveysmash/8 px-3 py-2">
+          <span className="font-display text-[10px] font-bold uppercase tracking-wider text-accent-surveysmash">
+            Guess Along
+          </span>
+          <span className="font-mono text-xs text-text-muted">
+            {guessAlongSubmissions}/{guessAlongEligible} submitted
+          </span>
+          <span className="font-mono text-xs text-accent-surveysmash">
+            You: {myGuessAlongPoints.toLocaleString()} pts
+          </span>
+        </div>
+      ) : null;
+
+    const faceOffProgress =
+      currentPhase === "face-off" ? (
+        <div className="flex w-full max-w-xs flex-col gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+          <span className="font-mono text-xs text-text-muted">
+            Face-off submissions: {faceOffSubmitted}/{faceOffTotal}
+          </span>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-accent-surveysmash transition-all duration-300"
+              style={{ width: `${Math.min(100, (faceOffSubmitted / faceOffTotal) * 100)}%` }}
+            />
+          </div>
+        </div>
+      ) : null;
+
+    const guessAlongWinnersBadge =
+      recentGuessAlongWinners.length > 0 && currentPhase === "round-result" ? (
+        <div className="rounded-xl border border-accent-surveysmash/30 bg-accent-surveysmash/10 px-3 py-2">
+          <p className="text-center font-body text-xs text-text-muted">
+            Guess Along winners: {recentGuessAlongWinners.join(", ")}
+          </p>
+        </div>
+      ) : null;
+
     // Revealed answers mini-board
     const answersBoard =
       revealedAnswers.length > 0 ? (
@@ -1049,10 +1436,136 @@ export function GameController({
         </div>
       ) : null;
 
+    const roundGuessSummary =
+      currentPhase === "round-result" && roundGuesses.length > 0 ? (
+        <GlassPanel className="w-full max-w-sm px-4 py-3">
+          <p className="mb-2 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash">
+            Player Answers
+          </p>
+          <div className="flex flex-col gap-2">
+            {[...roundGuesses]
+              .slice(-6)
+              .reverse()
+              .map((entry, index) => {
+                const sourceLabel =
+                  entry.source === "face-off"
+                    ? "Face-Off"
+                    : entry.source === "steal"
+                      ? "Steal"
+                      : "Guess";
+                const outcomeLabel =
+                  entry.outcome === "match"
+                    ? "Match"
+                    : entry.outcome === "duplicate"
+                      ? "Duplicate"
+                      : "Miss";
+                const outcomeClass =
+                  entry.outcome === "match"
+                    ? "text-success"
+                    : entry.outcome === "duplicate"
+                      ? "text-accent-surveysmash"
+                      : "text-accent-6";
+
+                return (
+                  <div
+                    key={`${entry.sessionId}:${entry.answer}:${index}`}
+                    className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-body text-xs text-text-primary">
+                        {getSurveyPlayerName(entry.sessionId)}
+                      </span>
+                      <span className="font-mono text-[10px] text-text-dim uppercase">
+                        {sourceLabel}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-body text-sm text-text-primary">{entry.answer}</p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className={`font-mono text-[10px] uppercase ${outcomeClass}`}>
+                        {outcomeLabel}
+                      </span>
+                      {typeof entry.matchedRank === "number" && entry.matchedRank > 0 && (
+                        <span className="font-mono text-[10px] text-text-dim">
+                          Rank #{entry.matchedRank}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </GlassPanel>
+      ) : null;
+
+    const myLatestGuess =
+      mySessionId !== null
+        ? [...roundGuesses].reverse().find((entry) => entry.sessionId === mySessionId)
+        : undefined;
+    const myMatchedPoints =
+      myLatestGuess &&
+      typeof myLatestGuess.matchedRank === "number" &&
+      myLatestGuess.matchedRank > 0
+        ? (allAnswers.find((answer) => answer.rank === myLatestGuess.matchedRank)?.points ?? 0)
+        : 0;
+    const myResultCard =
+      currentPhase === "round-result" ? (
+        <GlassPanel data-testid="my-result" className="w-full max-w-sm rounded-2xl px-4 py-3">
+          <p className="text-center font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash">
+            My Result
+          </p>
+          <p className="mt-1 text-center font-body text-sm text-text-primary">
+            {myLatestGuess?.answer || lastSubmittedText || "(no answer)"}
+          </p>
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="font-mono text-[10px] uppercase text-text-muted">
+              {myLatestGuess?.outcome === "match"
+                ? "Match"
+                : myLatestGuess?.outcome === "duplicate"
+                  ? "Duplicate"
+                  : myLatestGuess
+                    ? "Miss"
+                    : "No attempt"}
+            </span>
+            <span
+              className={`font-mono text-xs font-bold ${
+                myMatchedPoints > 0 ? "text-success" : "text-text-muted"
+              }`}
+            >
+              {myMatchedPoints > 0 ? `+${myMatchedPoints}` : "+0"}
+            </span>
+          </div>
+        </GlassPanel>
+      ) : null;
+
     switch (currentPhase) {
+      case "face-off":
+        return (
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
+            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+              <p className="font-display text-base font-bold uppercase text-accent-surveysmash">
+                Face-Off
+              </p>
+              {question && (
+                <p className="text-center font-display text-sm font-bold text-text-primary">
+                  {question}
+                </p>
+              )}
+            </GlassPanel>
+            {myTeamBadge}
+            {faceOffProgress}
+            {teamScores}
+          </div>
+        );
+
       case "question-reveal":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel
               glow
               glowColor="oklch(0.74 0.25 25 / 0.2)"
@@ -1067,6 +1580,7 @@ export function GameController({
                 </p>
               )}
             </GlassPanel>
+            {myTeamBadge}
             {teamScores}
           </div>
         );
@@ -1074,7 +1588,10 @@ export function GameController({
       case "guessing":
       case "steal-chance":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
               {question && (
                 <p className="text-center font-display text-sm font-bold text-text-primary">
@@ -1093,14 +1610,19 @@ export function GameController({
               )}
               {strikeDisplay}
             </GlassPanel>
+            {myTeamBadge}
             {answersBoard}
+            {guessAlongStatus}
             {teamScores}
           </div>
         );
 
       case "strike":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
               <p className="font-display text-xl font-black text-red-400 uppercase">Strike!</p>
               {strikeDisplay}
@@ -1108,6 +1630,7 @@ export function GameController({
                 <p className="text-center font-body text-sm text-text-muted">{question}</p>
               )}
             </GlassPanel>
+            {myTeamBadge}
             {answersBoard}
             {teamScores}
           </div>
@@ -1115,7 +1638,10 @@ export function GameController({
 
       case "answer-reveal":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
               <p className="font-display text-lg font-bold text-accent-surveysmash uppercase">
                 Answers Revealed!
@@ -1124,6 +1650,7 @@ export function GameController({
                 <p className="text-center font-body text-sm text-text-muted">{question}</p>
               )}
             </GlassPanel>
+            {myTeamBadge}
             {answersBoard}
             {teamScores}
           </div>
@@ -1131,7 +1658,10 @@ export function GameController({
 
       case "round-result":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel
               glow
               glowColor="oklch(0.74 0.25 25 / 0.15)"
@@ -1140,14 +1670,44 @@ export function GameController({
               <p className="font-display text-lg font-bold text-text-primary uppercase">
                 Round Complete!
               </p>
+              {question && (
+                <p className="text-center font-body text-sm text-text-muted">{question}</p>
+              )}
             </GlassPanel>
+            {myTeamBadge}
+            {answersBoard}
+            {roundGuessSummary}
+            {myResultCard}
+            {guessAlongWinnersBadge}
+            {teamScores}
+          </div>
+        );
+
+      case "lightning-round":
+        return (
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
+            <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+              <p className="font-display text-lg font-bold text-accent-surveysmash uppercase">
+                Lightning Round
+              </p>
+              {lightningPlayerName && (
+                <p className="font-body text-sm text-text-muted">{lightningPlayerName} is up!</p>
+              )}
+            </GlassPanel>
+            {myTeamBadge}
             {teamScores}
           </div>
         );
 
       case "lightning-round-reveal":
         return (
-          <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+          <div
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up"
+          >
             <GlassPanel
               glow
               glowColor="oklch(0.74 0.25 25 / 0.2)"
@@ -1162,6 +1722,7 @@ export function GameController({
                 </p>
               )}
             </GlassPanel>
+            {myTeamBadge}
             {teamScores}
           </div>
         );
@@ -1175,9 +1736,47 @@ export function GameController({
   // BRAIN BOARD — contextual watch card
   // ────────────────────────────────────────────────────────────────────
 
+  function renderBrainBoardGridWatchCard(message: string, categories: string[]) {
+    const visibleCategories = categories
+      .filter((category): category is string => typeof category === "string")
+      .map((category) => category.trim())
+      .filter((category) => category.length > 0);
+
+    return (
+      <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
+        <GlassPanel
+          data-testid="controller-context-card"
+          className="flex w-full max-w-sm flex-col items-center gap-3 px-4 py-5"
+        >
+          <p className="text-center font-display text-lg font-bold text-text-primary">{message}</p>
+          {visibleCategories.length > 0 && (
+            <div data-testid="brain-board-grid" className="grid w-full grid-cols-2 gap-2">
+              {visibleCategories.map((category) => (
+                <div
+                  key={category}
+                  className="rounded-lg border border-accent-brainboard/25 bg-accent-brainboard/10 px-2 py-2"
+                >
+                  <p className="text-center font-display text-[11px] font-bold uppercase text-accent-brainboard">
+                    {category}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </GlassPanel>
+      </div>
+    );
+  }
+
   function renderBrainBoardWatchCard(message: string) {
     const playerScore = typeof pd.score === "number" ? pd.score : null;
     const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+    const clueResultEvent = (gameEvents?.["clue-result"] ?? {}) as {
+      results?: Array<{ sessionId: string; answer: string; correct: boolean; delta: number }>;
+    };
+    const allInRevealEvent = (gameEvents?.["all-in-reveal"] ?? {}) as {
+      results?: Array<{ sessionId: string; answer: string; correct: boolean; delta: number }>;
+    };
     const clueQuestion = typeof gs.currentClueQuestion === "string" ? gs.currentClueQuestion : null;
     const clueCategory = typeof gs.currentCategoryName === "string" ? gs.currentCategoryName : null;
     const clueValue = typeof gs.currentClueValue === "number" ? gs.currentClueValue : null;
@@ -1186,10 +1785,23 @@ export function GameController({
     const totalPlayerCount = typeof gs.totalPlayerCount === "number" ? gs.totalPlayerCount : 0;
     const allInQuestion = typeof gs.allInQuestion === "string" ? gs.allInQuestion : null;
     const allInCategory = typeof gs.allInCategory === "string" ? gs.allInCategory : null;
+    const clueResultRows = Array.isArray(clueResultEvent.results) ? clueResultEvent.results : [];
+    const allInRows = Array.isArray(allInRevealEvent.results) ? allInRevealEvent.results : [];
+    const myResultEntry =
+      mySessionId !== null
+        ? phase === "clue-result"
+          ? clueResultRows.find((row) => row.sessionId === mySessionId)
+          : phase === "all-in-reveal"
+            ? allInRows.find((row) => row.sessionId === mySessionId)
+            : undefined
+        : undefined;
 
     return (
       <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-6 animate-fade-in-up">
-        <GlassPanel className="flex w-full max-w-sm flex-col items-center gap-3 px-6 py-5">
+        <GlassPanel
+          data-testid="controller-context-card"
+          className="flex w-full max-w-sm flex-col items-center gap-3 px-6 py-5"
+        >
           {playerScore !== null && (
             <span className="font-mono text-xl font-bold text-accent-brainboard">
               {playerScore.toLocaleString()} pts
@@ -1229,6 +1841,28 @@ export function GameController({
             </p>
           )}
         </GlassPanel>
+        {myResultEntry && (
+          <GlassPanel data-testid="my-result" className="w-full max-w-sm rounded-2xl px-4 py-3">
+            <p className="text-center font-display text-xs font-bold uppercase tracking-wider text-accent-brainboard">
+              My Result
+            </p>
+            <p className="mt-1 text-center font-body text-sm text-text-primary">
+              {myResultEntry.answer || lastSubmittedText || "(no answer)"}
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="font-mono text-[10px] uppercase text-text-muted">
+                {myResultEntry.correct ? "Correct" : "Incorrect"}
+              </span>
+              <span
+                className={`font-mono text-xs font-bold ${
+                  myResultEntry.delta > 0 ? "text-success" : "text-text-muted"
+                }`}
+              >
+                {myResultEntry.delta > 0 ? `+${myResultEntry.delta}` : `${myResultEntry.delta}`}
+              </span>
+            </div>
+          </GlassPanel>
+        )}
       </div>
     );
   }
@@ -1304,7 +1938,10 @@ export function GameController({
   function renderWatchScreen(message: string) {
     return (
       <div className="flex flex-col items-center gap-4 px-4 pb-16 pt-8 animate-fade-in-up">
-        <GlassPanel className="flex flex-col items-center gap-3 px-8 py-6">
+        <GlassPanel
+          data-testid="controller-context-card"
+          className="flex flex-col items-center gap-3 px-8 py-6"
+        >
           <Monitor className="h-6 w-6 text-text-muted" />
           <p className="text-center font-body text-lg text-text-muted">{message}</p>
         </GlassPanel>

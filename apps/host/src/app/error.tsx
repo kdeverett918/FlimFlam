@@ -1,7 +1,5 @@
 "use client";
 
-import { GlassPanel } from "@flimflam/ui";
-
 export default function ErrorPage({
   // error, // unused
   reset,
@@ -11,11 +9,7 @@ export default function ErrorPage({
 }) {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <GlassPanel
-        glow
-        rounded="2xl"
-        className="flex flex-col items-center p-8 text-center border-destructive max-w-md w-full"
-      >
+      <div className="bg-white/[0.10] border border-white/[0.15] backdrop-blur-xl backdrop-saturate-[1.2] rounded-2xl flex flex-col items-center p-8 text-center border-destructive max-w-md w-full">
         <h2 className="font-display text-[48px] font-bold text-destructive">ERROR</h2>
         <p className="font-body text-[18px] text-text-muted mb-6">Something went wrong.</p>
         <button
@@ -25,7 +19,7 @@ export default function ErrorPage({
         >
           TRY AGAIN
         </button>
-      </GlassPanel>
+      </div>
     </div>
   );
 }

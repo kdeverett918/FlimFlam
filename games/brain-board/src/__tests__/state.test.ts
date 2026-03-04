@@ -8,6 +8,7 @@ import {
   FUZZY_THRESHOLD,
   KIDS_BOARDS,
   STANDARD_BOARDS,
+  buildBrainBoardPublicGameState,
   getClueBank,
   getPowerPlayCount,
   judgeAnswer,
@@ -520,6 +521,73 @@ describe("round-robin selector rotation", () => {
     // After Power Play resolves, selector still advances to p3
     selectorIndex = (selectorIndex + 1) % playerOrder.length;
     expect(playerOrder[selectorIndex]).toBe("p3");
+  });
+});
+
+describe("public game-state redaction", () => {
+  it("only exposes currentClueQuestion in answering and power-play-answer phases", () => {
+    const board = KIDS_BOARDS[0];
+    const clue = board?.categories[0]?.clues[0] ?? null;
+    const common = {
+      currentRound: 1 as const,
+      board: board ?? null,
+      revealedClues: new Set<string>(),
+      powerPlayCount: 1,
+      selectorSessionId: "p1",
+      currentClue: clue,
+      currentCategoryName: board?.categories[0]?.name ?? "",
+      isPowerPlay: false,
+      standings: [{ sessionId: "p1", score: 200 }],
+      finalRound: null,
+      answeredCount: 0,
+      totalPlayerCount: 2,
+    };
+
+    const hiddenPayload = buildBrainBoardPublicGameState({
+      ...common,
+      phase: "clue-select",
+    }) as Record<string, unknown>;
+    expect(hiddenPayload.currentClueQuestion).toBeNull();
+
+    const answeringPayload = buildBrainBoardPublicGameState({
+      ...common,
+      phase: "answering",
+    }) as Record<string, unknown>;
+    expect(answeringPayload.currentClueQuestion).toBe(clue?.question ?? null);
+  });
+
+  it("never includes correct answers in game-state payloads", () => {
+    const board = KIDS_BOARDS[0];
+    const clue = board?.categories[0]?.clues[0] ?? null;
+    const payload = buildBrainBoardPublicGameState({
+      phase: "answering",
+      currentRound: 1,
+      board: board ?? null,
+      revealedClues: new Set<string>(),
+      powerPlayCount: 1,
+      selectorSessionId: "p1",
+      currentClue: clue,
+      currentCategoryName: board?.categories[0]?.name ?? "",
+      isPowerPlay: false,
+      standings: [{ sessionId: "p1", score: 200 }],
+      finalRound: null,
+      answeredCount: 1,
+      totalPlayerCount: 2,
+    }) as Record<string, unknown>;
+
+    expect("correctAnswer" in payload).toBe(false);
+
+    const publicBoard = Array.isArray(payload.board)
+      ? (payload.board as Array<Record<string, unknown>>)
+      : [];
+    for (const category of publicBoard) {
+      const clues = Array.isArray(category.clues)
+        ? (category.clues as Array<Record<string, unknown>>)
+        : [];
+      for (const publicClue of clues) {
+        expect("answer" in publicClue).toBe(false);
+      }
+    }
   });
 });
 

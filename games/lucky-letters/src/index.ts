@@ -124,6 +124,91 @@ export function isPuzzleFullyRevealed(phrase: string, revealed: Set<string>): bo
   return true;
 }
 
+interface LuckyLettersPublicGameStateInput {
+  phase: WheelPhase;
+  round: number;
+  totalRounds: number;
+  currentPuzzle: WheelPuzzle | null;
+  revealedLetters: Set<string>;
+  currentTurnSessionId: string | null;
+  turnOrder: string[];
+  standings: Array<{ sessionId: string; roundCash: number; totalCash: number }>;
+  wildActive: boolean;
+  lastSpinResult: SpinResult | null;
+  bonusPlayerSessionId: string | null;
+  bonusSolved: boolean;
+  streak: number;
+}
+
+interface LuckyLettersRoundResultInput {
+  winnerId: string | null;
+  answer: string;
+  category: string;
+  roundCashEarned: number;
+  standings: Array<{ sessionId: string; roundCash: number; totalCash: number }>;
+}
+
+interface LuckyLettersBonusRevealInput {
+  solved: boolean;
+  answer: string;
+  bonusPrize: number;
+  bonusPlayerId: string | null;
+}
+
+export function buildLuckyLettersPublicGameState(
+  input: LuckyLettersPublicGameStateInput,
+): Record<string, unknown> {
+  const puzzleDisplay = input.currentPuzzle
+    ? buildPuzzleDisplay(input.currentPuzzle.phrase, input.revealedLetters)
+    : "";
+
+  return {
+    type: "game-state",
+    phase: input.phase,
+    round: input.round,
+    totalRounds: input.totalRounds,
+    category: input.currentPuzzle?.category ?? "",
+    hint: input.currentPuzzle?.hint ?? "",
+    puzzleDisplay,
+    currentTurnSessionId: input.currentTurnSessionId,
+    turnOrder: input.turnOrder,
+    standings: input.standings,
+    consonantsRemaining: getConsonantsRemaining(input.revealedLetters),
+    vowelsRemaining: getVowelsRemaining(input.revealedLetters),
+    wildActive: input.wildActive,
+    lastSpinResult: input.lastSpinResult ? { segment: input.lastSpinResult.segment } : null,
+    bonusPlayerSessionId: input.bonusPlayerSessionId,
+    bonusSolved: input.bonusSolved,
+    revealedLetters: [...input.revealedLetters],
+    streak: input.streak,
+  };
+}
+
+export function buildLuckyLettersRoundResultPayload(
+  input: LuckyLettersRoundResultInput,
+): Record<string, unknown> {
+  return {
+    type: "round-result",
+    winnerId: input.winnerId,
+    answer: input.answer,
+    category: input.category,
+    roundCashEarned: input.roundCashEarned,
+    standings: input.standings,
+  };
+}
+
+export function buildLuckyLettersBonusRevealPayload(
+  input: LuckyLettersBonusRevealInput,
+): Record<string, unknown> {
+  return {
+    type: "bonus-reveal",
+    solved: input.solved,
+    answer: input.answer,
+    bonusPrize: input.bonusPrize,
+    bonusPlayerId: input.bonusPlayerId,
+  };
+}
+
 // ─── Internal state ────────────────────────────────────────────────────────
 
 interface PlayerCash {
@@ -747,6 +832,13 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
         break;
+      case "spinning":
+        // Skip past active player's turn
+        this.advanceTurn(room, state);
+        break;
+      case "bonus-round":
+        this.goToBonusReveal(room, state);
+        break;
       case "letter-result":
         // Skip the letter-result delay — if puzzle solved end round, otherwise go to spinning
         if (
@@ -829,14 +921,16 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       this.updatePlayerScore(state, sessionId, cash.totalCash);
     }
 
-    room.broadcast("game-data", {
-      type: "round-result",
-      winnerId,
-      answer: this.currentPuzzle?.phrase ?? "",
-      category: this.currentPuzzle?.category ?? "",
-      roundCashEarned: winnerId ? (this.playerCash.get(winnerId)?.roundCash ?? 0) : 0,
-      standings: this.getStandings(),
-    });
+    room.broadcast(
+      "game-data",
+      buildLuckyLettersRoundResultPayload({
+        winnerId,
+        answer: this.currentPuzzle?.phrase ?? "",
+        category: this.currentPuzzle?.category ?? "",
+        roundCashEarned: winnerId ? (this.playerCash.get(winnerId)?.roundCash ?? 0) : 0,
+        standings: this.getStandings(),
+      }),
+    );
 
     this.broadcastGameState(room, state);
 
@@ -886,13 +980,15 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.phase = "bonus-reveal";
     this.setPhase(state, "bonus-reveal");
 
-    room.broadcast("game-data", {
-      type: "bonus-reveal",
-      solved: this.bonusSolved,
-      answer: this.currentPuzzle?.phrase ?? "",
-      bonusPrize: this.bonusSolved ? BONUS_PRIZE : 0,
-      bonusPlayerId: this.bonusPlayerSessionId,
-    });
+    room.broadcast(
+      "game-data",
+      buildLuckyLettersBonusRevealPayload({
+        solved: this.bonusSolved,
+        answer: this.currentPuzzle?.phrase ?? "",
+        bonusPrize: this.bonusSolved ? BONUS_PRIZE : 0,
+        bonusPlayerId: this.bonusPlayerSessionId,
+      }),
+    );
 
     this.broadcastGameState(room, state);
 
@@ -921,30 +1017,24 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   // ─── Broadcast Helpers ───────────────────────────────────────────────
 
   private broadcastGameState(room: Room, _state: Schema): void {
-    const puzzleDisplay = this.currentPuzzle
-      ? buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters)
-      : "";
-
-    room.broadcast("game-data", {
-      type: "game-state",
-      phase: this.phase,
-      round: this.currentRound,
-      totalRounds: this.totalRounds,
-      category: this.currentPuzzle?.category ?? "",
-      hint: this.currentPuzzle?.hint ?? "",
-      puzzleDisplay,
-      currentTurnSessionId: this.turnOrder[this.currentTurnIndex] ?? null,
-      turnOrder: this.turnOrder,
-      standings: this.getStandings(),
-      consonantsRemaining: getConsonantsRemaining(this.revealedLetters),
-      vowelsRemaining: getVowelsRemaining(this.revealedLetters),
-      wildActive: this.wildActive,
-      lastSpinResult: this.lastSpinResult ? { segment: this.lastSpinResult.segment } : null,
-      bonusPlayerSessionId: this.bonusPlayerSessionId,
-      bonusSolved: this.bonusSolved,
-      revealedLetters: [...this.revealedLetters],
-      streak: this.currentStreak,
-    });
+    room.broadcast(
+      "game-data",
+      buildLuckyLettersPublicGameState({
+        phase: this.phase,
+        round: this.currentRound,
+        totalRounds: this.totalRounds,
+        currentPuzzle: this.currentPuzzle,
+        revealedLetters: this.revealedLetters,
+        currentTurnSessionId: this.turnOrder[this.currentTurnIndex] ?? null,
+        turnOrder: this.turnOrder,
+        standings: this.getStandings(),
+        wildActive: this.wildActive,
+        lastSpinResult: this.lastSpinResult,
+        bonusPlayerSessionId: this.bonusPlayerSessionId,
+        bonusSolved: this.bonusSolved,
+        streak: this.currentStreak,
+      }),
+    );
   }
 
   private sendPrivateData(room: Room, _state: Schema, sessionId: string): void {

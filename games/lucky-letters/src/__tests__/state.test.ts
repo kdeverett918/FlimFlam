@@ -5,6 +5,9 @@ import {
   RSTLNE,
   VOWELS,
   VOWEL_COST,
+  buildLuckyLettersBonusRevealPayload,
+  buildLuckyLettersPublicGameState,
+  buildLuckyLettersRoundResultPayload,
   buildPuzzleDisplay,
   countLetterInPhrase,
   getConsonantsRemaining,
@@ -358,5 +361,63 @@ describe("phrase bank", () => {
       // Allow letters, spaces, hyphens, ampersands, apostrophes, periods, commas
       expect(puzzle.phrase).toMatch(/^[A-Z &'\-.,]+$/);
     }
+  });
+});
+
+describe("public game-data redaction", () => {
+  it("game-state never includes raw answer and only exposes puzzleDisplay", () => {
+    const payload = buildLuckyLettersPublicGameState({
+      phase: "spinning",
+      round: 1,
+      totalRounds: 3,
+      currentPuzzle: {
+        phrase: "HELLO WORLD",
+        category: "SAYINGS",
+        hint: "Greeting",
+      },
+      revealedLetters: new Set(["H", "L"]),
+      currentTurnSessionId: "p1",
+      turnOrder: ["p1", "p2"],
+      standings: [
+        { sessionId: "p1", roundCash: 0, totalCash: 1200 },
+        { sessionId: "p2", roundCash: 0, totalCash: 900 },
+      ],
+      wildActive: false,
+      lastSpinResult: null,
+      bonusPlayerSessionId: null,
+      bonusSolved: false,
+      streak: 0,
+    }) as Record<string, unknown>;
+
+    expect("answer" in payload).toBe(false);
+    expect(payload.type).toBe("game-state");
+    expect(typeof payload.puzzleDisplay).toBe("string");
+    expect(payload.puzzleDisplay).not.toBe("HELLO WORLD");
+    expect((payload.puzzleDisplay as string).includes("_")).toBe(true);
+  });
+
+  it("round-result payload can include answer after reveal", () => {
+    const payload = buildLuckyLettersRoundResultPayload({
+      winnerId: "p1",
+      answer: "HELLO WORLD",
+      category: "SAYINGS",
+      roundCashEarned: 1200,
+      standings: [{ sessionId: "p1", roundCash: 1200, totalCash: 2200 }],
+    }) as Record<string, unknown>;
+
+    expect(payload.type).toBe("round-result");
+    expect(payload.answer).toBe("HELLO WORLD");
+  });
+
+  it("bonus-reveal payload can include answer after reveal", () => {
+    const payload = buildLuckyLettersBonusRevealPayload({
+      solved: true,
+      answer: "HELLO WORLD",
+      bonusPrize: BONUS_PRIZE,
+      bonusPlayerId: "p1",
+    }) as Record<string, unknown>;
+
+    expect(payload.type).toBe("bonus-reveal");
+    expect(payload.answer).toBe("HELLO WORLD");
   });
 });

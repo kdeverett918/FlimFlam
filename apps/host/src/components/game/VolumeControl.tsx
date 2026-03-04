@@ -1,6 +1,6 @@
 "use client";
 
-import { useAudio } from "@flimflam/ui";
+import { soundManager, useAudio } from "@flimflam/ui";
 import { Volume2, VolumeOff } from "lucide-react";
 import { useState } from "react";
 
@@ -13,6 +13,7 @@ export function VolumeControl() {
       <button
         type="button"
         onClick={() => {
+          soundManager.unlock();
           if (open) {
             toggleMute();
           } else {

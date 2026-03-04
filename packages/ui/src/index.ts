@@ -83,8 +83,9 @@ export { AnimatedCounter } from "./components/animated-counter";
 export type { AnimatedCounterProps } from "./components/animated-counter";
 
 // Audio
-export { soundManager, sounds } from "./lib/audio";
+export { emitMotionEvent, soundManager, sounds } from "./lib/audio";
 export type { SoundCategory, SoundConfig } from "./lib/audio";
+export { ANIMATION_DURATIONS, ANIMATION_EASINGS, ANIMATION_STAGGERS } from "./lib/animation";
 
 // Hooks
 export { useReducedMotion } from "./hooks/useReducedMotion";

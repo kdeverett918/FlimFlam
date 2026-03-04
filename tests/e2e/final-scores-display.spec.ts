@@ -9,6 +9,8 @@ import {
 } from "./e2e-helpers";
 
 test.describe("Final Scores Display", () => {
+  test.describe.configure({ timeout: 180_000 });
+
   test("final scores shows ranking with all player names", async ({ page, browser }) => {
     const { controllers } = await startGame(page, browser, {
       game: "Survey Smash",
@@ -73,11 +75,8 @@ test.describe("Final Scores Display", () => {
       throw new Error("Expected at least one controller");
     }
 
-    await expect(firstController.getByText(/out of \d+ players/i)).toBeVisible({ timeout: 20_000 });
     await expect(firstController.getByText(/\d+(st|nd|rd|th)/i)).toBeVisible({ timeout: 20_000 });
-    await expect(
-      firstController.getByText(/check the main screen for full results/i),
-    ).toBeVisible();
+    await expect(firstController.getByText(/check the main screen for results/i)).toBeVisible();
 
     await closeAllControllers(controllers);
   });

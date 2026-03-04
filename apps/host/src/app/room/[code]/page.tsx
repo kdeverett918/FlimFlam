@@ -7,6 +7,7 @@ import { VolumeControl } from "@/components/game/VolumeControl";
 import { LobbyScreen } from "@/components/lobby/LobbyScreen";
 import { useGameState } from "@/hooks/useGameState";
 import { GAME_MANIFESTS, analyzeGameState, getLastRoundCommentary } from "@flimflam/shared";
+import { soundManager, sounds } from "@flimflam/ui";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRoomContext } from "../RoomProvider";
@@ -15,7 +16,7 @@ export default function RoomPage() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
-  const routeCode = (params?.code as string)?.toUpperCase() ?? "";
+  const routeCode = ((params?.code as string | undefined) ?? "").toUpperCase();
   const preselectedGame = useRef(searchParams?.get("game") ?? null);
   const {
     room,
@@ -37,6 +38,7 @@ export default function RoomPage() {
   const [transitionLabel, setTransitionLabel] = useState("");
   const [transitionSubtitle, setTransitionSubtitle] = useState<string | null>(null);
   const prevPhase = useRef(gameState.phase);
+  const prevAudioPhase = useRef(gameState.phase);
 
   // Connect to room on mount.
   //
@@ -93,6 +95,45 @@ export default function RoomPage() {
     router.replace(`/room/${roomCode ?? routeCode}`);
   }, [connected, room, sendMessage, router, roomCode, routeCode]);
 
+  // Configure deterministic audio hooks in E2E and stop music on unmount.
+  useEffect(() => {
+    const e2eEnabled =
+      process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" || process.env.FLIMFLAM_E2E === "1";
+    soundManager.setE2EEnabled(e2eEnabled);
+    return () => {
+      soundManager.stopMusic({ fadeMs: 250 });
+    };
+  }, []);
+
+  // Per-game BGM with crossfade.
+  useEffect(() => {
+    if (gameState.screenView !== "game" || !gameState.selectedGameId) {
+      soundManager.playMusic("lobby");
+      return;
+    }
+
+    if (
+      gameState.selectedGameId === "brain-board" ||
+      gameState.selectedGameId === "lucky-letters" ||
+      gameState.selectedGameId === "survey-smash"
+    ) {
+      soundManager.playMusic(gameState.selectedGameId);
+    } else {
+      soundManager.playMusic("lobby");
+    }
+  }, [gameState.screenView, gameState.selectedGameId]);
+
+  // Global transition SFX.
+  useEffect(() => {
+    if (prevAudioPhase.current !== gameState.phase) {
+      sounds.whoosh();
+      if (gameState.phase === "final-scores") {
+        sounds.win();
+      }
+      prevAudioPhase.current = gameState.phase;
+    }
+  }, [gameState.phase]);
+
   // Phase transition effect
   useEffect(() => {
     if (gameState.phase === "lobby") {
@@ -122,6 +163,7 @@ export default function RoomPage() {
         const commentary = analyzeGameState(standings, isLastRound);
         setTransitionSubtitle(commentary ?? (isLastRound ? getLastRoundCommentary() : null));
         setShowTransition(true);
+        sounds.reveal();
         const timer = setTimeout(() => setShowTransition(false), 2000);
         return () => clearTimeout(timer);
       }

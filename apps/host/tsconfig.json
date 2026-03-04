@@ -17,6 +17,12 @@
     "noEmit": true,
     "lib": ["dom", "dom.iterable", "esnext"]
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".next-e2e-host/types/**/*.ts",
+    ".next/types/**/*.ts",
+    "next-env.d.ts"
+  ],
   "exclude": ["node_modules"]
 }

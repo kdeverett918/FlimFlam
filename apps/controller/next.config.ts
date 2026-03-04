@@ -22,6 +22,7 @@ function validateEnv() {
 }
 
 validateEnv();
+const e2eDistDir = process.env.FLIMFLAM_NEXT_DIST_DIR?.trim();
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -34,7 +35,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
+  ...(e2eDistDir ? { distDir: e2eDistDir } : {}),
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

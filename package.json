@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "node scripts/cloud-build.mjs",
-    "build:all": "turbo build",
+    "build:all": "turbo build --concurrency=1",
     "start": "pnpm --filter @flimflam/server start",
     "test": "turbo test",
     "lint": "biome check .",

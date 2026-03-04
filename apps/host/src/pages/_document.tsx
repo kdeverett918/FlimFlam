@@ -1,8 +1,8 @@
 import { Head, Html, Main, NextScript } from "next/document";
 
-export default function Document() {
+export default function HostLegacyDocument() {
   return (
-    <Html>
+    <Html lang="en">
       <Head />
       <body>
         <Main />

@@ -174,6 +174,64 @@ export function judgeAnswer(playerAnswer: string, correctAnswer: string): boolea
   return false;
 }
 
+interface BrainBoardPublicGameStateInput {
+  phase: BrainBoardPhase;
+  currentRound: number;
+  board: JeopardyBoard | null;
+  revealedClues: Set<string>;
+  powerPlayCount: number;
+  selectorSessionId: string | null;
+  currentClue: JeopardyClue | null;
+  currentCategoryName: string;
+  isPowerPlay: boolean;
+  standings: Array<{ sessionId: string; score: number }>;
+  finalRound: FinalRoundData | null;
+  answeredCount: number;
+  totalPlayerCount: number;
+}
+
+export function buildBrainBoardPublicGameState(
+  input: BrainBoardPublicGameStateInput,
+): Record<string, unknown> {
+  const isDoubleDown = input.currentRound === 2;
+  const clueValues = isDoubleDown ? DOUBLE_DOWN_VALUES : CLUE_VALUES;
+
+  const boardData = input.board
+    ? input.board.categories.map((category) => ({
+        name: category.name,
+        clues: category.clues.map((_clue, index) => ({
+          value: clueValues[index] ?? 0,
+        })),
+      }))
+    : [];
+
+  return {
+    type: "game-state",
+    phase: input.phase,
+    board: boardData,
+    revealedClues: [...input.revealedClues],
+    powerPlayCount: input.powerPlayCount,
+    selectorSessionId: input.selectorSessionId,
+    currentClueValue: input.currentClue?.value ?? null,
+    currentClueQuestion:
+      input.phase === "answering" || input.phase === "power-play-answer"
+        ? (input.currentClue?.question ?? null)
+        : null,
+    currentCategoryName: input.currentCategoryName,
+    isPowerPlay: input.isPowerPlay,
+    standings: input.standings,
+    allInCategory: input.finalRound?.category ?? null,
+    allInQuestion:
+      input.phase === "all-in-answer" || input.phase === "all-in-reveal"
+        ? (input.finalRound?.clue.question ?? null)
+        : null,
+    answeredCount: input.answeredCount,
+    totalPlayerCount: input.totalPlayerCount,
+    currentRound: input.currentRound,
+    doubleDownValues: isDoubleDown,
+  };
+}
+
 // ─── Plugin ────────────────────────────────────────────────────────────────
 
 class BrainBoardPlugin extends BaseGamePlugin {
@@ -1097,46 +1155,24 @@ class BrainBoardPlugin extends BaseGamePlugin {
   // ─── Broadcast / Private Data ────────────────────────────────────────
 
   private broadcastGameState(room: Room, _state: Schema): void {
-    const isDoubleDown = this.currentRound === 2;
-    const clueValues = isDoubleDown ? DOUBLE_DOWN_VALUES : CLUE_VALUES;
-
-    const boardData = this.board
-      ? this.board.categories.map((cat) => ({
-          name: cat.name,
-          clues: cat.clues.map((_clue, i) => ({
-            value: clueValues[i] ?? 0,
-          })),
-        }))
-      : [];
-
-    room.broadcast("game-data", {
-      type: "game-state",
-      phase: this.phase,
-      board: boardData,
-      revealedClues: [...this.revealedClues],
-      powerPlayCount: this.powerPlays.size,
-      selectorSessionId: this.selectorSessionId,
-      currentClueValue: this.currentClue?.value ?? null,
-      // Show the question (the "answer" in Brain Board terms) during answering
-      currentClueQuestion:
-        this.phase === "answering" || this.phase === "power-play-answer"
-          ? (this.currentClue?.question ?? null)
-          : null,
-      currentCategoryName: this.currentCategoryName,
-      isPowerPlay: this.isPowerPlay,
-      standings: this.getStandings(),
-      allInCategory: this.finalRound?.category ?? null,
-      allInQuestion:
-        this.phase === "all-in-answer" || this.phase === "all-in-reveal"
-          ? (this.finalRound?.clue.question ?? null)
-          : null,
-      // Show how many have answered
-      answeredCount: this.playerAnswers.size,
-      totalPlayerCount: this.playerOrder.length,
-      // Round info
-      currentRound: this.currentRound,
-      doubleDownValues: isDoubleDown,
-    });
+    room.broadcast(
+      "game-data",
+      buildBrainBoardPublicGameState({
+        phase: this.phase,
+        currentRound: this.currentRound,
+        board: this.board,
+        revealedClues: this.revealedClues,
+        powerPlayCount: this.powerPlays.size,
+        selectorSessionId: this.selectorSessionId,
+        currentClue: this.currentClue,
+        currentCategoryName: this.currentCategoryName,
+        isPowerPlay: this.isPowerPlay,
+        standings: this.getStandings(),
+        finalRound: this.finalRound,
+        answeredCount: this.playerAnswers.size,
+        totalPlayerCount: this.playerOrder.length,
+      }),
+    );
   }
 
   private sendPrivateData(room: Room, _state: Schema, sessionId: string): void {
