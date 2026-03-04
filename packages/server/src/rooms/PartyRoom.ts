@@ -217,7 +217,18 @@ export class PartyRoom extends Room<RoomState> {
         this.send(client, "error", { message: `Unknown game: ${this.state.selectedGameId}` });
         return;
       }
-      if (this.state.players.size < MIN_PLAYERS) {
+      const removed = this._removeDisconnectedPlayers();
+      if (removed > 0) {
+        this.setMetadata({
+          code: this._roomCode,
+          gameName: this.state.selectedGameId || "lobby",
+          complexity: this.state.complexity as Complexity,
+          playerCount: this.state.players.size,
+          hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
+        });
+      }
+
+      if (this._getConnectedPlayerCount() < MIN_PLAYERS) {
         this.send(client, "error", { message: `Need at least ${MIN_PLAYERS} players` });
         return;
       }
@@ -245,6 +256,20 @@ export class PartyRoom extends Room<RoomState> {
       }
       if (this.state.gamePhase !== "final-scores") {
         this.send(client, "error", { message: "Can only restart from final scores" });
+        return;
+      }
+      const removed = this._removeDisconnectedPlayers();
+      if (removed > 0) {
+        this.setMetadata({
+          code: this._roomCode,
+          gameName: this.state.selectedGameId || "lobby",
+          complexity: this.state.complexity as Complexity,
+          playerCount: this.state.players.size,
+          hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
+        });
+      }
+      if (this._getConnectedPlayerCount() < MIN_PLAYERS) {
+        this.send(client, "error", { message: `Need at least ${MIN_PLAYERS} players` });
         return;
       }
       this._startGame();
@@ -644,6 +669,26 @@ export class PartyRoom extends Room<RoomState> {
   }
 
   // ─── Private Helpers ──────────────────────────────────────────────
+
+  private _getConnectedPlayerCount(): number {
+    let count = 0;
+    // biome-ignore lint/complexity/noForEach: MapSchema does not support for...of
+    this.state.players.forEach((player) => {
+      if (player.connected) count++;
+    });
+    return count;
+  }
+
+  private _removeDisconnectedPlayers(): number {
+    const disconnectedIds: string[] = [];
+    this.state.players.forEach((player, sessionId) => {
+      if (!player.connected) disconnectedIds.push(sessionId);
+    });
+    for (const id of disconnectedIds) {
+      this.state.players.delete(id);
+    }
+    return disconnectedIds.length;
+  }
 
   private async _startGame(): Promise<void> {
     const plugin = GameRegistry.getGame(this.state.selectedGameId);

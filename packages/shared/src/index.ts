@@ -80,6 +80,8 @@ export {
   GeneratedBoardSchema,
   AnswerJudgeSchema,
   AppealResultSchema,
+  BrainBoardChatResponseSchema,
+  BrainBoardGeneratedBoardSchema,
 } from "./schemas/ai-responses";
 
 export type {
@@ -94,6 +96,8 @@ export type {
   GeneratedBoardRaw,
   AnswerJudgeRaw,
   AppealResultRaw,
+  BrainBoardChatResponseRaw,
+  BrainBoardGeneratedBoardRaw,
 } from "./schemas/ai-responses";
 
 // Constants
