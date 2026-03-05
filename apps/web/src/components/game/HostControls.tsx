@@ -10,7 +10,7 @@ interface HostControlsProps {
 
 export function HostControls({ isHost, sendMessage, phase }: HostControlsProps) {
   const handleSkip = useCallback(() => {
-    sendMessage("host:skip-phase");
+    sendMessage("host:skip");
   }, [sendMessage]);
 
   const handleEnd = useCallback(() => {
@@ -24,7 +24,7 @@ export function HostControls({ isHost, sendMessage, phase }: HostControlsProps) 
   if (!isHost) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2">
+    <div className="fixed bottom-[68px] right-4 z-50 flex items-center gap-2">
       {phase !== "final-scores" && (
         <button
           type="button"

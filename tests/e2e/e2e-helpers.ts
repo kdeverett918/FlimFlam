@@ -554,8 +554,9 @@ export async function selectGameAndStart(
   await startButton.click();
 }
 
-export async function forceToFinalScores(hostPage: Page, maxSkips = 120): Promise<void> {
+export async function forceToFinalScores(hostPage: Page, maxSkips = 300): Promise<void> {
   for (let i = 0; i < maxSkips; i++) {
+    // Check for final scores heading
     if (
       await hostPage
         .getByRole("heading", { name: /final scores/i })
@@ -564,6 +565,24 @@ export async function forceToFinalScores(hostPage: Page, maxSkips = 120): Promis
         .catch(() => false)
     ) {
       return;
+    }
+
+    // Also check for Restart button (only renders at phase === "final-scores")
+    if (
+      await hostPage
+        .getByRole("button", { name: /^restart$/i })
+        .isVisible()
+        .catch(() => false)
+    ) {
+      return;
+    }
+
+    // If error page appears, click TRY AGAIN to recover
+    const tryAgainBtn = hostPage.getByRole("button", { name: /try again/i });
+    if (await tryAgainBtn.isVisible().catch(() => false)) {
+      await tryAgainBtn.click();
+      await hostPage.waitForTimeout(1000);
+      continue;
     }
 
     const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
@@ -619,6 +638,29 @@ export async function findBrainBoardSelectorController(
   throw new Error("Timed out waiting for Brain Board selector controller");
 }
 
+/**
+ * Find the Brain Board selector page, including the host page (unified app:
+ * host is also a player and can be the selector).
+ */
+export async function findBrainBoardSelector(
+  hostPage: Page,
+  controllerPages: Page[],
+  timeoutMs = 20_000,
+): Promise<Page> {
+  const allPages = [hostPage, ...controllerPages];
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const pg of allPages) {
+      const clueButton = pg.locator(BRAIN_BOARD_CLUE_SELECTOR).first();
+      if (await clueButton.isVisible().catch(() => false)) {
+        return pg;
+      }
+    }
+    await hostPage.waitForTimeout(150);
+  }
+  throw new Error("Timed out waiting for Brain Board selector (host or controller)");
+}
+
 export async function driveBrainBoardToPhase(
   hostPage: Page,
   controllerPages: Page[],
@@ -642,8 +684,10 @@ export async function driveBrainBoardToPhase(
 
     let acted = false;
 
-    for (const controller of controllerPages) {
-      const clueButton = controller.locator(BRAIN_BOARD_CLUE_SELECTOR).first();
+    // Check host page AND controller pages for clue buttons (unified app:
+    // host is also a player and can be the selector).
+    for (const pg of [hostPage, ...controllerPages]) {
+      const clueButton = pg.locator(BRAIN_BOARD_CLUE_SELECTOR).first();
       if (await clueButton.isVisible().catch(() => false)) {
         await clueButton.click().catch(() => {});
         acted = true;

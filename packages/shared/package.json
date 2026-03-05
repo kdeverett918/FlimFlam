@@ -9,6 +9,9 @@
     ".": "./src/index.ts",
     "./test-utils": "./src/test-utils/index.ts"
   },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "next": "15.1.0",
     "zod": "^3.24.2"

@@ -670,6 +670,33 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.sendAllPrivateData(room, state);
   }
 
+  /** Auto-select the first unrevealed clue (used by host:skip during clue-select). */
+  private autoSelectRandomClue(room: Room, state: Schema): void {
+    if (!this.board) return;
+    for (let catIdx = 0; catIdx < this.board.categories.length; catIdx++) {
+      const category = this.board.categories[catIdx];
+      if (!category) continue;
+      for (let clueIdx = 0; clueIdx < category.clues.length; clueIdx++) {
+        const posKey = `${catIdx},${clueIdx}`;
+        if (this.revealedClues.has(posKey)) continue;
+        // Found an unrevealed clue — simulate selecting it
+        this.revealedClues.add(posKey);
+        const clue = category.clues[clueIdx];
+        if (!clue) continue;
+        const effectiveValue =
+          this.currentRound === 2 ? (DOUBLE_DOWN_VALUES[clueIdx] ?? clue.value) : clue.value;
+        this.currentClue = { ...clue, value: effectiveValue };
+        this.currentCluePosition = { categoryIndex: catIdx, clueIndex: clueIdx };
+        this.currentCategoryName = category.name;
+        this.isPowerPlay = false;
+        this.goToAnswering(room, state);
+        return;
+      }
+    }
+    // All clues revealed — advance to next phase
+    this.advanceAfterClue(room, state);
+  }
+
   private handleSelectClue(
     room: Room,
     state: Schema,
@@ -1355,6 +1382,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
         return;
       case "category-reveal":
         this.goToClueSelect(room, state);
+        break;
+      case "clue-select":
+        this.autoSelectRandomClue(room, state);
         break;
       case "answering":
         void this.resolveAllAnswers(room, state);

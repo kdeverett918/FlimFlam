@@ -12,7 +12,7 @@ import { UnifiedLobby } from "@/components/lobby/UnifiedLobby";
 import { GAME_MANIFESTS, analyzeGameState, getLastRoundCommentary } from "@flimflam/shared";
 import { soundManager, sounds } from "@flimflam/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const LOBBY_PHASES = new Set(["lobby", "", "between-games"]);
@@ -24,7 +24,6 @@ const phaseTransition = {
 };
 
 export default function RoomPage() {
-  const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const routeCode = ((params?.code as string | undefined) ?? "").toUpperCase();
@@ -70,9 +69,15 @@ export default function RoomPage() {
     return state.timerEndsAt + clockOffset;
   }, [state?.timerEndsAt, clockOffset]);
 
-  // Get name/color from query params (set by landing page navigation)
-  const qName = searchParams?.get("name") ?? "Player";
-  const qColor = searchParams?.get("color") ?? "#FF3366";
+  // Get name/color from query params (set by landing page navigation).
+  // Store in refs so they survive URL changes (router.replace drops params).
+  const qNameRef = useRef(searchParams?.get("name") ?? "Player");
+  const qColorRef = useRef(searchParams?.get("color") ?? "#FF3366");
+  // Update refs if fresh query params arrive (e.g. direct navigation with params)
+  const freshName = searchParams?.get("name");
+  const freshColor = searchParams?.get("color");
+  if (freshName) qNameRef.current = freshName;
+  if (freshColor) qColorRef.current = freshColor;
 
   // Connect to room on mount.
   useEffect(() => {
@@ -80,10 +85,12 @@ export default function RoomPage() {
     if (connected && room) return;
 
     const isCreateRoute = routeCode === "NEW" || routeCode.length !== 4;
+    const name = qNameRef.current;
+    const color = qColorRef.current;
 
     if (isCreateRoute) {
       initialized.current = true;
-      createRoom({ name: qName, color: qColor }).catch((err) => {
+      createRoom({ name, color }).catch((err) => {
         console.error("Failed to create room:", err);
         initialized.current = false;
       });
@@ -94,18 +101,20 @@ export default function RoomPage() {
 
     // Join existing room with name/color from query params
     initialized.current = true;
-    joinRoom(routeCode, qName, qColor).catch((err) => {
+    joinRoom(routeCode, name, color).catch((err) => {
       console.error("Failed to join room:", err);
       initialized.current = false;
     });
-  }, [ready, routeCode, connected, room, createRoom, joinRoom, qName, qColor]);
+  }, [ready, routeCode, connected, room, createRoom, joinRoom]);
 
-  // Navigate to the real room URL once we have the room code.
+  // Update the URL to show the real room code (without triggering Next.js re-navigation).
   useEffect(() => {
     if (!roomCode) return;
     if (roomCode === routeCode) return;
-    router.replace(`/room/${roomCode}`);
-  }, [roomCode, routeCode, router]);
+    // Use history.replaceState to avoid re-mounting the layout/provider,
+    // which would cause a double-join to the Colyseus room.
+    window.history.replaceState(null, "", `/room/${roomCode}`);
+  }, [roomCode, routeCode]);
 
   // Auto-select game from ?game= query param (host only).
   useEffect(() => {
@@ -116,8 +125,8 @@ export default function RoomPage() {
       sendMessage("host:select-game", { gameId: gId });
     }
     preselectedGame.current = null;
-    router.replace(`/room/${roomCode ?? routeCode}`);
-  }, [connected, room, isHost, sendMessage, router, roomCode, routeCode]);
+    window.history.replaceState(null, "", `/room/${roomCode ?? routeCode}`);
+  }, [connected, room, isHost, sendMessage, roomCode, routeCode]);
 
   // Audio: stop music on unmount
   useEffect(() => {

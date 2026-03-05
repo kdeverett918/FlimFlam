@@ -307,9 +307,7 @@ function cleanNextArtifacts() {
     return;
   }
 
-  const targets = [
-    { cwd: webCwd, distDir: appDistDir },
-  ];
+  const targets = [{ cwd: webCwd, distDir: appDistDir }];
 
   for (const target of targets) {
     const nextDir = path.join(target.cwd, target.distDir);

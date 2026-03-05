@@ -396,10 +396,7 @@ export class PartyRoom extends Room<RoomState> {
     });
   }
 
-  onJoin(
-    client: Client,
-    options: { name?: string; color?: string },
-  ): void {
+  onJoin(client: Client, options: { name?: string; color?: string }): void {
     this._resetIdleTimeout();
 
     // Send server clock for client-side timer sync.
