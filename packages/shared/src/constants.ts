@@ -47,7 +47,9 @@ export const DEFAULT_PHASE_TIMERS: Record<string, number> = {
   "bb-power-play-wager": 20_000,
   "bb-all-in-wager": 30_000,
   "bb-all-in-answer": 30_000,
+  "bb-category-submit": 30_000,
   // Lucky Letters
+  "bonus-pick": 30_000,
   "bonus-solve": 10_000,
   // Survey Smash
   "ss-face-off": 15_000,

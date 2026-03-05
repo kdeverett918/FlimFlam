@@ -264,6 +264,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
   private usedPuzzleIndices: Set<number> = new Set();
   private puzzleBank: WheelPuzzle[] = [];
+  private fullPuzzleBank: WheelPuzzle[] = [];
 
   private bonusPlayerSessionId: string | null = null;
   private bonusExtraLetters: string[] = [];
@@ -296,7 +297,8 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.categoryVotes.clear();
     this.selectedCategories = [];
 
-    this.puzzleBank = getPuzzleBank(complexity);
+    this.fullPuzzleBank = getPuzzleBank(complexity);
+    this.puzzleBank = [...this.fullPuzzleBank];
     this.availableCategories = getCategories(this.puzzleBank);
 
     // Build turn order from connected players
@@ -398,6 +400,12 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       this.phase !== "bonus-reveal"
     ) {
       this.advanceTurn(room, state);
+    }
+
+    // If the bonus round player disconnected, end bonus round
+    if (this.phase === "bonus-round" && sessionId === this.bonusPlayerSessionId) {
+      this.clearTimer();
+      this.goToBonusReveal(room, state);
     }
   }
 
@@ -1004,7 +1012,8 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   private applyCategoryFilter(): void {
     if (this.selectedCategories.length > 0) {
       const catSet = new Set(this.selectedCategories);
-      this.puzzleBank = this.puzzleBank.filter((p) => catSet.has(p.category));
+      this.puzzleBank = this.fullPuzzleBank.filter((p) => catSet.has(p.category));
+      this.usedPuzzleIndices.clear();
     }
   }
 
@@ -1118,6 +1127,62 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.setPhase(state, "bonus-round");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
+
+    // Timeout for letter picking — auto-fill with random letters if player doesn't complete
+    this.startPhaseTimer(room, "bonus-pick", this.complexity, () => {
+      if (this.phase !== "bonus-round") return;
+      if (this.bonusExtraLetters.length > 0) return; // already submitted
+
+      // Auto-fill remaining consonant/vowel slots
+      const consonantCount = this.bonusPickBuffer.filter((l) => CONSONANTS.has(l)).length;
+      const vowelCount = this.bonusPickBuffer.filter((l) => VOWELS.has(l)).length;
+      const neededConsonants = 3 - consonantCount;
+      const neededVowels = 1 - vowelCount;
+
+      const availConsonants = [...CONSONANTS].filter(
+        (c) => !this.revealedLetters.has(c) && !this.bonusPickBuffer.includes(c),
+      );
+      const availVowels = [...VOWELS].filter(
+        (v) => !this.revealedLetters.has(v) && !this.bonusPickBuffer.includes(v),
+      );
+
+      shuffleInPlace(availConsonants);
+      shuffleInPlace(availVowels);
+
+      for (let i = 0; i < neededConsonants && i < availConsonants.length; i++) {
+        const c = availConsonants[i];
+        if (c) this.bonusPickBuffer.push(c);
+      }
+      for (let i = 0; i < neededVowels && i < availVowels.length; i++) {
+        const v = availVowels[i];
+        if (v) this.bonusPickBuffer.push(v);
+      }
+
+      const consonants = this.bonusPickBuffer.filter((l) => CONSONANTS.has(l));
+      const vowel = this.bonusPickBuffer.find((l) => VOWELS.has(l)) ?? "";
+
+      if (consonants.length === 3 && vowel) {
+        this.bonusExtraLetters = [...consonants, vowel];
+        for (const letter of this.bonusExtraLetters) {
+          this.revealedLetters.add(letter);
+        }
+        if (this.currentPuzzle) {
+          room.broadcast("game-data", {
+            type: "bonus-letters-revealed",
+            letters: this.bonusExtraLetters,
+            puzzleDisplay: buildPuzzleDisplay(this.currentPuzzle.phrase, this.revealedLetters),
+          });
+        }
+        this.broadcastGameState(room, state);
+        // Start solve timer
+        this.startPhaseTimer(room, "bonus-solve", this.complexity, () => {
+          this.goToBonusReveal(room, state);
+        });
+      } else {
+        // Not enough letters available, skip to reveal
+        this.goToBonusReveal(room, state);
+      }
+    });
   }
 
   private goToBonusReveal(room: Room, state: Schema): void {

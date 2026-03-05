@@ -69,7 +69,7 @@ QUALITY RULES:
 - Every answer must be SHORT (1-4 words), unambiguous, and factually correct
 - Questions should be phrased as clues/prompts, NOT as questions with "?" (Jeopardy-style)
 - Within each category, questions MUST progress from easiest (first) to hardest (last)
-- Mix 3-4 categories from the players' suggested topics with 2-3 surprise/wildcard categories
+- Use at least 3-4 of the players' submitted category ideas (adapt their wording into creative, fun category names). Add 2-3 surprise/wildcard categories they didn't suggest.
 - Category names should be creative and fun (e.g., "Rhymes with Orange" instead of "Vocabulary")
 - Never include offensive, political, or divisive content
 - Each answer must have exactly ONE correct response (no ambiguity)
@@ -97,7 +97,7 @@ Topics the group is interested in: ${topics.join(", ")}
 Chat context from pre-game discussion:
 ${chatContext}
 
-${avoidCategories?.length ? `DO NOT reuse these categories from previous games: ${avoidCategories.join(", ")}` : ""}
+${avoidCategories?.length ? `CRITICAL: Do NOT reuse or closely paraphrase these categories from previous rounds: ${avoidCategories.join(", ")}. Use completely different topics and different questions/answers.` : ""}
 
 Generate the board now. Output ONLY the JSON.`,
   };

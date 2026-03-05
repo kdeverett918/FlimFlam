@@ -67,6 +67,7 @@ function getPowerPlayCountLegacy(complexity: Complexity): number {
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type BrainBoardPhase =
+  | "category-submit"
   | "topic-chat"
   | "generating-board"
   | "category-reveal"
@@ -329,6 +330,12 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private _topicSuggestions: string[] = [];
   private _aiGeneratedBoard = false;
 
+  // ─── Category Submit (Quick Pick) State ────────────────────────────
+  private _categoryMode: "quick-pick" | "chat" = "quick-pick";
+  private _playerCategories: Map<string, string[]> = new Map();
+  private _categorySubmissions: Map<string, boolean> = new Map();
+  private _usedCategories: Set<string> = new Set();
+
   createState(): Schema {
     return null as unknown as Schema;
   }
@@ -350,6 +357,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this._chatMessages = [];
     this._topicSuggestions = [];
     this._aiGeneratedBoard = false;
+    this._playerCategories.clear();
+    this._categorySubmissions.clear();
+    this._usedCategories.clear();
 
     // Build player order from connected players
     players.forEach((player: unknown, key: string) => {
@@ -385,7 +395,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     // First selector is a random player (first in shuffled order)
     this.selectorSessionId = this.playerOrder[0] ?? null;
 
-    // ─── Start with topic-chat phase for AI board generation ──────
+    // ─── Start pre-game phase based on category mode ──────
     const playerNames = this.playerOrder.map((sid) => {
       const player = (
         (state as unknown as Record<string, unknown>).players as MapSchema | undefined
@@ -395,40 +405,66 @@ class BrainBoardPlugin extends BaseGamePlugin {
         : "Player";
     });
 
-    const greeting: ChatMessage = {
-      id: `ai-${Date.now()}`,
-      sender: "AI Host",
-      senderSessionId: "ai",
-      message: `Welcome to Brain Board, ${playerNames.join(" & ")}! What topics should we build tonight's game around? Movies, sports, science, pop culture... throw out some ideas!`,
-      isAI: true,
-      timestamp: Date.now(),
-    };
-    this._chatMessages.push(greeting);
+    if (this._categoryMode === "quick-pick") {
+      // ── Quick Pick: structured category submission ──
+      this.phase = "category-submit";
+      this.setPhase(state, "category-submit");
 
-    this.phase = "topic-chat";
-    this.setPhase(state, "topic-chat");
+      // Initialize submission tracking for all players
+      for (const sid of this.playerOrder) {
+        this._categorySubmissions.set(sid, false);
+      }
 
-    // Start topic chat timer
-    this.startPhaseTimer(room, "topic-chat", complexity, () => {
-      void this._endTopicChat(room, state);
-    });
-
-    // Broadcast topic-chat state with timer metadata for controller countdown UI.
-    const broadcastTopicChat = () => {
-      room.broadcast("game-data", {
-        type: "game-state",
-        phase: "topic-chat",
-        chatMessages: this._chatMessages,
-        timerEndsAt: this.getTimerEndsAt(state),
-        serverTimeOffset: 0,
+      this.startPhaseTimer(room, "bb-category-submit", complexity, () => {
+        void this._endCategorySubmit(room, state);
       });
-    };
-    broadcastTopicChat();
-    // Re-broadcast after a short delay to catch late-mounting host listeners
-    // (the initial broadcast fires before the React onMessage handler is attached).
-    setTimeout(() => {
-      if (this.phase === "topic-chat") broadcastTopicChat();
-    }, 500);
+
+      const broadcastCategorySubmit = () => {
+        room.broadcast("game-data", {
+          type: "game-state",
+          phase: "category-submit",
+          timerEndsAt: this.getTimerEndsAt(state),
+          serverTimeOffset: 0,
+          submissions: this._buildSubmissionsPayload(state),
+        });
+      };
+      broadcastCategorySubmit();
+      setTimeout(() => {
+        if (this.phase === "category-submit") broadcastCategorySubmit();
+      }, 500);
+    } else {
+      // ── Chat Mode: original topic chat flow ──
+      const greeting: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        sender: "AI Host",
+        senderSessionId: "ai",
+        message: `Welcome to Brain Board, ${playerNames.join(" & ")}! What topics should we build tonight's game around? Movies, sports, science, pop culture... throw out some ideas!`,
+        isAI: true,
+        timestamp: Date.now(),
+      };
+      this._chatMessages.push(greeting);
+
+      this.phase = "topic-chat";
+      this.setPhase(state, "topic-chat");
+
+      this.startPhaseTimer(room, "topic-chat", complexity, () => {
+        void this._endTopicChat(room, state);
+      });
+
+      const broadcastTopicChat = () => {
+        room.broadcast("game-data", {
+          type: "game-state",
+          phase: "topic-chat",
+          chatMessages: this._chatMessages,
+          timerEndsAt: this.getTimerEndsAt(state),
+          serverTimeOffset: 0,
+        });
+      };
+      broadcastTopicChat();
+      setTimeout(() => {
+        if (this.phase === "topic-chat") broadcastTopicChat();
+      }, 500);
+    }
   }
 
   /**
@@ -453,6 +489,46 @@ class BrainBoardPlugin extends BaseGamePlugin {
     const msg = data as Record<string, unknown>;
 
     switch (type) {
+      case "host:set-category-mode": {
+        // Allow host to toggle mode before game starts (during lobby or pre-game)
+        const mode =
+          typeof (data as Record<string, unknown>)?.mode === "string"
+            ? ((data as Record<string, unknown>).mode as string)
+            : "";
+        if (mode === "quick-pick" || mode === "chat") {
+          this._categoryMode = mode;
+        }
+        break;
+      }
+      case "player:submit-categories": {
+        if (this.phase !== "category-submit") return;
+        const raw = (data as Record<string, unknown>)?.categories;
+        if (!Array.isArray(raw)) return;
+        const categories = (raw as unknown[])
+          .filter((c): c is string => typeof c === "string")
+          .map((c) => c.trim())
+          .filter((c) => c.length >= 2 && c.length <= 60)
+          .slice(0, 2);
+        if (categories.length === 0) return;
+        if (this._categorySubmissions.get(client.sessionId)) return; // already submitted
+
+        this._playerCategories.set(client.sessionId, categories);
+        this._categorySubmissions.set(client.sessionId, true);
+        this.markSubmitted(state, client.sessionId);
+
+        // Broadcast updated submission state
+        room.broadcast("game-data", {
+          type: "game-state",
+          phase: "category-submit",
+          timerEndsAt: this.getTimerEndsAt(state),
+          serverTimeOffset: 0,
+          submissions: this._buildSubmissionsPayload(state),
+        });
+
+        // Check if all connected players submitted
+        this._checkAllCategoriesSubmitted(room, state);
+        break;
+      }
       case "player:chat-message": {
         if (this.phase !== "topic-chat") return;
         const chatMsg =
@@ -558,7 +634,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   onPlayerReconnect(room: Room, state: Schema, client: Client): void {
     this.sendPrivateData(room, state, client.sessionId);
-    if (this.phase === "topic-chat") {
+    if (this.phase === "category-submit") {
+      room.send(client, "game-data", {
+        type: "game-state",
+        phase: "category-submit",
+        timerEndsAt: this.getTimerEndsAt(state),
+        serverTimeOffset: 0,
+        submissions: this._buildSubmissionsPayload(state),
+      });
+    } else if (this.phase === "topic-chat") {
       room.send(client, "game-data", {
         type: "game-state",
         phase: "topic-chat",
@@ -1263,6 +1347,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.clearPendingTimer();
 
     switch (this.phase) {
+      case "category-submit":
+        void this._endCategorySubmit(room, state);
+        return;
       case "topic-chat":
         this._endTopicChat(room, state);
         return;
@@ -1303,6 +1390,134 @@ class BrainBoardPlugin extends BaseGamePlugin {
       case "final-scores":
         break;
     }
+  }
+
+  // ─── Category Submit (Quick Pick) ──────────────────────────────────
+
+  private _buildSubmissionsPayload(
+    state: Schema,
+  ): Record<string, { name: string; submitted: boolean; categories?: string[] }> {
+    const result: Record<string, { name: string; submitted: boolean; categories?: string[] }> = {};
+    for (const sid of this.playerOrder) {
+      const player = (
+        (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+      )?.get(sid);
+      const name = player
+        ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+        : "Player";
+      const submitted = this._categorySubmissions.get(sid) ?? false;
+      const categories = submitted ? this._playerCategories.get(sid) : undefined;
+      result[sid] = { name, submitted, categories };
+    }
+    return result;
+  }
+
+  private _checkAllCategoriesSubmitted(room: Room, state: Schema): void {
+    let connectedCount = 0;
+    let submittedCount = 0;
+    for (const sid of this.playerOrder) {
+      if (this.isPlayerConnected(state, sid)) {
+        connectedCount++;
+        if (this._categorySubmissions.get(sid)) {
+          submittedCount++;
+        }
+      }
+    }
+    if (submittedCount >= connectedCount) {
+      void this._endCategorySubmit(room, state);
+    }
+  }
+
+  private async _endCategorySubmit(room: Room, state: Schema): Promise<void> {
+    this.clearTimer();
+
+    // Collect all player categories
+    const allCategories: string[] = [];
+    for (const cats of this._playerCategories.values()) {
+      allCategories.push(...cats);
+    }
+
+    // Show generating phase
+    this.phase = "generating-board";
+    this.setPhase(state, "generating-board");
+    room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
+
+    try {
+      const playerNames = this.playerOrder.map((sid) => {
+        const player = (
+          (state as unknown as Record<string, unknown>).players as MapSchema | undefined
+        )?.get(sid);
+        return player
+          ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
+          : "Player";
+      });
+
+      const promptTopics =
+        allCategories.length > 0
+          ? allCategories.slice(0, 16)
+          : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
+
+      const chatContext =
+        allCategories.length > 0
+          ? `Players submitted these category ideas: ${allCategories.join(", ")}`
+          : "No player categories submitted; use varied default topics.";
+
+      const prompt = buildBrainBoardGenerationPrompt(
+        promptTopics,
+        this.complexity,
+        playerNames,
+        chatContext,
+        [...this._usedCategories],
+      );
+
+      const result = await enqueueAIRequest(room.roomId, () =>
+        aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
+          model: BRAIN_BOARD_GENERATION_MODEL,
+          maxTokens: 4096,
+          timeoutMs: 30000,
+          retries: 1,
+        }),
+      );
+
+      const aiBoard: JeopardyBoard = {
+        categories: result.parsed.categories.map((cat) => ({
+          name: cat.name.trim() || "Unknown",
+          clues: cat.clues.map((c, i) => ({
+            question: c.question.trim(),
+            answer: c.answer.trim(),
+            value: CLUE_VALUES[i] ?? (i + 1) * 200,
+          })),
+        })),
+      };
+
+      this.round1Board = aiBoard;
+      this.board = aiBoard;
+      this._aiGeneratedBoard = true;
+
+      // Track used categories for dedup
+      for (const cat of aiBoard.categories) {
+        this._usedCategories.add(cat.name.toLowerCase());
+      }
+
+      this.powerPlays = placePowerPlays(
+        getPowerPlayCount(this.complexity, 1),
+        CATEGORIES_PER_BOARD,
+        CLUES_PER_CATEGORY,
+      );
+
+      console.log(
+        "[BrainBoard] AI-generated board (Quick Pick) accepted with",
+        aiBoard.categories.length,
+        "categories",
+      );
+    } catch (error) {
+      console.error(
+        "[BrainBoard] AI board generation failed (Quick Pick), using static board:",
+        error,
+      );
+    }
+
+    this._startCategoryReveal(room, state);
   }
 
   // ─── Topic Chat & AI Board Generation ────────────────────────────────
@@ -1429,6 +1644,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         this.complexity,
         playerNames,
         chatContext.slice(0, 2000),
+        [...this._usedCategories],
       );
 
       const result = await enqueueAIRequest(room.roomId, () =>
@@ -1455,6 +1671,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.round1Board = aiBoard;
       this.board = aiBoard;
       this._aiGeneratedBoard = true;
+
+      // Track used categories for dedup across rounds
+      for (const cat of aiBoard.categories) {
+        this._usedCategories.add(cat.name.toLowerCase());
+      }
 
       // Re-place Power Plays on the new board.
       this.powerPlays = placePowerPlays(
