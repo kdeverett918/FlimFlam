@@ -15,9 +15,9 @@ async function getSelector(controllers: Page[]): Promise<{ page: Page; index: nu
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     for (let i = 0; i < controllers.length; i++) {
-      const clue = controllers[i].locator('button[aria-label*=" for "]:enabled').first();
+      const clue = (controllers[i] as Page).locator('button[aria-label*=" for "]:enabled').first();
       if (await clue.isVisible().catch(() => false)) {
-        return { page: controllers[i], index: i };
+        return { page: controllers[i] as Page, index: i };
       }
     }
     await controllers[0]?.waitForTimeout(200);

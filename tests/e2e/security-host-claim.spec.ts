@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+// @ts-expect-error colyseus.js types not visible from root tsconfig
 import { Client } from "colyseus.js";
 
 function inferColyseusWsUrl(): string {

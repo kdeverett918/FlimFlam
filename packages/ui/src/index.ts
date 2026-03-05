@@ -51,6 +51,8 @@ export type { ScoreDisplayProps } from "./components/score-display";
 export { AnimatedBackground } from "./components/animated-background";
 export type { AnimatedBackgroundProps } from "./components/animated-background";
 
+export { FloatingEmoji } from "./components/floating-emoji";
+
 export { GlassPanel, glassPanelVariants } from "./components/glass-panel";
 export type { GlassPanelProps } from "./components/glass-panel";
 

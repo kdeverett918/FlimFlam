@@ -11,7 +11,7 @@ type AudioEvent = { ts: number; type: string; payload?: Record<string, unknown> 
 
 async function getAudioEvents(page: Page): Promise<AudioEvent[]> {
   return page.evaluate(() => {
-    return window.__FLIMFLAM_E2E__?.audioEvents ?? [];
+    return (window.__FLIMFLAM_E2E__?.audioEvents ?? []) as AudioEvent[];
   });
 }
 
@@ -57,6 +57,7 @@ async function startGameFromLobby(page: Page, game: string) {
 }
 
 test.describe("Audio Unlock And BGM", () => {
+  // @ts-expect-error reducedMotion is a valid Playwright option
   test.use({ reducedMotion: "reduce" });
 
   test("requires explicit unlock and persists mute state", async ({ page }) => {
@@ -123,7 +124,7 @@ test.describe("Audio Unlock And BGM", () => {
     ] as const;
 
     for (let index = 0; index < gameMatrix.length; index += 1) {
-      const game = gameMatrix[index];
+      const game = gameMatrix[index] as (typeof gameMatrix)[number];
       await page.goto("/");
       await waitForColyseusHealthy(page);
 

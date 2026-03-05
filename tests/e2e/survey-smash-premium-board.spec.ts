@@ -167,6 +167,7 @@ test.describe("Survey Smash Premium Board", () => {
 
 test.describe("Survey Smash Premium Board (Reduced Motion)", () => {
   test.describe.configure({ timeout: 180_000 });
+  // @ts-expect-error reducedMotion is a valid Playwright option
   test.use({ reducedMotion: "reduce" });
 
   test("reduced-motion reveal preserves board markers and reveal progression", async ({

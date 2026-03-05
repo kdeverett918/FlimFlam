@@ -48,6 +48,14 @@ interface WheelGameState {
   bonusPlayerSessionId: string | null;
   bonusSolved: boolean;
   revealedLetters: string[];
+  availableCategories?: string[];
+  selectedCategories?: string[];
+}
+
+interface CategoryVoteTally {
+  voteCounts: Record<string, number>;
+  totalVoters: number;
+  votedCount: number;
 }
 
 interface LetterResultData {
@@ -440,6 +448,7 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
   const [roundResult, setRoundResult] = useState<RoundResultData | null>(null);
   const [bonusReveal, setBonusReveal] = useState<BonusRevealData | null>(null);
   const [highlightLetters, setHighlightLetters] = useState<Set<string>>(new Set());
+  const [categoryVoteTally, setCategoryVoteTally] = useState<CategoryVoteTally | null>(null);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string | undefined;
@@ -485,6 +494,10 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
       } else {
         sounds.buzz();
       }
+    } else if (type === "category-vote-tally") {
+      setCategoryVoteTally(data as unknown as CategoryVoteTally);
+    } else if (type === "categories-selected") {
+      sounds.reveal();
     } else if (type === "bonus-letters-revealed") {
       const letters = (data.letters as string[]) ?? [];
       sounds.reveal();
@@ -545,6 +558,83 @@ export function LuckyLettersHost({ phase, players, timerEndTime, room }: LuckyLe
       })}
     </div>
   );
+
+  // ── Category Vote ───────────────────────────────────────────────────────
+  if (phase === "category-vote") {
+    const categories = gameState.availableCategories ?? [];
+    const voteCounts = categoryVoteTally?.voteCounts ?? {};
+    const votedCount = categoryVoteTally?.votedCount ?? 0;
+    const totalVoters = categoryVoteTally?.totalVoters ?? 0;
+
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
+        <motion.h1
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ type: "spring", stiffness: 100 }}
+          className="font-display text-[clamp(40px,5.5vw,64px)] font-black text-accent-luckyletters"
+          style={{
+            textShadow: "0 0 30px oklch(0.78 0.2 85 / 0.5), 0 0 60px oklch(0.78 0.2 85 / 0.2)",
+          }}
+        >
+          Choose Your Categories
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="font-body text-[clamp(18px,2.5vw,28px)] text-text-muted"
+        >
+          Players: vote on your phones! ({votedCount}/{totalVoters} voted)
+        </motion.p>
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 max-w-4xl">
+          {categories.map((cat) => {
+            const votes = voteCounts[cat] ?? 0;
+            return (
+              <motion.div
+                key={cat}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <GlassPanel
+                  className={`flex flex-col items-center gap-2 px-6 py-4 transition-all ${
+                    votes > 0 ? "border-accent-luckyletters/40" : ""
+                  }`}
+                >
+                  <span className="font-display text-[clamp(16px,2vw,24px)] font-bold text-text-primary text-center">
+                    {cat}
+                  </span>
+                  {votes > 0 && (
+                    <span className="rounded-full bg-accent-luckyletters/20 px-3 py-0.5 font-mono text-sm font-bold text-accent-luckyletters">
+                      {votes} {votes === 1 ? "vote" : "votes"}
+                    </span>
+                  )}
+                </GlassPanel>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          type="button"
+          onClick={() => {
+            room?.send("host:pick-category", {
+              categories: categories,
+            });
+          }}
+          className="mt-4 rounded-xl border-2 border-accent-luckyletters/40 bg-accent-luckyletters/15 px-8 py-3 font-display text-lg font-bold text-accent-luckyletters uppercase tracking-wider transition-all hover:bg-accent-luckyletters/25 active:scale-95"
+        >
+          Pick for Everyone
+        </motion.button>
+      </div>
+    );
+  }
 
   // ── Round Intro ─────────────────────────────────────────────────────────
   if (phase === "round-intro") {

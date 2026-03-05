@@ -434,7 +434,7 @@ export async function joinControllerForRoom(
   for (let attempt = 1; attempt <= maxJoinAttempts; attempt++) {
     try {
       if (context) {
-        await context.close().catch(() => {});
+        await (context as BrowserContext).close().catch(() => {});
       }
       context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
       controllerPage = await context.newPage();
@@ -454,7 +454,7 @@ export async function joinControllerForRoom(
         codeInputs.push(controllerPage.getByLabel(`Room code character ${i + 1}`).first());
       }
       for (let i = 0; i < 4; i++) {
-        const codeInput = codeInputs[i];
+        const codeInput = codeInputs[i] as Locator;
         await codeInput.fill(normalizedCode[i] ?? "");
         await expect(codeInput).toHaveValue(normalizedCode[i] ?? "");
       }
@@ -465,7 +465,7 @@ export async function joinControllerForRoom(
       if (!(await joinButton.isEnabled().catch(() => false))) {
         // Hydration/input-binding race fallback: replay real key events.
         for (let i = 0; i < 4; i++) {
-          const codeInput = codeInputs[i];
+          const codeInput = codeInputs[i] as Locator;
           await codeInput.click();
           await codeInput.fill("");
           const next = normalizedCode[i] ?? "";
@@ -500,7 +500,7 @@ export async function joinControllerForRoom(
             const nameValue = await nameInput.inputValue().catch(() => "");
             if (nameValue.trim() !== name) return false;
 
-            return controllerPage
+            return (controllerPage as Page)
               .locator('button[aria-pressed="true"]')
               .first()
               .isVisible()

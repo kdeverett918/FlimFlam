@@ -78,11 +78,12 @@ test.describe("Controller Always-On Context", () => {
     const controllerPages = controllers.map((controller) => controller.controllerPage);
     const skipButton = page.getByRole("button", { name: /^skip$/i });
 
-    await expect(controllerPages[0]?.locator('[data-testid="team-pill"]')).toBeVisible({
+    const firstController = controllerPages[0] as Page;
+    await expect(firstController.locator('[data-testid="team-pill"]')).toBeVisible({
       timeout: 15_000,
     });
-    await controllerPages[0]?.locator('[data-testid="team-pill"]').click();
-    await expect(controllerPages[0]?.locator('[data-testid="team-roster-sheet"]')).toBeVisible({
+    await firstController.locator('[data-testid="team-pill"]').click();
+    await expect(firstController.locator('[data-testid="team-roster-sheet"]')).toBeVisible({
       timeout: 10_000,
     });
 

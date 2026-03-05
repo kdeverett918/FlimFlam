@@ -47,13 +47,15 @@ test.describe("Brain Board Flow", () => {
 
     await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
 
-    const firstSubmit = controllerPages[0].getByRole("button", { name: /^submit$/i }).first();
-    const secondSubmit = controllerPages[1].getByRole("button", { name: /^submit$/i }).first();
+    const cp0 = controllerPages[0] as Page;
+    const cp1 = controllerPages[1] as Page;
+    const firstSubmit = cp0.getByRole("button", { name: /^submit$/i }).first();
+    const secondSubmit = cp1.getByRole("button", { name: /^submit$/i }).first();
     await expect(firstSubmit).toBeVisible({ timeout: 15_000 });
     await expect(secondSubmit).toBeVisible({ timeout: 15_000 });
 
-    await controllerPages[0].getByRole("textbox").fill("an intentionally wrong answer");
-    await controllerPages[1].getByRole("textbox").fill("another wrong answer");
+    await cp0.getByRole("textbox").fill("an intentionally wrong answer");
+    await cp1.getByRole("textbox").fill("another wrong answer");
     await firstSubmit.click();
     await secondSubmit.click();
 

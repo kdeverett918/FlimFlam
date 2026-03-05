@@ -3,7 +3,7 @@ import { BaseGamePlugin } from "@flimflam/game-engine";
 import type { Complexity, GameManifest } from "@flimflam/shared";
 import { pickRandom, shuffleInPlace } from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
-import { type WheelPuzzle, getPuzzleBank } from "./content/phrase-bank";
+import { type WheelPuzzle, getCategories, getPuzzleBank } from "./content/phrase-bank";
 import { type SpinResult, spinWheel } from "./wheel";
 
 // ─── Constants ─────────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ const RSTLNE = new Set(["R", "S", "T", "L", "N", "E"]);
 const BONUS_PRIZE = 25000;
 const _BONUS_SOLVE_TIME_MS = 10000;
 
+const CATEGORY_VOTE_TIMEOUT_MS = 15000;
 const ROUND_INTRO_DELAY_MS = 3000;
 const LETTER_RESULT_DELAY_MS = 2000;
 const ROUND_RESULT_DELAY_MS = 4000;
@@ -217,6 +218,7 @@ interface PlayerCash {
 }
 
 type WheelPhase =
+  | "category-vote"
   | "round-intro"
   | "spinning"
   | "guess-consonant"
@@ -270,6 +272,10 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
   private currentStreak = 0;
 
+  private availableCategories: string[] = [];
+  private categoryVotes: Map<string, string[]> = new Map();
+  private selectedCategories: string[] = [];
+
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
 
   createState(): Schema {
@@ -283,13 +289,15 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.complexity = complexity;
     this.totalRounds = getRoundsForComplexity(complexity);
     this.currentRound = 0;
-    this.phase = "round-intro";
     this.usedPuzzleIndices.clear();
     this.playerCash.clear();
     this.bonusPlayerSessionId = null;
     this.bonusSolved = false;
+    this.categoryVotes.clear();
+    this.selectedCategories = [];
 
     this.puzzleBank = getPuzzleBank(complexity);
+    this.availableCategories = getCategories(this.puzzleBank);
 
     // Build turn order from active (non-host) players
     this.turnOrder = [];
@@ -307,11 +315,24 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       this.playerCash.set(sessionId, { roundCash: 0, totalCash: 0 });
     }
 
-    // Set round info on state
-    this.setStateRound(state, 1, this.totalRounds);
-    this.setPhase(state, "round-intro");
+    // Start with category vote phase
+    this.phase = "category-vote";
+    this.setPhase(state, "category-vote");
+    this.setStateRound(state, 0, this.totalRounds);
 
-    this.startNextRound(room, state);
+    room.broadcast("game-data", {
+      type: "category-vote",
+      categories: this.availableCategories,
+    });
+
+    this.broadcastGameState(room, state);
+
+    // Auto-advance after timeout
+    this.scheduleDelayed(room, CATEGORY_VOTE_TIMEOUT_MS, () => {
+      if (this.phase === "category-vote") {
+        this.finalizeCategoryVote(room, state);
+      }
+    });
   }
 
   onPlayerMessage(room: Room, state: Schema, client: Client, type: string, data: unknown): void {
@@ -341,6 +362,12 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         break;
       case "player:bonus-solve":
         this.handleBonusSolve(room, state, client, msg);
+        break;
+      case "player:category-vote":
+        this.handleCategoryVote(room, state, client, msg);
+        break;
+      case "host:pick-category":
+        this.handleHostPickCategory(room, state, msg);
         break;
       case "host:skip":
         this.handleHostSkip(room, state);
@@ -826,6 +853,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     // Allow host to advance past any waiting phase
     this.clearPendingTimer();
     switch (this.phase) {
+      case "category-vote":
+        this.finalizeCategoryVote(room, state);
+        break;
       case "round-intro":
         this.phase = "spinning";
         this.setPhase(state, "spinning");
@@ -860,6 +890,122 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       case "final-scores":
         // Do nothing, game is over
         break;
+    }
+  }
+
+  // ─── Category Vote ─────────────────────────────────────────────────
+
+  private handleCategoryVote(
+    room: Room,
+    state: Schema,
+    client: Client,
+    data: Record<string, unknown>,
+  ): void {
+    if (this.phase !== "category-vote") return;
+    if (!this.turnOrder.includes(client.sessionId)) return;
+
+    const selected = Array.isArray(data.categories)
+      ? (data.categories as unknown[])
+          .filter((c): c is string => typeof c === "string")
+          .filter((c) => this.availableCategories.includes(c))
+          .slice(0, 3)
+      : [];
+
+    if (selected.length === 0) return;
+
+    this.categoryVotes.set(client.sessionId, selected);
+
+    // Broadcast vote tally
+    room.broadcast("game-data", {
+      type: "category-vote-tally",
+      voteCounts: this.tallyCategoryVotes(),
+      totalVoters: this.turnOrder.length,
+      votedCount: this.categoryVotes.size,
+    });
+
+    // Check if all players have voted
+    if (this.categoryVotes.size >= this.turnOrder.length) {
+      this.finalizeCategoryVote(room, state);
+    }
+  }
+
+  private handleHostPickCategory(room: Room, state: Schema, data: Record<string, unknown>): void {
+    if (this.phase !== "category-vote") return;
+
+    const selected = Array.isArray(data.categories)
+      ? (data.categories as unknown[])
+          .filter((c): c is string => typeof c === "string")
+          .filter((c) => this.availableCategories.includes(c))
+      : [];
+
+    if (selected.length === 0) return;
+
+    this.selectedCategories = selected;
+    this.applyCategoryFilter();
+
+    this.clearPendingTimer();
+    this.phase = "round-intro";
+    this.setPhase(state, "round-intro");
+    this.setStateRound(state, 1, this.totalRounds);
+
+    room.broadcast("game-data", {
+      type: "categories-selected",
+      categories: this.selectedCategories,
+    });
+
+    this.startNextRound(room, state);
+  }
+
+  private finalizeCategoryVote(room: Room, state: Schema): void {
+    this.clearPendingTimer();
+
+    // Tally votes and pick top categories
+    const tally = this.tallyCategoryVotes();
+    const sorted = [...tally.entries()].sort((a, b) => b[1] - a[1]);
+
+    // Select top categories (at least 3, or all if fewer)
+    const topCount = Math.min(
+      Math.max(3, Math.ceil(this.availableCategories.length / 2)),
+      sorted.length,
+    );
+    this.selectedCategories = sorted.slice(0, topCount).map(([cat]) => cat);
+
+    // If no votes, use all categories
+    if (this.selectedCategories.length === 0) {
+      this.selectedCategories = [...this.availableCategories];
+    }
+
+    this.applyCategoryFilter();
+
+    this.phase = "round-intro";
+    this.setPhase(state, "round-intro");
+    this.setStateRound(state, 1, this.totalRounds);
+
+    room.broadcast("game-data", {
+      type: "categories-selected",
+      categories: this.selectedCategories,
+    });
+
+    this.startNextRound(room, state);
+  }
+
+  private tallyCategoryVotes(): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const cat of this.availableCategories) {
+      counts.set(cat, 0);
+    }
+    for (const votes of this.categoryVotes.values()) {
+      for (const cat of votes) {
+        counts.set(cat, (counts.get(cat) ?? 0) + 1);
+      }
+    }
+    return counts;
+  }
+
+  private applyCategoryFilter(): void {
+    if (this.selectedCategories.length > 0) {
+      const catSet = new Set(this.selectedCategories);
+      this.puzzleBank = this.puzzleBank.filter((p) => catSet.has(p.category));
     }
   }
 
@@ -1017,24 +1163,29 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   // ─── Broadcast Helpers ───────────────────────────────────────────────
 
   private broadcastGameState(room: Room, _state: Schema): void {
-    room.broadcast(
-      "game-data",
-      buildLuckyLettersPublicGameState({
-        phase: this.phase,
-        round: this.currentRound,
-        totalRounds: this.totalRounds,
-        currentPuzzle: this.currentPuzzle,
-        revealedLetters: this.revealedLetters,
-        currentTurnSessionId: this.turnOrder[this.currentTurnIndex] ?? null,
-        turnOrder: this.turnOrder,
-        standings: this.getStandings(),
-        wildActive: this.wildActive,
-        lastSpinResult: this.lastSpinResult,
-        bonusPlayerSessionId: this.bonusPlayerSessionId,
-        bonusSolved: this.bonusSolved,
-        streak: this.currentStreak,
-      }),
-    );
+    const payload = buildLuckyLettersPublicGameState({
+      phase: this.phase,
+      round: this.currentRound,
+      totalRounds: this.totalRounds,
+      currentPuzzle: this.currentPuzzle,
+      revealedLetters: this.revealedLetters,
+      currentTurnSessionId: this.turnOrder[this.currentTurnIndex] ?? null,
+      turnOrder: this.turnOrder,
+      standings: this.getStandings(),
+      wildActive: this.wildActive,
+      lastSpinResult: this.lastSpinResult,
+      bonusPlayerSessionId: this.bonusPlayerSessionId,
+      bonusSolved: this.bonusSolved,
+      streak: this.currentStreak,
+    });
+
+    // Include category info for category-vote phase
+    if (this.phase === "category-vote") {
+      (payload as Record<string, unknown>).availableCategories = this.availableCategories;
+      (payload as Record<string, unknown>).selectedCategories = this.selectedCategories;
+    }
+
+    room.broadcast("game-data", payload);
   }
 
   private sendPrivateData(room: Room, _state: Schema, sessionId: string): void {

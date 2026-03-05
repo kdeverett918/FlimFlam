@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 import {
   closeAllControllers,
@@ -71,8 +71,8 @@ test.describe("Brain Board Gameplay", () => {
     }
 
     // Submit answers
-    await submitTextAnswer(controllerPages[0], "wrong answer one");
-    await submitTextAnswer(controllerPages[1], "wrong answer two");
+    await submitTextAnswer(controllerPages[0] as Page, "wrong answer one");
+    await submitTextAnswer(controllerPages[1] as Page, "wrong answer two");
 
     await closeAllControllers(controllers);
   });
@@ -96,8 +96,8 @@ test.describe("Brain Board Gameplay", () => {
     await firstClue.click();
 
     await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
-    await submitTextAnswer(controllerPages[0], "wrong answer");
-    await submitTextAnswer(controllerPages[1], "also wrong");
+    await submitTextAnswer(controllerPages[0] as Page, "wrong answer");
+    await submitTextAnswer(controllerPages[1] as Page, "also wrong");
 
     // Wait for clue-result; skipping here can jump past result if it already resolved.
     await expect(page.getByText(/correct answer/i)).toBeVisible({ timeout: 20_000 });

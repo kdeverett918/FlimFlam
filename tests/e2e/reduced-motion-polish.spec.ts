@@ -39,6 +39,7 @@ async function expectNoAudioErrors(page: Page): Promise<void> {
 }
 
 test.describe("Reduced Motion Polish", () => {
+  // @ts-expect-error reducedMotion is a valid Playwright option
   test.use({ reducedMotion: "reduce" });
 
   test("survey strike uses reduced marker and no shake class", async ({ page, browser }) => {

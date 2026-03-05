@@ -77,8 +77,8 @@ test.describe("Survey Smash Flow", () => {
 
     // Both face-off players submit answers
     const faceOffPlayers = await findFaceOffPlayers(controllerPages, 2);
-    await submitTextAnswer(faceOffPlayers[0], "pizza");
-    await submitTextAnswer(faceOffPlayers[1], "tacos");
+    await submitTextAnswer(faceOffPlayers[0] as import("@playwright/test").Page, "pizza");
+    await submitTextAnswer(faceOffPlayers[1] as import("@playwright/test").Page, "tacos");
 
     // Should advance to guessing phase — skip if timer hasn't auto-advanced
     await skipBtn.click();

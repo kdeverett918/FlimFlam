@@ -4,15 +4,16 @@ import { BrainBoardChat } from "@/components/controls/BrainBoardChat";
 import { BrainBoardClueResult } from "@/components/controls/BrainBoardClueResult";
 import { BrainBoardStandings } from "@/components/controls/BrainBoardStandings";
 import { CategoryReveal } from "@/components/controls/CategoryReveal";
+import { CategoryVoteCards } from "@/components/controls/CategoryVoteCards";
 import { ClueGrid } from "@/components/controls/ClueGrid";
 import { LetterPicker } from "@/components/controls/LetterPicker";
 import { MobileLetterResult } from "@/components/controls/MobileLetterResult";
 import { MobilePuzzleBoard } from "@/components/controls/MobilePuzzleBoard";
 import { MobileSpinResult } from "@/components/controls/MobileSpinResult";
 import { MobileStandings } from "@/components/controls/MobileStandings";
+import { MobileWheel } from "@/components/controls/MobileWheel";
 import { NumberInput } from "@/components/controls/NumberInput";
 import { QuickGuessInput } from "@/components/controls/QuickGuessInput";
-import { SpinButton } from "@/components/controls/SpinButton";
 import { TextInput } from "@/components/controls/TextInput";
 import type { PlayerData } from "@flimflam/shared";
 import { ConfettiBurst, GameThemeProvider, GlassPanel } from "@flimflam/ui";
@@ -913,6 +914,37 @@ export function GameController({
     })();
 
     switch (currentPhase) {
+      case "category-vote": {
+        const availableCategories = Array.isArray(gs.availableCategories)
+          ? (gs.availableCategories as string[])
+          : [];
+        const categoryVoteData = gameEvents?.["category-vote"] as
+          | { categories: string[] }
+          | undefined;
+        const cats = categoryVoteData?.categories ?? availableCategories;
+
+        return (
+          <div className="flex flex-col gap-4 pb-16 pt-6 animate-fade-in-up">
+            <p
+              className="text-center font-display text-xl font-black uppercase"
+              style={{
+                color: "oklch(0.78 0.2 85)",
+                textShadow: "0 0 24px oklch(0.78 0.2 85 / 0.5)",
+              }}
+            >
+              Pick Categories
+            </p>
+            <CategoryVoteCards
+              categories={cats}
+              maxSelections={3}
+              onVote={(selected) => {
+                sendMessage("player:category-vote", { categories: selected });
+              }}
+            />
+          </div>
+        );
+      }
+
       case "round-intro": {
         const gsRound = typeof gs.round === "number" ? gs.round : round;
         const gsTotalRounds = typeof gs.totalRounds === "number" ? gs.totalRounds : totalRounds;
@@ -972,7 +1004,10 @@ export function GameController({
                   roundCashAtRisk={roundCash}
                 />
               )}
-              <SpinButton onSpin={handleSpin} />
+              <MobileWheel
+                onSpin={handleSpin}
+                spinResult={spinResult ? { angle: spinResult.angle } : null}
+              />
               {/* Action chooser: buy vowel / solve */}
               <div className="flex items-center justify-center gap-3 px-4">
                 {canBuyVowel && (
@@ -1046,7 +1081,12 @@ export function GameController({
           return (
             <div className="flex flex-col gap-3 pb-16 pt-2 animate-fade-in-up">
               {puzzleBoard}
-              <LetterPicker mode="vowel" usedLetters={usedLetters} onPick={handleVowelPick} />
+              <LetterPicker
+                mode="vowel"
+                usedLetters={usedLetters}
+                onPick={handleVowelPick}
+                roundCash={roundCash}
+              />
             </div>
           );
         }

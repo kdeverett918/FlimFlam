@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { ADVANCED_PUZZLES, KIDS_PUZZLES, STANDARD_PUZZLES } from "../content/phrase-bank";
+import {
+  ADVANCED_PUZZLES,
+  KIDS_PUZZLES,
+  STANDARD_PUZZLES,
+  getCategories,
+  getPuzzleBank,
+} from "../content/phrase-bank";
 import {
   BONUS_PRIZE,
   RSTLNE,
@@ -360,6 +366,53 @@ describe("phrase bank", () => {
     for (const puzzle of allPuzzles) {
       // Allow letters, spaces, hyphens, ampersands, apostrophes, periods, commas
       expect(puzzle.phrase).toMatch(/^[A-Z &'\-.,]+$/);
+    }
+  });
+
+  it("all puzzles have at least 2 words", () => {
+    const allPuzzles = [...KIDS_PUZZLES, ...STANDARD_PUZZLES, ...ADVANCED_PUZZLES];
+    for (const puzzle of allPuzzles) {
+      const wordCount = puzzle.phrase.trim().split(/\s+/).length;
+      expect(wordCount).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("no duplicate phrases within each bank", () => {
+    for (const bank of [KIDS_PUZZLES, STANDARD_PUZZLES, ADVANCED_PUZZLES]) {
+      const phrases = bank.map((p) => p.phrase);
+      const uniquePhrases = new Set(phrases);
+      expect(uniquePhrases.size).toBe(phrases.length);
+    }
+  });
+
+  it("each category has at least 3 entries per bank", () => {
+    for (const bank of [KIDS_PUZZLES, STANDARD_PUZZLES, ADVANCED_PUZZLES]) {
+      const categoryCounts = new Map<string, number>();
+      for (const p of bank) {
+        categoryCounts.set(p.category, (categoryCounts.get(p.category) ?? 0) + 1);
+      }
+      for (const [cat, count] of categoryCounts) {
+        expect(count, `${cat} has fewer than 3 entries`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  it("getPuzzleBank with minWordCount filters correctly", () => {
+    const all = getPuzzleBank("kids");
+    const multiWord = getPuzzleBank("kids", { minWordCount: 2 });
+    expect(multiWord.length).toBeLessThanOrEqual(all.length);
+    for (const p of multiWord) {
+      expect(p.phrase.trim().split(/\s+/).length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("getCategories returns sorted unique categories", () => {
+    const cats = getCategories(KIDS_PUZZLES);
+    expect(cats.length).toBeGreaterThan(0);
+    for (let i = 1; i < cats.length; i++) {
+      const curr = cats[i] ?? "";
+      const prev = cats[i - 1] ?? "";
+      expect(curr > prev).toBe(true);
     }
   });
 });

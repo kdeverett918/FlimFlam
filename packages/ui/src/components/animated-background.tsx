@@ -5,7 +5,7 @@ import { cn } from "../lib/utils";
 import { GAME_THEMES, type GameTheme } from "./game-theme-provider";
 
 export interface AnimatedBackgroundProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "subtle";
+  variant?: "default" | "subtle" | "vibrant";
   /** Override primary blob color (defaults to coral) */
   primaryColor?: string;
   /** Override secondary blob color (defaults to teal) */
@@ -44,6 +44,18 @@ function AnimatedBackground({
     teal = "oklch(0.60 0.20 15)";
   }
 
+  // Vibrant mode: brighter, bolder blobs
+  if (variant === "vibrant") {
+    coral = primaryColor ?? "oklch(0.75 0.28 350)"; // hot pink
+    teal = secondaryColor ?? "oklch(0.72 0.22 250)"; // electric blue
+  }
+
+  const blobOpacity = variant === "vibrant" ? 0.3 : variant === "subtle" ? 0.1 : 0.16;
+  const blobOpacity2 = variant === "vibrant" ? 0.25 : variant === "subtle" ? 0.08 : 0.14;
+  const blobSpeed = variant === "vibrant" ? "20s" : "28s";
+  const blobSpeed2 = variant === "vibrant" ? "24s" : "32s";
+  const dotOpacity = variant === "vibrant" ? 0.06 : variant === "subtle" ? 0.02 : 0.035;
+
   return (
     <div
       className={cn("fixed inset-0 -z-10 overflow-hidden", className)}
@@ -58,8 +70,8 @@ function AnimatedBackground({
       <div
         className="absolute -left-[20%] -top-[20%] h-[70%] w-[70%] will-change-transform"
         style={{
-          background: `radial-gradient(ellipse at center, ${coral.replace(")", " / 0.16)")}, transparent 70%)`,
-          animation: "bgBlobA 28s ease-in-out infinite alternate",
+          background: `radial-gradient(ellipse at center, ${coral.replace(")", ` / ${blobOpacity})`)}, transparent 70%)`,
+          animation: `bgBlobA ${blobSpeed} ease-in-out infinite alternate`,
         }}
       />
 
@@ -67,13 +79,13 @@ function AnimatedBackground({
       <div
         className="absolute -bottom-[15%] -right-[15%] h-[65%] w-[65%] will-change-transform"
         style={{
-          background: `radial-gradient(ellipse at center, ${teal.replace(")", " / 0.14)")}, transparent 70%)`,
-          animation: "bgBlobB 32s ease-in-out infinite alternate",
+          background: `radial-gradient(ellipse at center, ${teal.replace(")", ` / ${blobOpacity2})`)}, transparent 70%)`,
+          animation: `bgBlobB ${blobSpeed2} ease-in-out infinite alternate`,
         }}
       />
 
       {/* Layer 3: Secondary coral highlight — center-right */}
-      {variant === "default" && (
+      {(variant === "default" || variant === "vibrant") && (
         <div
           className="absolute right-[10%] top-[30%] h-[45%] w-[45%] will-change-transform"
           style={{
@@ -83,25 +95,25 @@ function AnimatedBackground({
         />
       )}
 
-      {/* Layer 4: Accent purple blob — smaller, faster cycle */}
-      {variant === "default" && (
+      {/* Layer 4: Accent purple/yellow blob — smaller, faster cycle */}
+      {(variant === "default" || variant === "vibrant") && (
         <div
           className="absolute left-[15%] bottom-[20%] h-[30%] w-[30%] will-change-transform"
           style={{
             background:
-              "radial-gradient(ellipse at center, oklch(0.65 0.20 280 / 0.10), transparent 70%)",
-            animation: "bgBlobD 18s ease-in-out infinite alternate",
+              variant === "vibrant"
+                ? "radial-gradient(ellipse at center, oklch(0.88 0.18 95 / 0.20), transparent 70%)"
+                : "radial-gradient(ellipse at center, oklch(0.65 0.20 280 / 0.10), transparent 70%)",
+            animation: `bgBlobD ${variant === "vibrant" ? "14s" : "18s"} ease-in-out infinite alternate`,
           }}
         />
       )}
 
       {/* Layer 5: Dot grid */}
       <div
-        className={cn(
-          "absolute inset-0",
-          variant === "subtle" ? "opacity-[0.02]" : "opacity-[0.035]",
-        )}
+        className="absolute inset-0"
         style={{
+          opacity: dotOpacity,
           backgroundImage:
             "radial-gradient(circle at center, oklch(0.95 0.01 80) 0.5px, transparent 0.5px)",
           backgroundSize: "24px 24px",

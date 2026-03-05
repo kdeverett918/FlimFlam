@@ -73,7 +73,10 @@ test.describe("Host Submission Progress", () => {
     });
     const afterDisconnect = await readSubmittedProgressText(page);
 
-    await submitTextAnswer(faceOffControllers[0], "survey-progress-increment");
+    await submitTextAnswer(
+      faceOffControllers[0] as import("@playwright/test").Page,
+      "survey-progress-increment",
+    );
 
     await expect
       .poll(

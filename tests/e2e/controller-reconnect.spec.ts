@@ -20,16 +20,17 @@ test.describe("Controller Reconnect Retry Loop", () => {
     await expect(page.getByRole("button", { name: /^skip$/i })).toBeVisible({ timeout: 30_000 });
 
     // Simulate offline → online for the first controller
-    const controllerPage = controllers[0].controllerPage;
+    const firstCtrl = controllers[0] as (typeof controllers)[number];
+    const controllerPage = firstCtrl.controllerPage;
 
     // Set the context offline
-    await controllers[0].context.setOffline(true);
+    await firstCtrl.context.setOffline(true);
 
     // Wait a moment to ensure the connection drops
     await controllerPage.waitForTimeout(1500);
 
     // Come back online
-    await controllers[0].context.setOffline(false);
+    await firstCtrl.context.setOffline(false);
 
     // The controller should reconnect — verify it's still functional
     // by checking that the controller page doesn't show a fatal error
@@ -56,7 +57,7 @@ test.describe("Controller Reconnect Retry Loop", () => {
     await expect(page.getByText("Remi", { exact: true })).toBeVisible({ timeout: 20_000 });
 
     // Refresh Remi's controller (triggers reconnect via stored token)
-    await controllers[0].controllerPage.reload();
+    await (controllers[0] as (typeof controllers)[number]).controllerPage.reload();
 
     // Remi should still be visible on host after reconnection
     await expect(page.getByText("Remi", { exact: true })).toBeVisible({ timeout: 60_000 });

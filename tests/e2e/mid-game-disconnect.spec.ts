@@ -1,6 +1,7 @@
 import { type Page, expect, test } from "@playwright/test";
 
 import {
+  type JoinedController,
   closeAllControllers,
   driveSurveySmashToFinalScores,
   startGame,
@@ -46,18 +47,18 @@ test.describe("Mid-Game Disconnect", () => {
     await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
 
     // Close one controller mid-answer
-    await controllers[2].context.close();
+    await (controllers[2] as JoinedController).context.close();
 
     // Remaining players submit
-    await submitTextAnswer(controllerPages[0], "test answer");
-    await submitTextAnswer(controllerPages[1], "another answer");
+    await submitTextAnswer(controllerPages[0] as Page, "test answer");
+    await submitTextAnswer(controllerPages[1] as Page, "another answer");
 
     // Skip forward — game should continue despite disconnect
     await skipBtn.click();
     await expect(page.getByText(/correct answer/i)).toBeVisible({ timeout: 20_000 });
 
-    await controllers[0].context.close();
-    await controllers[1].context.close();
+    await (controllers[0] as JoinedController).context.close();
+    await (controllers[1] as JoinedController).context.close();
   });
 
   test("player reconnect during Lucky Letters restores state", async ({ page, browser }) => {
@@ -76,15 +77,16 @@ test.describe("Mid-Game Disconnect", () => {
     await page.waitForTimeout(2000);
 
     // Reload one controller to simulate disconnect/reconnect
-    await controllers[0].controllerPage.reload();
+    const ctrl0 = controllers[0] as JoinedController;
+    await ctrl0.controllerPage.reload();
 
     // Controller should reconnect and show the game state
     // It may show reconnecting briefly, then restore
     await expect(
-      controllers[0].controllerPage
+      ctrl0.controllerPage
         .getByText(/lucky letters/i)
-        .or(controllers[0].controllerPage.getByText(/spin/i))
-        .or(controllers[0].controllerPage.getByText(/turn/i)),
+        .or(ctrl0.controllerPage.getByText(/spin/i))
+        .or(ctrl0.controllerPage.getByText(/turn/i)),
     ).toBeVisible({ timeout: 30_000 });
 
     await closeAllControllers(controllers);
@@ -103,7 +105,7 @@ test.describe("Mid-Game Disconnect", () => {
     await expect(page.getByText("VS")).toBeVisible({ timeout: 15_000 });
 
     // Close one controller during face-off
-    await controllers[2].context.close();
+    await (controllers[2] as JoinedController).context.close();
 
     // Skip forward — game should proceed
     await skipBtn.click();
@@ -114,12 +116,15 @@ test.describe("Mid-Game Disconnect", () => {
     expect(skipStillVisible).toBe(true);
 
     // Drive to final scores to confirm game completes (remaining 2 controllers)
-    const remainingControllers = [controllers[0].controllerPage, controllers[1].controllerPage];
+    const remainingControllers = [
+      (controllers[0] as JoinedController).controllerPage,
+      (controllers[1] as JoinedController).controllerPage,
+    ];
     await driveSurveySmashToFinalScores(page, remainingControllers);
     await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
 
-    await controllers[0].context.close();
-    await controllers[1].context.close();
+    await (controllers[0] as JoinedController).context.close();
+    await (controllers[1] as JoinedController).context.close();
   });
 
   test("host reconnect preserves game state", async ({ page, browser }) => {

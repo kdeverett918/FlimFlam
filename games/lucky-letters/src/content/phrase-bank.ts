@@ -7,18 +7,22 @@ export interface WheelPuzzle {
 export const KIDS_PUZZLES: WheelPuzzle[] = [
   // ── Thing ──
   { category: "Thing", phrase: "ICE CREAM CONE", hint: "A tasty frozen treat" },
-  { category: "Thing", phrase: "BASKETBALL", hint: "You dribble and shoot this" },
+  { category: "Thing", phrase: "BASKETBALL COURT", hint: "Where you dribble and shoot hoops" },
   { category: "Thing", phrase: "JUMPING ROPE", hint: "A playground favorite" },
   { category: "Thing", phrase: "BIRTHDAY CAKE", hint: "You blow out candles on this" },
   { category: "Thing", phrase: "ROLLER COASTER", hint: "A thrilling ride" },
   { category: "Thing", phrase: "TEDDY BEAR", hint: "A stuffed cuddle buddy" },
   { category: "Thing", phrase: "BUBBLE GUM", hint: "Chew it and blow a bubble" },
-  { category: "Thing", phrase: "RAINBOW", hint: "Colorful arc in the sky" },
-  { category: "Thing", phrase: "SNOWMAN", hint: "Built with snowballs and a carrot" },
-  { category: "Thing", phrase: "BICYCLE", hint: "Two wheels and pedals" },
-  { category: "Thing", phrase: "GOLDFISH", hint: "A common pet in a bowl" },
-  { category: "Thing", phrase: "TREEHOUSE", hint: "A fort up in the branches" },
-  { category: "Thing", phrase: "SKATEBOARD", hint: "Four wheels and a deck" },
+  { category: "Thing", phrase: "RAINBOW SPRINKLES", hint: "Colorful bits on top of ice cream" },
+  {
+    category: "Thing",
+    phrase: "SNOWMAN BUILDING",
+    hint: "A winter activity with snowballs and carrots",
+  },
+  { category: "Thing", phrase: "BICYCLE HELMET", hint: "Keeps your head safe on two wheels" },
+  { category: "Thing", phrase: "GOLDFISH BOWL", hint: "A round home for a pet swimmer" },
+  { category: "Thing", phrase: "TREEHOUSE LADDER", hint: "Climb up to the fort in the branches" },
+  { category: "Thing", phrase: "SKATEBOARD PARK", hint: "Ramps and rails for four-wheeled fun" },
   { category: "Thing", phrase: "FIRE TRUCK", hint: "A big red vehicle with a siren" },
   { category: "Thing", phrase: "SLEEPING BAG", hint: "Camp out cozy in this" },
   { category: "Thing", phrase: "MAGNIFYING GLASS", hint: "Makes tiny things look big" },
@@ -26,8 +30,16 @@ export const KIDS_PUZZLES: WheelPuzzle[] = [
   { category: "Thing", phrase: "MAGIC WAND", hint: "A wizard waves this" },
   { category: "Thing", phrase: "TREASURE CHEST", hint: "Pirates hide gold in this" },
   { category: "Thing", phrase: "PAPER AIRPLANE", hint: "Fold and fly it across the room" },
-  { category: "Thing", phrase: "FLASHLIGHT", hint: "Lights up the dark" },
-  { category: "Thing", phrase: "BUTTERFLY", hint: "A colorful insect with wings" },
+  {
+    category: "Thing",
+    phrase: "FLASHLIGHT BATTERIES",
+    hint: "Power source for lighting up the dark",
+  },
+  {
+    category: "Thing",
+    phrase: "BUTTERFLY GARDEN",
+    hint: "A colorful place where winged insects flutter",
+  },
 
   // ── Food & Drink ──
   { category: "Food & Drink", phrase: "PEANUT BUTTER AND JELLY", hint: "A classic sandwich" },
@@ -48,7 +60,7 @@ export const KIDS_PUZZLES: WheelPuzzle[] = [
   // ── Place ──
   { category: "Place", phrase: "SWIMMING POOL", hint: "You splash around here" },
   { category: "Place", phrase: "AMUSEMENT PARK", hint: "Rides and games galore" },
-  { category: "Place", phrase: "PLAYGROUND", hint: "Where kids go for recess" },
+  { category: "Place", phrase: "PLAYGROUND SLIDE", hint: "A slippery ride at recess" },
   { category: "Place", phrase: "TOY STORE", hint: "A fun place to shop" },
   { category: "Place", phrase: "OUTER SPACE", hint: "Stars and planets live here" },
   { category: "Place", phrase: "CANDY SHOP", hint: "Walls of sweet treats" },
@@ -61,13 +73,18 @@ export const KIDS_PUZZLES: WheelPuzzle[] = [
   { category: "Animals", phrase: "HUMPBACK WHALE", hint: "A giant ocean mammal that sings" },
   { category: "Animals", phrase: "TREE FROG", hint: "A little green climber" },
   { category: "Animals", phrase: "BABY CHICK", hint: "A fluffy yellow bird" },
-  { category: "Animals", phrase: "LADYBUG", hint: "A red and black spotted insect" },
+  { category: "Animals", phrase: "LADYBUG WINGS", hint: "Red and black spotted flying parts" },
+  { category: "Animals", phrase: "PENGUIN WADDLE", hint: "How a tuxedo bird walks" },
+  { category: "Animals", phrase: "HAMSTER WHEEL", hint: "A tiny pet's exercise machine" },
+  { category: "Animals", phrase: "BUNNY RABBIT", hint: "A fluffy hopper with long ears" },
+  { category: "Animals", phrase: "KITTY CAT", hint: "A purring furry friend" },
+  { category: "Animals", phrase: "PUPPY DOG", hint: "A playful young canine" },
 
   // ── Movies & TV ──
   { category: "Movies & TV", phrase: "LION KING", hint: "Simba's story in the savanna" },
   { category: "Movies & TV", phrase: "FINDING NEMO", hint: "A lost clownfish adventure" },
   { category: "Movies & TV", phrase: "TOY STORY", hint: "Buzz and Woody come to life" },
-  { category: "Movies & TV", phrase: "FROZEN", hint: "Let it go in this icy tale" },
+  { category: "Movies & TV", phrase: "FROZEN YOGURT", hint: "A chilly treat from the shop" },
   {
     category: "Movies & TV",
     phrase: "SPONGEBOB SQUAREPANTS",
@@ -80,6 +97,11 @@ export const KIDS_PUZZLES: WheelPuzzle[] = [
   { category: "Sports", phrase: "GOLD MEDAL", hint: "First place prize at the Olympics" },
   { category: "Sports", phrase: "SWIMMING RACE", hint: "Fastest in the pool wins" },
   { category: "Sports", phrase: "BASEBALL GLOVE", hint: "You catch fly balls with this" },
+  { category: "Sports", phrase: "JUMP SHOT", hint: "A basketball move in the air" },
+  { category: "Sports", phrase: "BELLY FLOP", hint: "A splashy dive gone wrong" },
+  { category: "Sports", phrase: "CANNONBALL SPLASH", hint: "A big jump into the pool" },
+  { category: "Sports", phrase: "FINISH LINE", hint: "Where the race ends" },
+  { category: "Sports", phrase: "HIGH FIVE", hint: "Slap hands to celebrate" },
 
   // ── Music ──
   { category: "Music", phrase: "TWINKLE TWINKLE LITTLE STAR", hint: "A famous lullaby" },
@@ -138,6 +160,8 @@ export const STANDARD_PUZZLES: WheelPuzzle[] = [
 
   // ── Person ──
   { category: "Person", phrase: "GOOD SAMARITAN", hint: "Someone who helps strangers" },
+  { category: "Person", phrase: "CLASS CLOWN", hint: "The funny one at school" },
+  { category: "Person", phrase: "EARLY BIRD", hint: "Someone who wakes up first" },
 
   // ── Thing ──
   { category: "Thing", phrase: "ROUND TRIP TICKET", hint: "There and back again" },
@@ -149,7 +173,7 @@ export const STANDARD_PUZZLES: WheelPuzzle[] = [
   { category: "Thing", phrase: "GRANDFATHER CLOCK", hint: "A tall ticking timepiece" },
   { category: "Thing", phrase: "RUBBER DUCK", hint: "A yellow bath time companion" },
   { category: "Thing", phrase: "PHOTO ALBUM", hint: "Memories between pages" },
-  { category: "Thing", phrase: "BOOKWORM", hint: "Someone who loves to read" },
+  { category: "Thing", phrase: "BOOKWORM PARADISE", hint: "A reader's dream destination" },
 
   // ── Place ──
   { category: "Place", phrase: "GOLDEN GATE BRIDGE", hint: "Famous San Francisco landmark" },
@@ -349,6 +373,7 @@ export const ADVANCED_PUZZLES: WheelPuzzle[] = [
   // ── Place ──
   { category: "Place", phrase: "GREAT BARRIER REEF", hint: "Australian underwater wonder" },
   { category: "Place", phrase: "MOUNT RUSHMORE", hint: "Presidential faces in stone" },
+  { category: "Place", phrase: "BERMUDA TRIANGLE", hint: "A mysterious area in the Atlantic" },
 
   // ── Thing ──
   { category: "Thing", phrase: "ENCYCLOPEDIA BRITANNICA", hint: "A classic reference set" },
@@ -360,6 +385,12 @@ export const ADVANCED_PUZZLES: WheelPuzzle[] = [
     phrase: "EGGS FLORENTINE WITH HOLLANDAISE",
     hint: "A fancy brunch dish",
   },
+  {
+    category: "Food & Drink",
+    phrase: "LOBSTER THERMIDOR",
+    hint: "A luxurious French seafood dish",
+  },
+  { category: "Food & Drink", phrase: "BAKED ALASKA", hint: "A flaming ice cream dessert" },
 
   // ── Movies & TV ──
   { category: "Movies & TV", phrase: "THE SHAWSHANK REDEMPTION", hint: "A prison escape classic" },
@@ -441,16 +472,150 @@ export const ADVANCED_PUZZLES: WheelPuzzle[] = [
     hint: "Dorothy realizes she's far from home",
   },
   { category: "Before & After", phrase: "BELLY BUTTON DOWN SHIRT", hint: "Navel + clothing style" },
+  { category: "Before & After", phrase: "FRENCH KISS OF DEATH", hint: "Romance + fatal blow" },
+  {
+    category: "Before & After",
+    phrase: "PAPER BACK SEAT DRIVER",
+    hint: "Book type + annoying passenger",
+  },
+  { category: "Before & After", phrase: "FIRE TRUCK STOP", hint: "Emergency vehicle + rest area" },
+  {
+    category: "Before & After",
+    phrase: "DREAM CATCHER IN THE RYE",
+    hint: "Native art + Salinger novel",
+  },
+  {
+    category: "Before & After",
+    phrase: "GOLD RUSH HOUR",
+    hint: "Precious metal frenzy + traffic jam",
+  },
+  {
+    category: "Before & After",
+    phrase: "SWEET TOOTH FAIRY",
+    hint: "Sugar craving + childhood myth",
+  },
+  { category: "Before & After", phrase: "PIANO BAR STOOL", hint: "Music lounge + seating" },
+  {
+    category: "Before & After",
+    phrase: "FREE THROW PILLOW",
+    hint: "Basketball shot + couch cushion",
+  },
+  { category: "Before & After", phrase: "HALF TIME MACHINE", hint: "Sports break + sci-fi device" },
+
+  // ── Phrase (extra advanced) ──
+  { category: "Phrase", phrase: "ROME WAS NOT BUILT IN A DAY", hint: "Great things take time" },
+  {
+    category: "Phrase",
+    phrase: "THE GRASS IS ALWAYS GREENER",
+    hint: "Others seem to have it better",
+  },
+  {
+    category: "Phrase",
+    phrase: "KEEP YOUR FRIENDS CLOSE AND YOUR ENEMIES CLOSER",
+    hint: "Strategic social advice",
+  },
+  { category: "Phrase", phrase: "TWO WRONGS DON'T MAKE A RIGHT", hint: "Revenge solves nothing" },
+  { category: "Phrase", phrase: "WHEN IT RAINS IT POURS", hint: "Problems come all at once" },
+  {
+    category: "Phrase",
+    phrase: "BIRDS OF A FEATHER FLOCK TOGETHER",
+    hint: "Similar people group up",
+  },
+  {
+    category: "Phrase",
+    phrase: "DON'T PUT ALL YOUR EGGS IN ONE BASKET",
+    hint: "Diversify your risks",
+  },
+
+  // ── Around The World (extra advanced) ──
+  {
+    category: "Around The World",
+    phrase: "PANAMA CANAL",
+    hint: "A famous waterway connecting two oceans",
+  },
+  {
+    category: "Around The World",
+    phrase: "ANGEL FALLS",
+    hint: "The world's tallest uninterrupted waterfall",
+  },
+  { category: "Around The World", phrase: "MOUNT KILIMANJARO", hint: "Africa's highest peak" },
+  {
+    category: "Around The World",
+    phrase: "VENETIAN CANALS",
+    hint: "Waterways winding through an Italian city",
+  },
+  {
+    category: "Around The World",
+    phrase: "GREAT SPHINX OF GIZA",
+    hint: "A mythical creature guarding the pyramids",
+  },
+  {
+    category: "Around The World",
+    phrase: "BUCKINGHAM PALACE",
+    hint: "The British monarch's London residence",
+  },
+
+  // ── Person (extra advanced) ──
+  { category: "Person", phrase: "JACK OF ALL TRADES", hint: "Skilled at many things" },
+  { category: "Person", phrase: "BACKSEAT DRIVER", hint: "Someone who gives unwanted advice" },
+  {
+    category: "Person",
+    phrase: "ARMCHAIR QUARTERBACK",
+    hint: "A critic who doesn't play the game",
+  },
+
+  // ── Thing (extra advanced) ──
+  { category: "Thing", phrase: "ACHILLES HEEL", hint: "A fatal weakness" },
+  { category: "Thing", phrase: "GENTLEMAN'S AGREEMENT", hint: "An unwritten deal based on trust" },
+  { category: "Thing", phrase: "PANDORA'S BOX", hint: "Opening this unleashes chaos" },
+  { category: "Thing", phrase: "SILVER BULLET", hint: "A simple solution to a complex problem" },
+
+  // ── Quotable Quotes (extra advanced) ──
+  {
+    category: "Quotable Quotes",
+    phrase: "THE ONLY THING WE HAVE TO FEAR IS FEAR ITSELF",
+    hint: "FDR's inaugural courage",
+  },
+  {
+    category: "Quotable Quotes",
+    phrase: "ASK NOT WHAT YOUR COUNTRY CAN DO FOR YOU",
+    hint: "JFK's famous challenge",
+  },
+  {
+    category: "Quotable Quotes",
+    phrase: "TO INFINITY AND BEYOND",
+    hint: "A space ranger's battle cry",
+  },
 ];
 
 /** Return the puzzle bank for a given complexity level. */
-export function getPuzzleBank(complexity: "kids" | "standard" | "advanced"): WheelPuzzle[] {
+export function getPuzzleBank(
+  complexity: "kids" | "standard" | "advanced",
+  options?: { minWordCount?: number },
+): WheelPuzzle[] {
+  let bank: WheelPuzzle[];
   switch (complexity) {
     case "kids":
-      return KIDS_PUZZLES;
+      bank = KIDS_PUZZLES;
+      break;
     case "standard":
-      return STANDARD_PUZZLES;
+      bank = STANDARD_PUZZLES;
+      break;
     case "advanced":
-      return ADVANCED_PUZZLES;
+      bank = ADVANCED_PUZZLES;
+      break;
   }
+
+  const minWords = options?.minWordCount;
+  if (minWords && minWords > 1) {
+    return bank.filter((p) => p.phrase.trim().split(/\s+/).length >= minWords);
+  }
+  return bank;
+}
+
+/** Extract unique categories from a puzzle bank. */
+export function getCategories(bank: WheelPuzzle[]): string[] {
+  const set = new Set<string>();
+  for (const p of bank) set.add(p.category);
+  return [...set].sort();
 }

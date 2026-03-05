@@ -283,6 +283,7 @@ test.describe("Survey Smash Polish", () => {
 });
 
 test.describe("Survey Smash Polish (Reduced Motion)", () => {
+  // @ts-expect-error reducedMotion is a valid Playwright option
   test.use({ reducedMotion: "reduce" });
 
   test("strike logs reduced motion event and no host shake class", async ({ page, browser }) => {

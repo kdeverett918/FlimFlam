@@ -37,9 +37,8 @@ const ALL_IN_CATEGORY_DELAY_MS = 5000;
 const ALL_IN_REVEAL_DELAY_MS = 8000;
 
 const FUZZY_THRESHOLD = 0.7;
-const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 4000;
-const BRAIN_BOARD_JUDGE_MODEL =
-  process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL ?? "claude-haiku-4-5-latest";
+const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 15000;
+const BRAIN_BOARD_JUDGE_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL;
 const BRAIN_BOARD_CHAT_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_CHAT_MODEL;
 const BRAIN_BOARD_GENERATION_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL;
 const TOPIC_CHAT_FALLBACK_TOPICS = [
@@ -1324,8 +1323,8 @@ class BrainBoardPlugin extends BaseGamePlugin {
         aiRequest(prompt.system, prompt.user, BrainBoardChatResponseSchema, {
           model: BRAIN_BOARD_CHAT_MODEL,
           maxTokens: 256,
-          timeoutMs: 8000,
-          retries: 0,
+          timeoutMs: 15000,
+          retries: 1,
         }),
       );
 
@@ -1429,7 +1428,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
           model: BRAIN_BOARD_GENERATION_MODEL,
           maxTokens: 4096,
-          timeoutMs: 15000,
+          timeoutMs: 30000,
           retries: 1,
         }),
       );

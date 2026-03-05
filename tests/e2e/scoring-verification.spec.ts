@@ -44,8 +44,8 @@ test.describe("Scoring Verification", () => {
     await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
 
     // Submit answers
-    await submitTextAnswer(controllerPages[0], "test answer");
-    await submitTextAnswer(controllerPages[1], "another test answer");
+    await submitTextAnswer(controllerPages[0] as Page, "test answer");
+    await submitTextAnswer(controllerPages[1] as Page, "another test answer");
 
     // Skip to clue-result
     await skipBtn.click();

@@ -50,9 +50,9 @@ export function GamePreviewDialog({
         className="max-w-2xl max-h-[85vh] overflow-y-auto"
         style={{ maxHeight: "85vh", overflowY: "auto", width: "min(calc(100vw - 2rem), 42rem)" }}
       >
-        {/* Top accent strip */}
+        {/* Top accent strip - thicker */}
         <div
-          className="absolute inset-x-0 top-0 h-[3px] rounded-t-xl"
+          className="absolute inset-x-0 top-0 h-[4px] rounded-t-xl"
           style={{
             background: accent
               ? `linear-gradient(90deg, transparent, ${accent}, transparent)`
@@ -151,7 +151,11 @@ export function GamePreviewDialog({
           <button
             type="button"
             onClick={() => onPlayGame(game.id)}
-            className="h-11 rounded-xl border-2 border-primary/70 bg-primary/15 px-6 font-display text-sm font-bold text-primary uppercase tracking-wider transition-all hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_24px_oklch(0.75_0.22_25/0.3)] active:scale-95"
+            className="h-11 rounded-xl px-6 font-display text-sm font-bold text-white uppercase tracking-wider transition-all hover:shadow-[0_0_30px_oklch(0.75_0.22_25/0.4)] active:scale-95"
+            style={{
+              background: "linear-gradient(135deg, oklch(0.75 0.22 25), oklch(0.72 0.25 350))",
+              boxShadow: "0 0 16px oklch(0.75 0.22 25 / 0.3)",
+            }}
           >
             Play This Game
           </button>

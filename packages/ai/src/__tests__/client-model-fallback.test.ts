@@ -8,13 +8,13 @@ afterEach(() => {
 
 describe("ai/client model fallback", () => {
   it("buildModelCandidates includes explicit, env, and fallback models without duplicates", () => {
-    process.env.FLIMFLAM_AI_MODEL = "claude-sonnet-4-5-latest";
-    const models = buildModelCandidates("claude-sonnet-4-5-latest");
+    process.env.FLIMFLAM_AI_MODEL = "claude-opus-4-6";
+    const models = buildModelCandidates("claude-opus-4-6");
 
     expect(models).toEqual([
-      "claude-sonnet-4-5-latest",
-      "claude-sonnet-4-5-20250929",
-      "claude-3-5-sonnet-latest",
+      "claude-opus-4-6",
+      "claude-sonnet-4-20250514",
+      "claude-sonnet-4-5-20250514",
     ]);
   });
 
@@ -22,9 +22,9 @@ describe("ai/client model fallback", () => {
     process.env.FLIMFLAM_AI_MODEL = undefined;
     const models = buildModelCandidates();
 
-    expect(models[0]).toBe("claude-sonnet-4-5-20250929");
-    expect(models).toContain("claude-sonnet-4-5-latest");
-    expect(models).toContain("claude-3-5-sonnet-latest");
+    expect(models[0]).toBe("claude-opus-4-6");
+    expect(models).toContain("claude-sonnet-4-20250514");
+    expect(models).toContain("claude-sonnet-4-5-20250514");
   });
 
   it("detects model-unavailable API errors", () => {

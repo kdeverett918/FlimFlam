@@ -168,6 +168,7 @@ test.describe("Lucky Letters Polish", () => {
 });
 
 test.describe("Lucky Letters Polish (Reduced Motion)", () => {
+  // @ts-expect-error reducedMotion is a valid Playwright option
   test.use({ reducedMotion: "reduce" });
 
   test("letter tiles use fade reveal style in reduced motion", async ({ page, browser }) => {
@@ -184,6 +185,128 @@ test.describe("Lucky Letters Polish (Reduced Motion)", () => {
       const revealStyle = await observeLuckyLettersRevealStyle(page, controllerPages);
       expect(revealStyle).toBe("fade");
       await expectNoAudioErrors(page);
+    } finally {
+      await closeAllControllers(controllers);
+    }
+  });
+});
+
+test.describe("Lucky Letters Wheel Segments", () => {
+  test("host wheel visual segments match server segment count (24)", async ({ page, browser }) => {
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: ["Ada", "Ben"],
+    });
+
+    try {
+      await skipRoundIntro(page);
+
+      // Verify the wheel is visible
+      await expect(page.locator('[data-testid="lucky-wheel"]')).toBeVisible({ timeout: 15_000 });
+
+      // Verify the wheel has exactly 24 segments
+      await expect(page.locator('[data-testid="lucky-wheel-segment"]')).toHaveCount(24);
+
+      // Verify segment types: must include bust, pass, wild, and cash segments
+      const segmentTypes = await page.evaluate(() => {
+        const segs = document.querySelectorAll('[data-testid="lucky-wheel-segment"]');
+        const labels: string[] = [];
+        for (const seg of segs) {
+          const text = seg.querySelector("text");
+          if (text) labels.push(text.textContent?.trim() ?? "");
+        }
+        return labels;
+      });
+
+      // Should have 2 BUST segments, 1 PASS, 1 WILD, and 20 cash segments
+      const bustCount = segmentTypes.filter((l) => l === "BUST").length;
+      const passCount = segmentTypes.filter((l) => l === "PASS").length;
+      const wildCount = segmentTypes.filter((l) => l === "WILD").length;
+      const cashCount = segmentTypes.filter((l) => l.startsWith("$")).length;
+
+      expect(bustCount).toBe(2);
+      expect(passCount).toBe(1);
+      expect(wildCount).toBe(1);
+      expect(cashCount).toBe(20);
+    } finally {
+      await closeAllControllers(controllers);
+    }
+  });
+});
+
+test.describe("Lucky Letters AnimatedCounter", () => {
+  test("host standings show cash amounts with $ formatting", async ({ page, browser }) => {
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: ["Ada", "Ben"],
+    });
+
+    try {
+      await skipRoundIntro(page);
+
+      // Both players should show $0 initially in the standings bar
+      const dollarAmounts = page.getByText("$0");
+      await expect(dollarAmounts.first()).toBeVisible({ timeout: 15_000 });
+
+      // The standings bar should show both player names
+      await expect(page.getByText("Ada", { exact: true })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText("Ben", { exact: true })).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await closeAllControllers(controllers);
+    }
+  });
+});
+
+test.describe("Lucky Letters Letter Picker", () => {
+  test("consonant picker disables vowels and already-guessed letters", async ({
+    page,
+    browser,
+  }) => {
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: ["Ada", "Ben"],
+    });
+
+    try {
+      const controllerPages = controllers.map((c) => c.controllerPage);
+      await skipRoundIntro(page);
+
+      const activeController = await findLuckyLettersActiveController(controllerPages);
+
+      // Spin the wheel
+      await activeController.getByRole("button", { name: /spin the wheel/i }).click();
+
+      // Wait for consonant picker to appear (may not appear if bust/pass)
+      const consonantPrompt = activeController.getByText("Pick a consonant");
+      const deadline = Date.now() + 15_000;
+      let hasConsonantPicker = false;
+      while (Date.now() < deadline) {
+        if (await consonantPrompt.isVisible().catch(() => false)) {
+          hasConsonantPicker = true;
+          break;
+        }
+        // If spin button reappeared (bust/pass), spin again
+        const spinBtn = activeController.getByRole("button", { name: /spin the wheel/i });
+        if (await spinBtn.isVisible().catch(() => false)) {
+          await spinBtn.click();
+        }
+        await activeController.waitForTimeout(300);
+      }
+
+      if (hasConsonantPicker) {
+        // Vowels should be disabled in consonant mode
+        for (const vowel of ["A", "E", "I", "O", "U"]) {
+          const vowelBtn = activeController.getByRole("button", { name: `Letter ${vowel}` });
+          await expect(vowelBtn).toBeDisabled();
+        }
+
+        // At least one consonant should be enabled
+        const letterT = activeController.getByRole("button", { name: "Letter T" });
+        await expect(letterT).toBeEnabled();
+      }
     } finally {
       await closeAllControllers(controllers);
     }

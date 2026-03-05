@@ -43,6 +43,11 @@
   --color-border: oklch(0.28 0.02 250);
   --color-ring: oklch(0.75 0.22 25);
 
+  /* ── Fun accent colors (landing page) ── */
+  --color-fun-yellow: oklch(0.88 0.18 95);
+  --color-fun-pink: oklch(0.72 0.25 350);
+  --color-fun-green: oklch(0.76 0.18 150);
+
   /* ── Radius ── */
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -172,6 +177,52 @@
   100% {
     transform: translate3d(0, 0, 0);
   }
+}
+
+@keyframes float-drift {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.2;
+  }
+  90% {
+    opacity: 0.15;
+  }
+  100% {
+    transform: translateY(-10vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes icon-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}
+
+.animate-float-drift {
+  animation: float-drift linear infinite;
+}
+
+.group:hover .group-hover\:animate-icon-wiggle {
+  animation: icon-wiggle 0.4s ease-in-out;
+}
+
+/* Landing page brighter background overrides */
+.landing-page {
+  --color-bg-deep: oklch(0.18 0.06 280);
+  --color-bg-dark: oklch(0.22 0.07 275);
+  --color-bg-surface: oklch(0.27 0.08 270);
+  --color-bg-elevated: oklch(0.32 0.09 265);
 }
 
 .animate-glow-pulse {
