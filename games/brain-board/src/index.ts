@@ -351,11 +351,10 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this._topicSuggestions = [];
     this._aiGeneratedBoard = false;
 
-    // Build player order (exclude host)
-    const hostId = this.getHostSessionId(state);
+    // Build player order from connected players
     players.forEach((player: unknown, key: string) => {
       const p = player as Record<string, unknown>;
-      if (key !== hostId && p.connected) {
+      if (p.connected) {
         this.playerOrder.push(key);
       }
     });
@@ -415,13 +414,21 @@ class BrainBoardPlugin extends BaseGamePlugin {
     });
 
     // Broadcast topic-chat state with timer metadata for controller countdown UI.
-    room.broadcast("game-data", {
-      type: "game-state",
-      phase: "topic-chat",
-      chatMessages: this._chatMessages,
-      timerEndsAt: this.getTimerEndsAt(state),
-      serverTimeOffset: 0,
-    });
+    const broadcastTopicChat = () => {
+      room.broadcast("game-data", {
+        type: "game-state",
+        phase: "topic-chat",
+        chatMessages: this._chatMessages,
+        timerEndsAt: this.getTimerEndsAt(state),
+        serverTimeOffset: 0,
+      });
+    };
+    broadcastTopicChat();
+    // Re-broadcast after a short delay to catch late-mounting host listeners
+    // (the initial broadcast fires before the React onMessage handler is attached).
+    setTimeout(() => {
+      if (this.phase === "topic-chat") broadcastTopicChat();
+    }, 500);
   }
 
   /**

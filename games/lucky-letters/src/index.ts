@@ -299,12 +299,11 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.puzzleBank = getPuzzleBank(complexity);
     this.availableCategories = getCategories(this.puzzleBank);
 
-    // Build turn order from active (non-host) players
+    // Build turn order from connected players
     this.turnOrder = [];
-    const hostId = this.getHostSessionId(state);
     players.forEach((player: unknown, key: string) => {
       const p = player as Record<string, unknown>;
-      if (key !== hostId && p.connected) {
+      if (p.connected) {
         this.turnOrder.push(key);
       }
     });

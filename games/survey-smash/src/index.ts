@@ -370,13 +370,10 @@ class SurveySmashPlugin extends BaseGamePlugin {
       }
     }
 
-    // Collect player IDs (exclude host)
-    const hostSessionId = (state as unknown as Record<string, unknown>).hostSessionId as string;
+    // Collect player IDs
     const playerIds: string[] = [];
     players.forEach((_player: unknown, key: string) => {
-      if (key !== hostSessionId) {
-        playerIds.push(key);
-      }
+      playerIds.push(key);
     });
     this.gs.allPlayerIds = playerIds;
 
@@ -404,14 +401,12 @@ class SurveySmashPlugin extends BaseGamePlugin {
     // Set player roles on the schema
     players.forEach((player: unknown, key: string) => {
       const p = player as Record<string, unknown>;
-      if (key === hostSessionId) return;
       const teamId = playerTeamMap.get(key) ?? "free";
       p.role = teamId;
     });
 
     // Init scoring engine
     players.forEach((player: unknown, key: string) => {
-      if (key === hostSessionId) return;
       const p = player as Record<string, unknown>;
       this.scoringEngine.initPlayer(key, p.name as string);
       this.gs.guessAlongPoints.set(key, 0);
@@ -428,8 +423,8 @@ class SurveySmashPlugin extends BaseGamePlugin {
     type: string,
     data: unknown,
   ): Promise<void> {
-    const hostSessionId = (state as unknown as Record<string, unknown>).hostSessionId as string;
-    if (client.sessionId === hostSessionId) {
+    // Handle host-specific messages (e.g., host:skip forwarded by PartyRoom)
+    if (type.startsWith("host:")) {
       this._handleHostMessage(room, state, client, type, data);
       return;
     }
@@ -502,11 +497,8 @@ class SurveySmashPlugin extends BaseGamePlugin {
     }
   }
 
-  onPlayerReconnect(room: Room, state: Schema, client: Client): void {
+  onPlayerReconnect(room: Room, _state: Schema, client: Client): void {
     // Re-send full state to reconnected player
-    const hostSessionId = (state as unknown as Record<string, unknown>).hostSessionId as string;
-    if (client.sessionId === hostSessionId) return;
-
     this._sendPrivateToPlayer(room, client.sessionId, {
       action: "survey-smash-reconnect",
       phase: this.gs.phase,

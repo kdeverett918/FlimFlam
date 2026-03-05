@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 // AI module removed — no AI games in this build
 import type { GamePlugin } from "@flimflam/game-engine";
@@ -23,46 +22,14 @@ const require = createRequire(import.meta.url);
 const { Room } = require("colyseus") as typeof import("colyseus");
 
 export class PartyRoom extends Room<RoomState> {
-  // +1 to allow a non-playing host client in addition to MAX_PLAYERS players.
-  maxClients = MAX_PLAYERS + 1;
+  maxClients = MAX_PLAYERS;
 
   private _currentPlugin: GamePlugin | null = null;
   private _roomCode = "";
   private _idleTimeout: Delayed | null = null;
-  private _hostToken: string | null = null;
 
   private _lastReactionAt = new Map<string, number>();
   private _clientMsgRate = new Map<string, { count: number; resetAt: number }>();
-
-  private _getOrCreateHostToken(): string {
-    if (!this._hostToken) {
-      // 256-bit token, kept server-side only (never in shared room state).
-      this._hostToken = randomBytes(32).toString("hex");
-    }
-    return this._hostToken;
-  }
-
-  async onAuth(
-    _client: Client,
-    options: { isHost?: boolean; hostToken?: unknown },
-  ): Promise<boolean> {
-    if (!options?.isHost) return true;
-
-    const providedToken = typeof options.hostToken === "string" ? options.hostToken : null;
-    // First host claim: create a server-side token and allow the host to join
-    // without providing it. All subsequent host joins must provide the exact token.
-    if (!this._hostToken) {
-      this._getOrCreateHostToken();
-      return true;
-    }
-
-    if (providedToken !== this._hostToken) {
-      // Reject host takeover attempts at the handshake level (before onJoin).
-      throw new Error("Host already assigned for this room");
-    }
-
-    return true;
-  }
 
   async onCreate(_options: Record<string, unknown>): Promise<void> {
     const state = new RoomState();
@@ -295,9 +262,28 @@ export class PartyRoom extends Room<RoomState> {
       });
     };
 
-    const handleHostRequestToken = (client: Client) => {
+    const handleHostTransfer = (client: Client, data: { targetSessionId?: string }) => {
       if (!requireHost(client)) return;
-      this.send(client, "host-token", { token: this._getOrCreateHostToken() });
+      const targetId = data?.targetSessionId;
+      if (typeof targetId !== "string" || !targetId) {
+        this.send(client, "error", { message: "Invalid target session ID" });
+        return;
+      }
+      const targetPlayer = this.state.players.get(targetId);
+      if (!targetPlayer || !targetPlayer.connected) {
+        this.send(client, "error", { message: "Target player not found or disconnected" });
+        return;
+      }
+
+      // Remove host from current player
+      const currentHost = this.state.players.get(client.sessionId);
+      if (currentHost) {
+        currentHost.isHost = false;
+      }
+
+      // Assign host to target
+      targetPlayer.isHost = true;
+      this.state.hostSessionId = targetId;
     };
 
     const handlePlayerReady = (client: Client) => {
@@ -328,7 +314,7 @@ export class PartyRoom extends Room<RoomState> {
     this.onMessage("host:skip", (client) => handleHostSkip(client));
     this.onMessage("host:end-game", (client) => handleHostEnd(client));
     this.onMessage("host:restart-game", (client) => handleRestartGame(client));
-    this.onMessage("host:request_token", (client) => handleHostRequestToken(client));
+    this.onMessage("host:transfer", (client, data) => handleHostTransfer(client, data));
 
     // Player messages (preferred)
     this.onMessage("player:ready", (client) => handlePlayerReady(client));
@@ -356,7 +342,7 @@ export class PartyRoom extends Room<RoomState> {
       }
 
       const internalTypes = new Set<string>([
-        "host:request_token",
+        "host:transfer",
         "host:select-game",
         "host:set-complexity",
         "host:set-player-input",
@@ -383,11 +369,6 @@ export class PartyRoom extends Room<RoomState> {
       // Basic input validation before delegating to game plugins
       if (typeof type !== "string" || type.length > 64) {
         return; // Reject non-string or absurdly long message types
-      }
-
-      // Player messages must come from actual players (not the host client)
-      if (type.startsWith("player:") && client.sessionId === this.state.hostSessionId) {
-        return;
       }
 
       // Ensure data is a plain object (not null, array, or primitive)
@@ -417,27 +398,12 @@ export class PartyRoom extends Room<RoomState> {
 
   onJoin(
     client: Client,
-    options: { name?: string; isHost?: boolean; hostToken?: unknown; color?: string },
+    options: { name?: string; color?: string },
   ): void {
     this._resetIdleTimeout();
 
     // Send server clock for client-side timer sync.
     this.send(client, "server-time", { serverTime: Date.now() });
-
-    if (options.isHost) {
-      // Host connects as a non-playing client. Players join from their own devices.
-      this.state.hostSessionId = client.sessionId;
-      // Host token is requested by the host client after it registers its handlers.
-      // (Sending during onJoin can race with client-side handler registration.)
-      this.setMetadata({
-        code: this._roomCode,
-        gameName: this.state.selectedGameId || "lobby",
-        complexity: this.state.complexity as Complexity,
-        playerCount: this.state.players.size,
-        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
-      });
-      return;
-    }
 
     if (this.state.players.size >= MAX_PLAYERS) {
       this.send(client, "error", { message: "Room is full" });
@@ -482,6 +448,13 @@ export class PartyRoom extends Room<RoomState> {
     }
 
     player.connected = true;
+
+    // First player to join becomes the host (admin)
+    if (!this.state.hostSessionId || !this.state.players.get(this.state.hostSessionId)) {
+      player.isHost = true;
+      this.state.hostSessionId = client.sessionId;
+    }
+
     this.state.players.set(client.sessionId, player);
 
     // Update metadata
@@ -496,8 +469,6 @@ export class PartyRoom extends Room<RoomState> {
 
   async onLeave(client: Client, consented: boolean): Promise<void> {
     this._clientMsgRate.delete(client.sessionId);
-
-    const isHostClient = client.sessionId === this.state.hostSessionId;
 
     const player = this.state.players.get(client.sessionId);
 
@@ -526,23 +497,6 @@ export class PartyRoom extends Room<RoomState> {
       }
     } catch {
       // Reconnection timed out or was rejected. Fall through to removal.
-    }
-
-    if (isHostClient) {
-      this.state.hostSessionId = "";
-      if (this.state.lobbyPhase === "in-game") {
-        this.broadcast("error", { message: "Host disconnected. Returning to lobby." });
-        this.transitionToLobby();
-      }
-
-      this.setMetadata({
-        code: this._roomCode,
-        gameName: this.state.selectedGameId || "lobby",
-        complexity: this.state.complexity as Complexity,
-        playerCount: this.state.players.size,
-        hotTakePlayerInputEnabled: this.state.hotTakePlayerInputEnabled,
-      });
-      return;
     }
 
     // Fully remove if consent or reconnection failed.
@@ -619,7 +573,6 @@ export class PartyRoom extends Room<RoomState> {
     this.state.totalRounds = 0;
     this.state.timerEndsAt = 0;
 
-    // Unlock so a host can (re)join even if the player list is full.
     this.unlock();
   }
 
@@ -664,7 +617,6 @@ export class PartyRoom extends Room<RoomState> {
     this.state.totalRounds = 0;
     this.state.timerEndsAt = 0;
 
-    // Unlock so a host can (re)join even if the player list is full.
     this.unlock();
   }
 
