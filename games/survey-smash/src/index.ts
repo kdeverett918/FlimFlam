@@ -472,7 +472,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
         // Check if all face-off players have either submitted or disconnected
         const allResolved = this.gs.faceOffPlayers.every((pid) => {
           if (this.gs.faceOffEntries.some((e) => e.sessionId === pid)) return true;
-          if (pid === sessionId) return true; // the one leaving now
+          if (!this.isPlayerConnected(state, pid)) return true; // disconnected
           return false;
         });
         if (allResolved) {
@@ -1400,6 +1400,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
           break;
       }
     }
+  }
+
+  private isPlayerConnected(state: Schema, sessionId: string): boolean {
+    const players = (state as unknown as Record<string, unknown>).players as MapSchema;
+    const player = players.get(sessionId);
+    if (!player) return false;
+    return (player as unknown as Record<string, unknown>).connected as boolean;
   }
 }
 
