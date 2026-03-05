@@ -26,8 +26,7 @@ async function pollHttpOk(
 }
 
 export default async function globalSetup() {
-  const hostUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? "https://flimflam.gg";
-  const controllerUrl = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "https://play.flimflam.gg";
+  const appUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? "https://flimflam.gg";
   const colyseusHealthUrl =
     process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "https://us-dfw-baad7ee4.colyseus.cloud/health";
 
@@ -36,6 +35,5 @@ export default async function globalSetup() {
   const intervalMs = 2_000;
 
   await pollHttpOk("Colyseus /health", colyseusHealthUrl, { timeoutMs, intervalMs });
-  await pollHttpOk("Render host", hostUrl, { timeoutMs, intervalMs });
-  await pollHttpOk("Render controller", controllerUrl, { timeoutMs, intervalMs });
+  await pollHttpOk("Web app", appUrl, { timeoutMs, intervalMs });
 }

@@ -1,10 +1,10 @@
 import { type Locator, type Page, expect, test } from "@playwright/test";
 
 import {
-  CONTROLLER_URL,
+  APP_URL,
   createRoom,
   expectNoHorizontalOverflow,
-  joinControllerForRoom,
+  joinPlayerForRoom,
   selectGameAndStart,
   waitForColyseusHealthy,
 } from "./e2e-helpers";
@@ -58,7 +58,7 @@ test.describe("Mobile Responsiveness", () => {
         viewport: { width: vp.width, height: vp.height },
       });
       const page = await context.newPage();
-      await page.goto(CONTROLLER_URL);
+      await page.goto(APP_URL);
 
       await expect(page.locator('img[alt="FLIMFLAM Party Game"]')).toBeVisible();
       await expect(page.getByText(/join the party from your phone/i)).toBeVisible();
@@ -113,8 +113,8 @@ test.describe("Mobile Responsiveness", () => {
     await waitForColyseusHealthy(page);
     const { code } = await createRoom(page);
 
-    const c1 = await joinControllerForRoom(browser, page, { code, name: "MobileA" });
-    const c2 = await joinControllerForRoom(browser, page, { code, name: "MobileB" });
+    const c1 = await joinPlayerForRoom(browser, page, { code, name: "MobileA" });
+    const c2 = await joinPlayerForRoom(browser, page, { code, name: "MobileB" });
 
     await selectGameAndStart(page, { gameName: "Survey Smash", complexity: "kids" });
 

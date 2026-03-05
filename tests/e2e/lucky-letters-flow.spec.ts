@@ -1,6 +1,6 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import { createRoom, joinPlayerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 /**
  * Find which of two controller pages has the spin button visible.
@@ -47,8 +47,8 @@ test("lucky letters starts and shows round-intro on host and controllers", async
 
   const { code } = await createRoom(page);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
+  const c1 = await joinPlayerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinPlayerForRoom(browser, page, { code, name: "Bob" });
 
   // Select Lucky Letters + Kids difficulty and start.
   await page.getByRole("button", { name: /lucky letters/i }).click();
@@ -82,8 +82,8 @@ test("lucky letters spin and consonant guess flow", async ({ page, browser }) =>
 
   const { code } = await createRoom(page);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
+  const c1 = await joinPlayerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinPlayerForRoom(browser, page, { code, name: "Bob" });
 
   // Select Lucky Letters + Kids difficulty and start.
   await page.getByRole("button", { name: /lucky letters/i }).click();
@@ -164,8 +164,8 @@ test("lucky letters controller shows puzzle board during gameplay", async ({ pag
 
   const { code } = await createRoom(page);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
+  const c1 = await joinPlayerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinPlayerForRoom(browser, page, { code, name: "Bob" });
 
   // Select Lucky Letters + Kids difficulty and start.
   await page.getByRole("button", { name: /lucky letters/i }).click();

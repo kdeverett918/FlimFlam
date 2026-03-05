@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import { createRoom, joinPlayerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Lobby Interactions", () => {
   test("game selector buttons switch selection", async ({ page }) => {
@@ -96,11 +96,11 @@ test.describe("Lobby Interactions", () => {
     await expect(startButton).toBeDisabled();
 
     // Join 1 player — still disabled (need min 2)
-    const p1 = await joinControllerForRoom(browser, page, { code, name: "Solo" });
+    const p1 = await joinPlayerForRoom(browser, page, { code, name: "Solo" });
     await expect(startButton).toBeDisabled();
 
     // Join 2nd player — should now be enabled
-    const p2 = await joinControllerForRoom(browser, page, { code, name: "Duo" });
+    const p2 = await joinPlayerForRoom(browser, page, { code, name: "Duo" });
     await expect(startButton).toBeEnabled({ timeout: 15_000 });
 
     await p1.context.close();
@@ -127,13 +127,13 @@ test.describe("Lobby Interactions", () => {
     const { code } = await createRoom(page);
 
     // Join players sequentially and verify names appear
-    const p1 = await joinControllerForRoom(browser, page, { code, name: "First" });
+    const p1 = await joinPlayerForRoom(browser, page, { code, name: "First" });
     await expect(page.getByText("First", { exact: true })).toBeVisible({ timeout: 10_000 });
 
-    const p2 = await joinControllerForRoom(browser, page, { code, name: "Second" });
+    const p2 = await joinPlayerForRoom(browser, page, { code, name: "Second" });
     await expect(page.getByText("Second", { exact: true })).toBeVisible({ timeout: 10_000 });
 
-    const p3 = await joinControllerForRoom(browser, page, { code, name: "Third" });
+    const p3 = await joinPlayerForRoom(browser, page, { code, name: "Third" });
     await expect(page.getByText("Third", { exact: true })).toBeVisible({ timeout: 10_000 });
 
     await p1.context.close();

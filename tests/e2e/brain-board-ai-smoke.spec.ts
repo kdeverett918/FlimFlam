@@ -1,9 +1,6 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import {
-  closeAllControllers,
-  startGame,
-} from "./e2e-helpers";
+import { closeAllControllers, startGame } from "./e2e-helpers";
 
 // ── Known kids category names from the static clue bank ──────────────────
 // If ALL 6 displayed categories match this set, AI board gen failed silently.

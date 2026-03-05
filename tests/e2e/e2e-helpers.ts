@@ -197,8 +197,9 @@ export async function closeAllControllers(controllers: JoinedController[]): Prom
   }
 }
 
-export const HOST_URL = process.env.FLIMFLAM_E2E_HOST_URL ?? "http://127.0.0.1:5310";
-export const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:5311";
+export const APP_URL = process.env.FLIMFLAM_E2E_HOST_URL ?? "http://127.0.0.1:5310";
+/** @deprecated Use APP_URL instead — kept for backward compatibility */
+export const HOST_URL = APP_URL;
 export const COLYSEUS_HEALTH_URL =
   process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? "http://127.0.0.1:5567/health";
 
@@ -222,7 +223,7 @@ export async function waitForColyseusHealthy(page: Page, url = COLYSEUS_HEALTH_U
     .toBe(200);
 }
 
-export async function waitForHostHealthy(page: Page, url = HOST_URL): Promise<void> {
+export async function waitForHostHealthy(page: Page, url = APP_URL): Promise<void> {
   await expect
     .poll(
       async () => {
@@ -238,27 +239,7 @@ export async function waitForHostHealthy(page: Page, url = HOST_URL): Promise<vo
     .toBe(200);
 }
 
-export async function waitForControllerHealthy(page: Page, url = CONTROLLER_URL): Promise<void> {
-  await expect
-    .poll(
-      async () => {
-        try {
-          const res = await page.request.get(url);
-          return res.status();
-        } catch {
-          return 0;
-        }
-      },
-      { timeout: 60_000 },
-    )
-    .toBe(200);
-}
-
-const HOST_SESSION_KEYS = [
-  "flimflam_host_reconnect_token",
-  "flimflam_host_room_code",
-  "flimflam_host_token",
-] as const;
+const HOST_SESSION_KEYS = ["flimflam_reconnect_token", "flimflam_room_code"] as const;
 
 const TRANSIENT_PAGE_CONTEXT_ERROR =
   /Execution context was destroyed|Cannot find context with specified id|Most likely the page has been closed/i;
@@ -327,11 +308,18 @@ export async function createRoom(page: Page): Promise<{ code: string }> {
       await clearHostReconnectStorage(page);
     }
 
+    // Fill host name input before clicking create
+    const hostNameInput = page.locator("#host-name").first();
+    if (await hostNameInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await hostNameInput.fill("Host");
+    }
+
     // Home CTA naming can vary between aria-label and visible text across builds.
     const candidates: Locator[] = [
       page.getByTestId("create-room-cta").first(),
       page.getByRole("button", { name: /create a new game room/i }).first(),
       page.getByRole("button", { name: /^create room$/i }).first(),
+      page.getByRole("button", { name: /^create game$/i }).first(),
     ];
 
     let createRoomButton: Locator | null = null;
@@ -390,14 +378,10 @@ export async function createRoom(page: Page): Promise<{ code: string }> {
   throw new Error(`[e2e] expected room code in URL after retries, got: ${page.url()}`);
 }
 
-export async function joinControllerForRoom(
+export async function joinPlayerForRoom(
   browser: Browser,
   hostPage: Page,
-  {
-    code,
-    name,
-    controllerUrl = CONTROLLER_URL,
-  }: { code: string; name: string; controllerUrl?: string },
+  { code, name }: { code: string; name: string },
 ): Promise<JoinedController> {
   const ensureNameInputValue = async (nameInput: Locator, targetName: string): Promise<void> => {
     await expect(nameInput).toBeVisible({ timeout: 15_000 });
@@ -420,10 +404,8 @@ export async function joinControllerForRoom(
   };
 
   await waitForHostHealthy(hostPage);
-  await waitForControllerHealthy(hostPage, controllerUrl);
 
   const normalizedCode = code.toUpperCase();
-  const joinUrl = `${controllerUrl}/?code=${normalizedCode}`;
 
   let joined = false;
   let lastError: unknown = null;
@@ -439,7 +421,8 @@ export async function joinControllerForRoom(
       context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
       controllerPage = await context.newPage();
 
-      await controllerPage.goto(joinUrl, { waitUntil: "domcontentloaded" });
+      // Navigate to the unified app landing page
+      await controllerPage.goto(`${APP_URL}/`, { waitUntil: "domcontentloaded" });
       await expect(controllerPage.getByLabel("Room code character 1")).toBeVisible({
         timeout: 15_000,
       });
@@ -510,7 +493,7 @@ export async function joinControllerForRoom(
         )
         .toBe(true);
       await joinButton.click();
-      await expect(controllerPage).toHaveURL(/\/play(?:[/?#]|$)/, { timeout: 30_000 });
+      await expect(controllerPage).toHaveURL(/\/room\/[A-Z0-9]{4}(?:[/?#]|$)/, { timeout: 30_000 });
       await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 45_000 });
       joined = true;
       break;
@@ -528,13 +511,16 @@ export async function joinControllerForRoom(
   }
 
   if (!joined || !context || !controllerPage) {
-    throw lastError instanceof Error ? lastError : new Error("Controller failed to join room");
+    throw lastError instanceof Error ? lastError : new Error("Player failed to join room");
   }
 
   // Avoid strict-mode collisions like "Eve" matching "everyone" in card copy.
   await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
   return { context, controllerPage };
 }
+
+/** @deprecated Use joinPlayerForRoom instead */
+export const joinControllerForRoom = joinPlayerForRoom;
 
 export async function joinControllersForRoom(
   browser: Browser,
@@ -544,7 +530,7 @@ export async function joinControllersForRoom(
 ): Promise<JoinedController[]> {
   const joined: JoinedController[] = [];
   for (const name of names) {
-    joined.push(await joinControllerForRoom(browser, hostPage, { code, name }));
+    joined.push(await joinPlayerForRoom(browser, hostPage, { code, name }));
   }
   return joined;
 }

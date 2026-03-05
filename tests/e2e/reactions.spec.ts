@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import { createRoom, joinPlayerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Emoji Reaction System", () => {
   test("player sends reaction and it appears on host", async ({ page, browser }) => {
@@ -9,7 +9,7 @@ test.describe("Emoji Reaction System", () => {
     await waitForColyseusHealthy(page);
     const { code } = await createRoom(page);
 
-    const { context, controllerPage } = await joinControllerForRoom(browser, page, {
+    const { context, controllerPage } = await joinPlayerForRoom(browser, page, {
       code,
       name: "ReactionTester",
     });
@@ -45,7 +45,7 @@ test.describe("Emoji Reaction System", () => {
     await waitForColyseusHealthy(page);
     const { code } = await createRoom(page);
 
-    const { context, controllerPage } = await joinControllerForRoom(browser, page, {
+    const { context, controllerPage } = await joinPlayerForRoom(browser, page, {
       code,
       name: "CooldownTest",
     });

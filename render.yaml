@@ -2,24 +2,23 @@
 # Colyseus game server lives on Colyseus Cloud (not here).
 #
 # Service URLs:
-#   Controller: https://play.flimflam.gg  (custom domain → flimflam-controller.onrender.com)
-#   Host:       https://flimflam.gg       (custom domain → flimflam-host.onrender.com)
+#   Web: https://flimflam.gg (custom domain → flimflam-web.onrender.com)
 #
 # NEXT_PUBLIC_* env vars are baked in at build time via apps/*/.env.production
 # files committed to the repo — no manual env config needed in Render dashboard.
 
 services:
-  # ── Controller (phone PWA) — deploy first ──────────────────────────────────
+  # ── Web (unified host + controller) ──────────────────────────────────────────
   - type: web
-    name: flimflam-controller
+    name: flimflam-web
     runtime: node
     region: oregon
     plan: starter
     buildCommand: >-
       corepack enable &&
       pnpm install --frozen-lockfile &&
-      pnpm turbo build --filter=@flimflam/controller...
-    startCommand: cd apps/controller && npx next start
+      pnpm turbo build --filter=@flimflam/web...
+    startCommand: cd apps/web && npx next start
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
@@ -30,35 +29,7 @@ services:
         value: "1"
     buildFilter:
       paths:
-        - apps/controller/**
-        - packages/shared/**
-        - packages/ui/**
-        - package.json
-        - pnpm-lock.yaml
-        - turbo.json
-
-  # ── Host (TV / shared screen) ───────────────────────────────────────────────
-  - type: web
-    name: flimflam-host
-    runtime: node
-    region: oregon
-    plan: starter
-    buildCommand: >-
-      corepack enable &&
-      pnpm install --frozen-lockfile &&
-      pnpm turbo build --filter=@flimflam/host...
-    startCommand: cd apps/host && npx next start
-    healthCheckPath: /
-    envVars:
-      - key: NODE_VERSION
-        value: "22"
-      - key: NODE_ENV
-        value: production
-      - key: FLIMFLAM_STRICT_ENV
-        value: "1"
-    buildFilter:
-      paths:
-        - apps/host/**
+        - apps/web/**
         - packages/shared/**
         - packages/ui/**
         - package.json

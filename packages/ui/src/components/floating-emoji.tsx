@@ -9,14 +9,20 @@ interface FloatingEmojiProps {
 }
 
 function FloatingEmoji({ count = 8 }: FloatingEmojiProps) {
-  const items = React.useMemo(() => {
-    return Array.from({ length: count }, (_, i) => ({
-      emoji: EMOJIS[i % EMOJIS.length] ?? EMOJIS[0],
-      left: `${(i * 100) / count + Math.random() * 8}%`,
-      delay: `${i * 2.5 + Math.random() * 3}s`,
-      duration: `${18 + Math.random() * 12}s`,
-      size: `${18 + Math.random() * 14}px`,
-    }));
+  const [items, setItems] = React.useState<
+    { emoji: string; left: string; delay: string; duration: string; size: string }[]
+  >([]);
+
+  React.useEffect(() => {
+    setItems(
+      Array.from({ length: count }, (_, i) => ({
+        emoji: (EMOJIS[i % EMOJIS.length] ?? EMOJIS[0]) as string,
+        left: `${(i * 100) / count + Math.random() * 8}%`,
+        delay: `${i * 2.5 + Math.random() * 3}s`,
+        duration: `${18 + Math.random() * 12}s`,
+        size: `${18 + Math.random() * 14}px`,
+      })),
+    );
   }, [count]);
 
   return (

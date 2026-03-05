@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import {
   createRoom,
-  joinControllerForRoom,
+  joinPlayerForRoom,
   selectGameAndStart,
   waitForColyseusHealthy,
 } from "./e2e-helpers";
@@ -26,10 +26,10 @@ test("lobby enforces minimum players and starts selected game cleanly", async ({
     "true",
   );
 
-  const p1 = await joinControllerForRoom(browser, page, { code, name: "Solo" });
+  const p1 = await joinPlayerForRoom(browser, page, { code, name: "Solo" });
   await expect(startButton).toBeDisabled();
 
-  const p2 = await joinControllerForRoom(browser, page, { code, name: "Duo" });
+  const p2 = await joinPlayerForRoom(browser, page, { code, name: "Duo" });
   await expect(startButton).toBeEnabled({ timeout: 15_000 });
 
   await selectGameAndStart(page, { gameName: "Lucky Letters", complexity: "kids" });

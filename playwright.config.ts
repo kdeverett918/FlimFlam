@@ -50,21 +50,19 @@ function isPortBusy(port: number): boolean {
   }
 }
 
-function resolvePortTriplet(): { hostPort: number; controllerPort: number; colyseusPort: number } {
-  const explicitHost = parsePort(process.env.FLIMFLAM_E2E_HOST_PORT);
-  const explicitController = parsePort(process.env.FLIMFLAM_E2E_CONTROLLER_PORT);
+function resolvePortPair(): { appPort: number; colyseusPort: number } {
+  const explicitApp = parsePort(process.env.FLIMFLAM_E2E_HOST_PORT);
   const explicitColyseus = parsePort(process.env.FLIMFLAM_E2E_COLYSEUS_PORT);
 
-  if (explicitHost && explicitController && explicitColyseus) {
+  if (explicitApp && explicitColyseus) {
     return {
-      hostPort: explicitHost,
-      controllerPort: explicitController,
+      appPort: explicitApp,
       colyseusPort: explicitColyseus,
     };
   }
 
   const pidOffset = Math.abs(process.pid % 20) * 20;
-  const hostCandidates = [
+  const appCandidates = [
     5310 + pidOffset,
     5410 + pidOffset,
     5510 + pidOffset,
@@ -74,64 +72,47 @@ function resolvePortTriplet(): { hostPort: number; controllerPort: number; colys
     5910 + pidOffset,
   ];
 
-  for (const hostCandidate of hostCandidates) {
-    const controllerCandidate = hostCandidate + 1;
-    const colyseusCandidate = hostCandidate + 257;
-    if (
-      !isPortBusy(hostCandidate) &&
-      !isPortBusy(controllerCandidate) &&
-      !isPortBusy(colyseusCandidate)
-    ) {
+  for (const appCandidate of appCandidates) {
+    const colyseusCandidate = appCandidate + 257;
+    if (!isPortBusy(appCandidate) && !isPortBusy(colyseusCandidate)) {
       return {
-        hostPort: hostCandidate,
-        controllerPort: controllerCandidate,
+        appPort: appCandidate,
         colyseusPort: colyseusCandidate,
       };
     }
   }
 
-  return { hostPort: 5310, controllerPort: 5311, colyseusPort: 5567 };
+  return { appPort: 5310, colyseusPort: 5567 };
 }
 
-const { hostPort, controllerPort, colyseusPort } = resolvePortTriplet();
-if (
-  !Number.isFinite(hostPort) ||
-  !Number.isFinite(controllerPort) ||
-  !Number.isFinite(colyseusPort)
-) {
+const { appPort, colyseusPort } = resolvePortPair();
+if (!Number.isFinite(appPort) || !Number.isFinite(colyseusPort)) {
   throw new Error("Failed to resolve valid E2E ports for Playwright");
 }
-const e2eHostPort = String(hostPort);
-const e2eControllerPort = String(controllerPort);
+const e2eAppPort = String(appPort);
 const e2eColyseusPort = String(colyseusPort);
 
-const e2eHostUrl = `http://127.0.0.1:${e2eHostPort}`;
-const e2eControllerUrl = `http://127.0.0.1:${e2eControllerPort}`;
+const e2eAppUrl = `http://127.0.0.1:${e2eAppPort}`;
 const e2eColyseusWsUrl = `ws://127.0.0.1:${e2eColyseusPort}`;
 const e2eColyseusHealthUrl = `http://127.0.0.1:${e2eColyseusPort}/health`;
-const e2eHostDistDir = ".next-e2e-host";
-const e2eControllerDistDir = ".next-e2e-controller";
+const e2eAppDistDir = ".next-e2e-host";
 
 const e2eArtifactsDir = path.join(process.cwd(), ".tmp", "playwright-artifacts");
 const e2eReportDir = path.join(process.cwd(), ".tmp", "playwright-report");
 fs.mkdirSync(e2eArtifactsDir, { recursive: true });
 fs.mkdirSync(e2eReportDir, { recursive: true });
 
-process.env.FLIMFLAM_E2E_HOST_URL = e2eHostUrl;
-process.env.FLIMFLAM_E2E_CONTROLLER_URL = e2eControllerUrl;
+process.env.FLIMFLAM_E2E_HOST_URL = e2eAppUrl;
 process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL = e2eColyseusHealthUrl;
-process.env.FLIMFLAM_E2E_HOST_PORT = e2eHostPort;
-process.env.FLIMFLAM_E2E_CONTROLLER_PORT = e2eControllerPort;
+process.env.FLIMFLAM_E2E_HOST_PORT = e2eAppPort;
 process.env.FLIMFLAM_E2E_COLYSEUS_PORT = e2eColyseusPort;
 process.env.NEXT_PUBLIC_COLYSEUS_URL = e2eColyseusWsUrl;
-process.env.NEXT_PUBLIC_HOST_URL = e2eHostUrl;
-process.env.NEXT_PUBLIC_CONTROLLER_URL = e2eControllerUrl;
+process.env.NEXT_PUBLIC_HOST_URL = e2eAppUrl;
 process.env.NEXT_PUBLIC_FLIMFLAM_E2E = "1";
 process.env.FLIMFLAM_E2E = "1";
 process.env.FLIMFLAM_E2E_RUNTIME = E2E_RUNTIME;
 process.env.FLIMFLAM_E2E_SKIP_BUILD = E2E_SKIP_BUILD;
-process.env.FLIMFLAM_E2E_HOST_DIST_DIR = e2eHostDistDir;
-process.env.FLIMFLAM_E2E_CONTROLLER_DIST_DIR = e2eControllerDistDir;
+process.env.FLIMFLAM_E2E_HOST_DIST_DIR = e2eAppDistDir;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -145,14 +126,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 1,
   reporter: [["list"], ["html", { open: "never", outputFolder: e2eReportDir }]],
   use: {
-    baseURL: e2eHostUrl,
+    baseURL: e2eAppUrl,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
   webServer: {
     command: "node scripts/e2e-webserver.mjs",
-    url: e2eHostUrl,
+    url: e2eAppUrl,
     timeout: 360_000,
     reuseExistingServer: false,
     env: {
@@ -162,15 +143,11 @@ export default defineConfig({
       PORT: e2eColyseusPort,
       FLIMFLAM_E2E_COLYSEUS_PORT: e2eColyseusPort,
       NEXT_PUBLIC_COLYSEUS_URL: e2eColyseusWsUrl,
-      NEXT_PUBLIC_HOST_URL: e2eHostUrl,
-      NEXT_PUBLIC_CONTROLLER_URL: e2eControllerUrl,
+      NEXT_PUBLIC_HOST_URL: e2eAppUrl,
       FLIMFLAM_E2E_COLYSEUS_HEALTH_URL: e2eColyseusHealthUrl,
-      FLIMFLAM_E2E_HOST_PORT: e2eHostPort,
-      FLIMFLAM_E2E_CONTROLLER_PORT: e2eControllerPort,
-      FLIMFLAM_E2E_HOST_URL: e2eHostUrl,
-      FLIMFLAM_E2E_CONTROLLER_URL: e2eControllerUrl,
-      FLIMFLAM_E2E_HOST_DIST_DIR: e2eHostDistDir,
-      FLIMFLAM_E2E_CONTROLLER_DIST_DIR: e2eControllerDistDir,
+      FLIMFLAM_E2E_HOST_PORT: e2eAppPort,
+      FLIMFLAM_E2E_HOST_URL: e2eAppUrl,
+      FLIMFLAM_E2E_HOST_DIST_DIR: e2eAppDistDir,
       FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
       FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
       FLIMFLAM_E2E_RUNTIME: E2E_RUNTIME,

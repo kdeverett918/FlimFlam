@@ -11,18 +11,13 @@ const isWin = process.platform === "win32";
 const PNPM_BIN = "pnpm";
 
 const repoRoot = process.cwd();
-const hostCwd = path.join(repoRoot, "apps", "host");
-const controllerCwd = path.join(repoRoot, "apps", "controller");
+const webCwd = path.join(repoRoot, "apps", "web");
 
-const hostPort = process.env.FLIMFLAM_E2E_HOST_PORT ?? "5310";
-const controllerPort = process.env.FLIMFLAM_E2E_CONTROLLER_PORT ?? "5311";
+const appPort = process.env.FLIMFLAM_E2E_HOST_PORT ?? "5310";
 const serverPort = process.env.PORT ?? process.env.FLIMFLAM_E2E_COLYSEUS_PORT ?? "5567";
-const hostDistDir = process.env.FLIMFLAM_E2E_HOST_DIST_DIR ?? ".next-e2e-host";
-const controllerDistDir = process.env.FLIMFLAM_E2E_CONTROLLER_DIST_DIR ?? ".next-e2e-controller";
+const appDistDir = process.env.FLIMFLAM_E2E_HOST_DIST_DIR ?? ".next-e2e-host";
 
-const hostUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? `http://127.0.0.1:${hostPort}`;
-const controllerUrl =
-  process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? `http://127.0.0.1:${controllerPort}`;
+const appUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? `http://127.0.0.1:${appPort}`;
 const serverHealthUrl =
   process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? `http://127.0.0.1:${serverPort}/health`;
 
@@ -313,8 +308,7 @@ function cleanNextArtifacts() {
   }
 
   const targets = [
-    { cwd: hostCwd, distDir: hostDistDir },
-    { cwd: controllerCwd, distDir: controllerDistDir },
+    { cwd: webCwd, distDir: appDistDir },
   ];
 
   for (const target of targets) {
@@ -462,8 +456,7 @@ async function ensurePortAvailable(port, serviceName) {
 async function ensureRequiredPortsAvailable() {
   let blocked = false;
   if (!skipServer && !(await ensurePortAvailable(serverPort, "server"))) blocked = true;
-  if (!(await ensurePortAvailable(hostPort, "host"))) blocked = true;
-  if (!(await ensurePortAvailable(controllerPort, "controller"))) blocked = true;
+  if (!(await ensurePortAvailable(appPort, "app"))) blocked = true;
   return !blocked;
 }
 
@@ -488,8 +481,7 @@ async function prebuildIfNeeded() {
   if (!useProductionRuntime) return;
 
   if (skipBuild) {
-    ensureNextBuildExists(hostCwd, hostDistDir, "host");
-    ensureNextBuildExists(controllerCwd, controllerDistDir, "controller");
+    ensureNextBuildExists(webCwd, appDistDir, "web");
     return;
   }
 
@@ -499,26 +491,16 @@ async function prebuildIfNeeded() {
   };
 
   runPnpmStep(
-    "host build",
-    ["--filter", "@flimflam/host", "build"],
+    "web build",
+    ["--filter", "@flimflam/web", "build"],
     {
       ...buildEnv,
-      FLIMFLAM_NEXT_DIST_DIR: hostDistDir,
-    },
-    buildAttemptCount,
-  );
-  runPnpmStep(
-    "controller build",
-    ["--filter", "@flimflam/controller", "build"],
-    {
-      ...buildEnv,
-      FLIMFLAM_NEXT_DIST_DIR: controllerDistDir,
+      FLIMFLAM_NEXT_DIST_DIR: appDistDir,
     },
     buildAttemptCount,
   );
 
-  ensureNextBuildExists(hostCwd, hostDistDir, "host");
-  ensureNextBuildExists(controllerCwd, controllerDistDir, "controller");
+  ensureNextBuildExists(webCwd, appDistDir, "web");
 }
 
 function startServerIfNeeded() {
@@ -532,16 +514,10 @@ function startServerIfNeeded() {
   });
 }
 
-function startHost() {
+function startApp() {
   const command = useProductionRuntime ? "start" : "dev";
-  console.log(`[e2e-webserver] launching host via next ${command} on ${hostPort}`);
-  spawnNextService("host", hostCwd, command, hostPort, hostDistDir);
-}
-
-function startController() {
-  const command = useProductionRuntime ? "start" : "dev";
-  console.log(`[e2e-webserver] launching controller via next ${command} on ${controllerPort}`);
-  spawnNextService("controller", controllerCwd, command, controllerPort, controllerDistDir);
+  console.log(`[e2e-webserver] launching web app via next ${command} on ${appPort}`);
+  spawnNextService("web", webCwd, command, appPort, appDistDir);
 }
 
 process.on("SIGINT", () => shutdown(0));
@@ -560,7 +536,7 @@ async function main() {
   fs.mkdirSync(path.join(repoRoot, ".tmp", "playwright-report"), { recursive: true });
 
   console.log(
-    `[e2e-webserver] bootstrap runtime=${runtimeMode} host=${hostPort} controller=${controllerPort} server=${serverPort}`,
+    `[e2e-webserver] bootstrap runtime=${runtimeMode} app=${appPort} server=${serverPort}`,
   );
   if (runtimeModeInput !== runtimeMode) {
     console.warn(
@@ -590,14 +566,12 @@ async function main() {
   }
 
   startServerIfNeeded();
-  startHost();
-  startController();
+  startApp();
 
   if (!skipServer) {
     await waitForHttpReady(serverHealthUrl, "server");
   }
-  await waitForHttpReady(hostUrl, "host");
-  await waitForHttpReady(controllerUrl, "controller");
+  await waitForHttpReady(appUrl, "web app");
 
   console.log(`[e2e-webserver] Ready (runtime=${runtimeMode})`);
   keepAliveTimer = setInterval(() => {}, 1000);

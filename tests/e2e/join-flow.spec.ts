@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { createRoom, joinControllerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
+import { createRoom, joinPlayerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test("host creates room and players join", async ({ page, browser }) => {
   await page.goto("/");
@@ -13,14 +13,16 @@ test("host creates room and players join", async ({ page, browser }) => {
   await expect
     .poll(
       async () =>
-        await page.evaluate(() => (sessionStorage.getItem("flimflam_host_token") ?? "").length),
+        await page.evaluate(
+          () => (sessionStorage.getItem("flimflam_reconnect_token") ?? "").length,
+        ),
       { timeout: 10_000 },
     )
     .toBeGreaterThan(0);
 
-  const c1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
-  const c2 = await joinControllerForRoom(browser, page, { code, name: "Bob" });
-  const c3 = await joinControllerForRoom(browser, page, { code, name: "Casey" });
+  const c1 = await joinPlayerForRoom(browser, page, { code, name: "Alice" });
+  const c2 = await joinPlayerForRoom(browser, page, { code, name: "Bob" });
+  const c3 = await joinPlayerForRoom(browser, page, { code, name: "Casey" });
 
   await expect(page.getByText("Alice")).toBeVisible();
   await expect(page.getByText("Bob")).toBeVisible();

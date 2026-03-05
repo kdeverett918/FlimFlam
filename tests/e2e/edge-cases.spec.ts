@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 import {
-  CONTROLLER_URL,
+  APP_URL,
   DEFAULT_MOBILE_VIEWPORT,
   closeAllControllers,
   createRoom,
   driveSurveySmashKidsToFinalScores,
-  joinControllerForRoom,
   joinControllersForRoom,
+  joinPlayerForRoom,
   startGame,
   waitForColyseusHealthy,
 } from "./e2e-helpers";
@@ -55,18 +55,21 @@ test.describe("Edge Cases", () => {
     const { code } = await createRoom(page);
 
     // First "Alice" joins
-    const p1 = await joinControllerForRoom(browser, page, { code, name: "Alice" });
+    const p1 = await joinPlayerForRoom(browser, page, { code, name: "Alice" });
     await expect(page.getByText("Alice", { exact: true })).toBeVisible({ timeout: 10_000 });
 
     // Second "Alice" joins — server should deduplicate
     const context2 = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
     const page2 = await context2.newPage();
-    await page2.goto(`${CONTROLLER_URL}/?code=${code}`);
+    await page2.goto(`${APP_URL}/`);
+    for (let i = 0; i < 4; i++) {
+      await page2.getByLabel(`Room code character ${i + 1}`).fill(code[i] ?? "");
+    }
     await page2.getByLabel("Your Name").fill("Alice");
     await page2.getByRole("button", { name: /^join$/i }).click();
 
     // Wait for the second player to join
-    await expect(page2).toHaveURL(/\/play$/, { timeout: 30_000 });
+    await expect(page2).toHaveURL(/\/room\/[A-Z0-9]{4}(?:[/?#]|$)/, { timeout: 30_000 });
 
     // Host should show 2 players — the second may have a deduplicated name
     // (e.g., "Alice2" or similar). We just verify 2 distinct player entries exist.
@@ -121,8 +124,8 @@ test.describe("Edge Cases", () => {
     const { code } = await createRoom(page);
 
     // Join 2 players (enough to start)
-    const p1 = await joinControllerForRoom(browser, page, { code, name: "Alpha" });
-    const p2 = await joinControllerForRoom(browser, page, { code, name: "Beta" });
+    const p1 = await joinPlayerForRoom(browser, page, { code, name: "Alpha" });
+    const p2 = await joinPlayerForRoom(browser, page, { code, name: "Beta" });
 
     // Without selecting a game, start should be disabled or show "waiting"
     // The start button text changes based on state

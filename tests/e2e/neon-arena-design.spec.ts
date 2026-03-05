@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { createRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
-const CONTROLLER_URL = process.env.FLIMFLAM_E2E_CONTROLLER_URL ?? "http://127.0.0.1:3301";
+const APP_URL = process.env.FLIMFLAM_E2E_HOST_URL ?? "http://127.0.0.1:5310";
 
 test.describe("Design System Integrity", () => {
   test("host homepage renders cinematic dark presentation", async ({ page }) => {
@@ -23,7 +23,7 @@ test.describe("Design System Integrity", () => {
   }) => {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
-    await page.goto(CONTROLLER_URL);
+    await page.goto(APP_URL);
 
     const codeInput = page.getByLabel("Room code character 1");
     await expect(codeInput).toBeVisible();

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generate PWA icons from apps/controller/public/icon.svg
+ * Generate PWA icons from apps/web/public/icon.svg
  * Outputs: icon-192.png, icon-512.png, apple-touch-icon.png
  *
  * Uses sharp if available, otherwise falls back to a canvas-free approach
@@ -16,8 +16,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
-const svgPath = path.join(root, "apps/controller/public/icon.svg");
-const outDir = path.join(root, "apps/controller/public");
+const svgPath = path.join(root, "apps/web/public/icon.svg");
+const outDir = path.join(root, "apps/web/public");
 
 const sizes = [
   { name: "icon-192.png", size: 192 },

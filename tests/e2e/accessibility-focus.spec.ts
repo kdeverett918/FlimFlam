@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { CONTROLLER_URL, DEFAULT_MOBILE_VIEWPORT, waitForColyseusHealthy } from "./e2e-helpers";
+import { APP_URL, DEFAULT_MOBILE_VIEWPORT, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Accessibility Focus-Visible Styles", () => {
   test("Join button shows focus-visible ring on keyboard focus", async ({ page, browser }) => {
@@ -10,7 +10,7 @@ test.describe("Accessibility Focus-Visible Styles", () => {
     // Open controller in a new context
     const context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
     const controllerPage = await context.newPage();
-    await controllerPage.goto(CONTROLLER_URL);
+    await controllerPage.goto(APP_URL);
 
     // Fill in the code and name fields first so the Join button is enabled.
     const code = "ABCD";
