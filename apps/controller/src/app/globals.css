@@ -483,8 +483,8 @@ textarea,
 
 html {
   overscroll-behavior: none;
-  /* Prevent pull-to-refresh in standalone PWA mode */
-  overflow: hidden;
+  /* Prevent horizontal overflow but allow vertical scroll for tall game content */
+  overflow-x: hidden;
 }
 
 html,
