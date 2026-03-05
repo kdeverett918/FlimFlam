@@ -46,6 +46,7 @@
       "artifacts",
       ".codex",
       ".cache/ms-playwright",
+      ".pnpm-store",
       "*.tsbuildinfo"
     ]
   }
