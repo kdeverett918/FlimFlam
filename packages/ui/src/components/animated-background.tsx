@@ -120,11 +120,11 @@ function AnimatedBackground({
         }}
       />
 
-      {/* Layer 6: SVG noise texture */}
+      {/* Layer 6: SVG noise texture — hidden on mobile to avoid grey fuzzy overlay */}
       <svg
         aria-hidden="true"
         className={cn(
-          "pointer-events-none absolute inset-0 h-full w-full",
+          "pointer-events-none absolute inset-0 hidden h-full w-full md:block",
           variant === "subtle" ? "opacity-[0.01]" : "opacity-[0.02]",
         )}
       >
