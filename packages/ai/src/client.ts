@@ -8,11 +8,8 @@ import {
 import type { ZodSchema } from "zod";
 import { parseAIResponse } from "./parser";
 
-const DEFAULT_MODEL = "claude-opus-4-6";
-const MODEL_FALLBACKS = [
-  "claude-sonnet-4-20250514",
-  "claude-sonnet-4-5-20250514",
-] as const;
+const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const MODEL_FALLBACKS = ["claude-sonnet-4-5-latest", "claude-3-5-sonnet-latest"] as const;
 
 let anthropicClient: Anthropic | null = null;
 

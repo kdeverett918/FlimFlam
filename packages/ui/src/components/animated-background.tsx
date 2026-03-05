@@ -60,7 +60,7 @@ function AnimatedBackground({
     <div
       className={cn("fixed inset-0 -z-10 overflow-hidden", className)}
       aria-hidden="true"
-      style={{ contain: "strict" }}
+      style={{ contain: "layout size", pointerEvents: "none" }}
       {...props}
     >
       {/* Background base */}
