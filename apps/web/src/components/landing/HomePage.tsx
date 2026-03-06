@@ -46,8 +46,12 @@ export default function HomePage() {
   const handleCreateRoom = useCallback(() => {
     // Clear stale reconnection tokens so we never rejoin an old room
     for (const key of ["flimflam_reconnect_token", "flimflam_room_code"]) {
-      try { sessionStorage.removeItem(key); } catch {}
-      try { localStorage.removeItem(key); } catch {}
+      try {
+        sessionStorage.removeItem(key);
+      } catch {}
+      try {
+        localStorage.removeItem(key);
+      } catch {}
     }
     const name = encodeURIComponent(creatorName.trim() || "Host");
     const color = encodeURIComponent(creatorColor);
@@ -59,8 +63,12 @@ export default function HomePage() {
     async (code: string, name: string, color: string): Promise<boolean> => {
       // Clear stale reconnection tokens so we don't rejoin an old room
       for (const key of ["flimflam_reconnect_token", "flimflam_room_code"]) {
-        try { sessionStorage.removeItem(key); } catch {}
-        try { localStorage.removeItem(key); } catch {}
+        try {
+          sessionStorage.removeItem(key);
+        } catch {}
+        try {
+          localStorage.removeItem(key);
+        } catch {}
       }
       const encodedName = encodeURIComponent(name);
       const encodedColor = encodeURIComponent(color);

@@ -1,10 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  closeAllControllers,
-  skipToPhase,
-  startGame,
-} from "./e2e-helpers";
+import { closeAllControllers, skipToPhase, startGame } from "./e2e-helpers";
 
 test.describe("Lucky Letters Full Gameplay", () => {
   test("start to round intro with category", async ({ page, browser }) => {

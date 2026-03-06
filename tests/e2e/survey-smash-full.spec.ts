@@ -1,10 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  closeAllControllers,
-  skipToPhase,
-  startGame,
-} from "./e2e-helpers";
+import { closeAllControllers, skipToPhase, startGame } from "./e2e-helpers";
 
 test.describe("Survey Smash Full Gameplay", () => {
   test("start shows survey question text", async ({ page, browser }) => {
@@ -17,9 +13,19 @@ test.describe("Survey Smash Full Gameplay", () => {
     // With fast timers, the game may have already advanced past question-reveal.
     // Check for any survey-smash content (round info, VS, question text, answer board).
     const hasSurveyContent = await Promise.race([
-      page.getByText(/round 1 of \d/i).isVisible().catch(() => false),
-      page.getByText("VS").isVisible().catch(() => false),
-      page.getByText(/name a|what is|how many/i).first().isVisible().catch(() => false),
+      page
+        .getByText(/round 1 of \d/i)
+        .isVisible()
+        .catch(() => false),
+      page
+        .getByText("VS")
+        .isVisible()
+        .catch(() => false),
+      page
+        .getByText(/name a|what is|how many/i)
+        .first()
+        .isVisible()
+        .catch(() => false),
     ]);
     // If not visible yet, wait a bit for game to load
     if (!hasSurveyContent) {

@@ -1,11 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  closeAllControllers,
-  createRoom,
-  joinPlayerForRoom,
-  waitForColyseusHealthy,
-} from "./e2e-helpers";
+import { createRoom, joinPlayerForRoom, waitForColyseusHealthy } from "./e2e-helpers";
 
 test.describe("Reconnection Comprehensive", () => {
   test("no ghost players on fresh create", async ({ page }) => {

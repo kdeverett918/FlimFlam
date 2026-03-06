@@ -1,12 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import {
-  closeAllControllers,
-  driveBrainBoardToFinalScores,
-  forceToFinalScores,
-  skipToPhase,
-  startGame,
-} from "./e2e-helpers";
+import { closeAllControllers, forceToFinalScores, skipToPhase, startGame } from "./e2e-helpers";
 
 test.describe("Brain Board Full Gameplay", () => {
   test("start to category phase", async ({ page, browser }) => {
