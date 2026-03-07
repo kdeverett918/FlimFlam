@@ -15,12 +15,22 @@ const RSTLNE = new Set(["R", "S", "T", "L", "N", "E"]);
 const BONUS_PRIZE = 25000;
 const _BONUS_SOLVE_TIME_MS = 10000;
 
-const CATEGORY_VOTE_TIMEOUT_MS = 15000;
+const CATEGORY_VOTE_TIMEOUT_MS = 25000;
+const SPIN_IDLE_TIMEOUT_MS = 20000;
+const GUESS_IDLE_TIMEOUT_MS = 15000;
+const BUY_VOWEL_IDLE_TIMEOUT_MS = 12000;
+const SOLVE_IDLE_TIMEOUT_MS = 15000;
 const ROUND_INTRO_DELAY_MS = 3000;
 const LETTER_RESULT_DELAY_MS = 2000;
 const ROUND_RESULT_DELAY_MS = 4000;
 const SPIN_ANIMATION_DELAY_MS = 3500;
 const BONUS_REVEAL_DELAY_MS = 5000;
+const E2E_SOLVE_TOKEN_DEFAULT = "__E2E_SOLVE__";
+const SOLVE_BONUS_BY_COMPLEXITY: Record<Complexity, number> = {
+  kids: 500,
+  standard: 1000,
+  advanced: 1500,
+};
 
 /** How many rounds by complexity. */
 function getRoundsForComplexity(complexity: Complexity): number {
@@ -146,6 +156,7 @@ interface LuckyLettersRoundResultInput {
   answer: string;
   category: string;
   roundCashEarned: number;
+  solveBonusAwarded?: number;
   standings: Array<{ sessionId: string; roundCash: number; totalCash: number }>;
 }
 
@@ -194,6 +205,7 @@ export function buildLuckyLettersRoundResultPayload(
     answer: input.answer,
     category: input.category,
     roundCashEarned: input.roundCashEarned,
+    solveBonusAwarded: input.solveBonusAwarded ?? 0,
     standings: input.standings,
   };
 }
@@ -208,6 +220,42 @@ export function buildLuckyLettersBonusRevealPayload(
     bonusPrize: input.bonusPrize,
     bonusPlayerId: input.bonusPlayerId,
   };
+}
+
+export function getSolveBonus(complexity: Complexity): number {
+  return SOLVE_BONUS_BY_COMPLEXITY[complexity] ?? SOLVE_BONUS_BY_COMPLEXITY.standard;
+}
+
+function getPuzzleLengthScore(puzzle: WheelPuzzle): number {
+  const wordCount = puzzle.phrase.trim().split(/\s+/).length;
+  const revealedLetterCount = puzzle.phrase.replace(/[^A-Z]/g, "").length;
+  return wordCount * 100 + revealedLetterCount;
+}
+
+export function getIdleTimeoutForPhase(phase: WheelPhase): number | null {
+  switch (phase) {
+    case "category-vote":
+      return CATEGORY_VOTE_TIMEOUT_MS;
+    case "spinning":
+      return SPIN_IDLE_TIMEOUT_MS;
+    case "guess-consonant":
+      return GUESS_IDLE_TIMEOUT_MS;
+    case "buy-vowel":
+      return BUY_VOWEL_IDLE_TIMEOUT_MS;
+    case "solve-attempt":
+      return SOLVE_IDLE_TIMEOUT_MS;
+    default:
+      return null;
+  }
+}
+
+export function isDeterministicE2ESolveAttempt(attempt: string): boolean {
+  const isE2E = process.env.FLIMFLAM_E2E === "1" || process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1";
+  if (!isE2E) return false;
+  const token = process.env.FLIMFLAM_E2E_SOLVE_TOKEN ?? E2E_SOLVE_TOKEN_DEFAULT;
+  const normalizedToken = normalizeSolve(token);
+  if (!normalizedToken) return false;
+  return normalizeSolve(attempt) === normalizedToken;
 }
 
 // ─── Internal state ────────────────────────────────────────────────────────
@@ -278,11 +326,12 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   private selectedCategories: string[] = [];
 
   private pendingTimerId: ReturnType<typeof setTimeout> | null = null;
+  private actionTimerId: ReturnType<typeof setTimeout> | null = null;
 
   createState(): Schema {
     // We use the shared RoomState from PartyRoom; no custom Schema needed.
     // All game-specific data is sent via room.broadcast("game-data", ...) and
-    // room.send(client, "private-data", ...).
+    // client.send("private-data", ...).
     return null as unknown as Schema;
   }
 
@@ -329,10 +378,8 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.broadcastGameState(room, state);
 
     // Auto-advance after timeout
-    this.scheduleDelayed(room, CATEGORY_VOTE_TIMEOUT_MS, () => {
-      if (this.phase === "category-vote") {
-        this.finalizeCategoryVote(room, state);
-      }
+    this.startIdleTimer(room, state, "category-vote", () => {
+      this.finalizeCategoryVote(room, state);
     });
   }
 
@@ -399,12 +446,14 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       this.phase !== "bonus-round" &&
       this.phase !== "bonus-reveal"
     ) {
+      this.clearIdleTimer(state);
       this.advanceTurn(room, state);
     }
 
     // If the bonus round player disconnected, end bonus round
     if (this.phase === "bonus-round" && sessionId === this.bonusPlayerSessionId) {
       this.clearTimer();
+      this.clearIdleTimer(state);
       this.goToBonusReveal(room, state);
     }
   }
@@ -444,6 +493,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
     this.setStateRound(state, this.currentRound, this.totalRounds);
     this.setPhase(state, "round-intro");
+    this.clearIdleTimer(state);
     this.broadcastGameState(room, state);
 
     // Auto-advance to spinning after a delay
@@ -452,6 +502,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       this.setPhase(state, "spinning");
       this.broadcastGameState(room, state);
       this.sendAllPrivateData(room, state);
+      this.startIdleTimer(room, state, "spinning", () => {
+        this.handleIdleSpinTimeout(room, state);
+      });
     });
   }
 
@@ -459,6 +512,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (this.phase !== "spinning") return;
     if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
 
+    this.clearIdleTimer(state);
     const result = spinWheel();
     this.lastSpinResult = result;
 
@@ -470,6 +524,25 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     });
 
     // Process after animation delay
+    this.scheduleDelayed(room, SPIN_ANIMATION_DELAY_MS, () => {
+      this.processSpinResult(room, state, result);
+    });
+  }
+
+  private handleIdleSpinTimeout(room: Room, state: Schema): void {
+    if (this.phase !== "spinning") return;
+
+    const result = spinWheel();
+    this.lastSpinResult = result;
+
+    // Broadcast spin result to all clients for animation (spectator parity).
+    room.broadcast("game-data", {
+      type: "spin-result",
+      segment: result.segment,
+      angle: result.angle,
+    });
+
+    // Process after animation delay.
     this.scheduleDelayed(room, SPIN_ANIMATION_DELAY_MS, () => {
       this.processSpinResult(room, state, result);
     });
@@ -509,6 +582,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.setPhase(state, "guess-consonant");
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
+        this.startIdleTimer(room, state, "guess-consonant", () => {
+          this.advanceTurn(room, state);
+        });
         break;
       }
       case "cash": {
@@ -517,6 +593,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.setPhase(state, "guess-consonant");
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
+        this.startIdleTimer(room, state, "guess-consonant", () => {
+          this.advanceTurn(room, state);
+        });
         break;
       }
     }
@@ -532,6 +611,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
     if (!this.currentPuzzle || !this.lastSpinResult) return;
 
+    this.clearIdleTimer(state);
     const letter = (typeof data.letter === "string" ? data.letter : "").toUpperCase().trim();
     if (letter.length !== 1 || !CONSONANTS.has(letter)) return;
     if (this.revealedLetters.has(letter)) return;
@@ -619,6 +699,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
     if (!this.currentPuzzle) return;
 
+    this.clearIdleTimer(state);
     const letter = (typeof data.letter === "string" ? data.letter : "").toUpperCase().trim();
     if (letter.length !== 1 || !VOWELS.has(letter)) return;
     if (this.revealedLetters.has(letter)) return;
@@ -672,17 +753,28 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
     if (!this.currentPuzzle) return;
 
+    this.clearIdleTimer(state);
     const attempt = typeof data.answer === "string" ? data.answer : "";
+    const solved =
+      isSolveCorrect(attempt, this.currentPuzzle.phrase) || isDeterministicE2ESolveAttempt(attempt);
 
-    if (isSolveCorrect(attempt, this.currentPuzzle.phrase)) {
+    if (solved) {
+      const solveBonusAwarded = getSolveBonus(this.complexity);
+      const winnerCash = this.playerCash.get(client.sessionId);
+      if (winnerCash) {
+        winnerCash.roundCash += solveBonusAwarded;
+        this.playerCash.set(client.sessionId, winnerCash);
+      }
+
       // Correct solve! Player wins the round.
       room.broadcast("game-data", {
         type: "solve-result",
         correct: true,
         attempt,
         answer: this.currentPuzzle.phrase,
+        solveBonusAwarded,
       });
-      this.endRound(room, state, client.sessionId);
+      this.endRound(room, state, client.sessionId, solveBonusAwarded);
     } else {
       // Wrong solve: turn advances.
       room.broadcast("game-data", {
@@ -707,6 +799,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (this.turnOrder[this.currentTurnIndex] !== client.sessionId) return;
     if (this.phase !== "spinning") return;
 
+    this.clearIdleTimer(state);
     const action = typeof data.action === "string" ? data.action : "";
 
     switch (action) {
@@ -721,6 +814,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.setPhase(state, "buy-vowel");
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
+        this.startIdleTimer(room, state, "buy-vowel", () => {
+          this.advanceTurn(room, state);
+        });
         break;
       }
       case "solve": {
@@ -728,6 +824,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.setPhase(state, "solve-attempt");
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
+        this.startIdleTimer(room, state, "solve-attempt", () => {
+          this.advanceTurn(room, state);
+        });
         break;
       }
       // "spin" is the default action -- player just sends player:spin
@@ -841,8 +940,10 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     if (!this.currentPuzzle) return;
 
     const attempt = typeof data.answer === "string" ? data.answer : "";
+    const solved =
+      isSolveCorrect(attempt, this.currentPuzzle.phrase) || isDeterministicE2ESolveAttempt(attempt);
 
-    if (isSolveCorrect(attempt, this.currentPuzzle.phrase)) {
+    if (solved) {
       this.bonusSolved = true;
       this.clearTimer();
       // Award bonus prize
@@ -859,6 +960,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   private handleHostSkip(room: Room, state: Schema): void {
     // Allow host to advance past any waiting phase
     this.clearPendingTimer();
+    this.clearIdleTimer(state);
     switch (this.phase) {
       case "category-vote":
         this.finalizeCategoryVote(room, state);
@@ -868,9 +970,17 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         this.setPhase(state, "spinning");
         this.broadcastGameState(room, state);
         this.sendAllPrivateData(room, state);
+        this.startIdleTimer(room, state, "spinning", () => {
+          this.handleIdleSpinTimeout(room, state);
+        });
         break;
       case "spinning":
         // Skip past active player's turn
+        this.advanceTurn(room, state);
+        break;
+      case "guess-consonant":
+      case "buy-vowel":
+      case "solve-attempt":
         this.advanceTurn(room, state);
         break;
       case "bonus-round":
@@ -951,6 +1061,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.applyCategoryFilter();
 
     this.clearPendingTimer();
+    this.clearIdleTimer(state);
     this.phase = "round-intro";
     this.setPhase(state, "round-intro");
     this.setStateRound(state, 1, this.totalRounds);
@@ -965,6 +1076,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
   private finalizeCategoryVote(room: Room, state: Schema): void {
     this.clearPendingTimer();
+    this.clearIdleTimer(state);
 
     // Tally votes and pick top categories
     const tally = this.tallyCategoryVotes();
@@ -1046,6 +1158,9 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.setPhase(state, "spinning");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
+    this.startIdleTimer(room, state, "spinning", () => {
+      this.handleIdleSpinTimeout(room, state);
+    });
   }
 
   private goToPlayerChoice(room: Room, state: Schema): void {
@@ -1054,9 +1169,18 @@ class LuckyLettersPlugin extends BaseGamePlugin {
     this.setPhase(state, "spinning");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
+    this.startIdleTimer(room, state, "spinning", () => {
+      this.handleIdleSpinTimeout(room, state);
+    });
   }
 
-  private endRound(room: Room, state: Schema, winnerId: string | null): void {
+  private endRound(
+    room: Room,
+    state: Schema,
+    winnerId: string | null,
+    solveBonusAwarded = 0,
+  ): void {
+    this.clearIdleTimer(state);
     this.phase = "round-result";
     this.setPhase(state, "round-result");
 
@@ -1082,6 +1206,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
         answer: this.currentPuzzle?.phrase ?? "",
         category: this.currentPuzzle?.category ?? "",
         roundCashEarned: winnerId ? (this.playerCash.get(winnerId)?.roundCash ?? 0) : 0,
+        solveBonusAwarded,
         standings: this.getStandings(),
       }),
     );
@@ -1094,6 +1219,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   }
 
   private startBonusRound(room: Room, state: Schema): void {
+    this.clearIdleTimer(state);
     // Find player with highest totalCash
     let bestId: string | null = null;
     let bestCash = -1;
@@ -1187,6 +1313,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
 
   private goToBonusReveal(room: Room, state: Schema): void {
     this.clearTimer();
+    this.clearIdleTimer(state);
     this.phase = "bonus-reveal";
     this.setPhase(state, "bonus-reveal");
 
@@ -1208,6 +1335,8 @@ class LuckyLettersPlugin extends BaseGamePlugin {
   }
 
   private goToFinalScores(room: Room, state: Schema): void {
+    this.clearTimer();
+    this.clearIdleTimer(state);
     this.phase = "final-scores";
     this.setPhase(state, "final-scores");
 
@@ -1263,7 +1392,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       (cash?.roundCash ?? 0) >= VOWEL_COST &&
       getVowelsRemaining(this.revealedLetters).length > 0;
 
-    room.send(client, "private-data", {
+    client.send("private-data", {
       type: "player-state",
       roundCash: cash?.roundCash ?? 0,
       totalCash: cash?.totalCash ?? 0,
@@ -1341,9 +1470,92 @@ class LuckyLettersPlugin extends BaseGamePlugin {
       }
     }
 
-    const idx = pickRandom(available) ?? 0;
+    const sortedByLength = [...available].sort((a, b) => {
+      const left = bank[a];
+      const right = bank[b];
+      return (
+        getPuzzleLengthScore(right ?? { phrase: "", category: "" }) -
+        getPuzzleLengthScore(left ?? { phrase: "", category: "" })
+      );
+    });
+    const preferredPoolSize = Math.max(
+      1,
+      Math.min(
+        sortedByLength.length,
+        Math.ceil(sortedByLength.length * (this.complexity === "kids" ? 0.6 : 0.45)),
+      ),
+    );
+    const preferredPool = sortedByLength.slice(0, preferredPoolSize);
+    const idx = pickRandom(preferredPool) ?? sortedByLength[0] ?? 0;
     this.usedPuzzleIndices.add(idx);
     return bank[idx] ?? bank[0] ?? { phrase: "", category: "", hint: "" };
+  }
+
+  private getScaledDelay(delayMs: number): number {
+    const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
+    const scale = rawScale ? Number(rawScale) : 1;
+    const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
+    return Math.max(250, Math.round(delayMs * safeScale));
+  }
+
+  private getScaledPresentationDelay(delayMs: number): number {
+    const scaledDelay = this.getScaledDelay(delayMs);
+    const isE2E = process.env.FLIMFLAM_E2E === "1" || process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1";
+    if (!isE2E) return scaledDelay;
+
+    if (delayMs >= BONUS_REVEAL_DELAY_MS) return Math.max(2_500, scaledDelay);
+    if (delayMs >= ROUND_RESULT_DELAY_MS || delayMs >= SPIN_ANIMATION_DELAY_MS) {
+      return Math.max(1_250, scaledDelay);
+    }
+    if (delayMs >= ROUND_INTRO_DELAY_MS || delayMs >= LETTER_RESULT_DELAY_MS) {
+      return Math.max(900, scaledDelay);
+    }
+    return scaledDelay;
+  }
+
+  private startIdleTimer(
+    room: Room,
+    state: Schema,
+    expectedPhase: WheelPhase,
+    onTimeout: () => void,
+  ): void {
+    const timeoutMs = getIdleTimeoutForPhase(expectedPhase);
+    if (!timeoutMs) return;
+
+    this.clearIdleTimer(state);
+    const scaledDelay = this.getScaledDelay(timeoutMs);
+    this.setTimerEndsAt(state, Date.now() + scaledDelay);
+    const delayed = room.clock.setTimeout(() => {
+      this.actionTimerId = null;
+      this.setTimerEndsAt(state, 0);
+      if (this.phase !== expectedPhase) return;
+
+      room.broadcast("game-data", {
+        type: "idle-timeout",
+        phase: expectedPhase,
+        sessionId:
+          expectedPhase === "category-vote"
+            ? null
+            : (this.turnOrder[this.currentTurnIndex] ?? null),
+      });
+      onTimeout();
+    }, scaledDelay);
+    this.actionTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
+  }
+
+  private clearIdleTimer(state: Schema): void {
+    if (this.actionTimerId !== null) {
+      try {
+        const delayed = this.actionTimerId as unknown as { clear?: () => void };
+        if (typeof delayed.clear === "function") {
+          delayed.clear();
+        }
+      } catch {
+        // Ignore -- timer may have already fired
+      }
+      this.actionTimerId = null;
+    }
+    this.setTimerEndsAt(state, 0);
   }
 
   /**
@@ -1352,10 +1564,7 @@ class LuckyLettersPlugin extends BaseGamePlugin {
    */
   private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
     this.clearPendingTimer();
-    const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
-    const scale = rawScale ? Number(rawScale) : 1;
-    const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
-    const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
+    const scaledDelay = this.getScaledPresentationDelay(delayMs);
     const delayed = room.clock.setTimeout(callback, scaledDelay);
     this.pendingTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
   }
@@ -1381,4 +1590,18 @@ export function createLuckyLettersPlugin(): LuckyLettersPlugin {
 }
 
 // Re-export constants for testing
-export { VOWEL_COST, BONUS_PRIZE, VOWELS, CONSONANTS, RSTLNE };
+export {
+  VOWEL_COST,
+  BONUS_PRIZE,
+  VOWELS,
+  CONSONANTS,
+  RSTLNE,
+  getRoundsForComplexity,
+  hasBonusRound,
+  CATEGORY_VOTE_TIMEOUT_MS,
+  SPIN_IDLE_TIMEOUT_MS,
+  GUESS_IDLE_TIMEOUT_MS,
+  BUY_VOWEL_IDLE_TIMEOUT_MS,
+  SOLVE_IDLE_TIMEOUT_MS,
+  E2E_SOLVE_TOKEN_DEFAULT,
+};

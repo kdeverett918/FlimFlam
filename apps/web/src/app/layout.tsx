@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({
@@ -49,9 +50,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const runtimeConfigScript = `window.__FLIMFLAM_RUNTIME_CONFIG__ = ${JSON.stringify({
+    colyseusUrl: process.env.NEXT_PUBLIC_COLYSEUS_URL ?? null,
+    hostUrl: process.env.NEXT_PUBLIC_HOST_URL ?? null,
+  }).replace(/</g, "\\u003c")};`;
+
   return (
     <html lang="en" className={`${bricolage.variable} ${jakarta.variable} ${ibmPlexMono.variable}`}>
       <body className="min-h-dvh bg-bg-deep font-body text-text-primary antialiased">
+        <Script id="flimflam-runtime-config" strategy="beforeInteractive">
+          {runtimeConfigScript}
+        </Script>
         {children}
       </body>
     </html>

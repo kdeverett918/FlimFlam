@@ -4,6 +4,7 @@ import {
   type JoinedController,
   closeAllControllers,
   driveSurveySmashToFinalScores,
+  skipToPhase,
   startGame,
   submitTextAnswer,
 } from "./e2e-helpers";
@@ -70,7 +71,7 @@ test.describe("Mid-Game Disconnect", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
     // Wait for spinning phase

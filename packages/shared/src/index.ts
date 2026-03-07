@@ -127,13 +127,15 @@ export {
 // Utilities (browser-safe helpers)
 export {
   resolveColyseusWsUrlFromEnv,
+  readRuntimePublicConfig,
   resolveNextPublicColyseusWsUrl,
   resolveNextPublicColyseusHttpUrl,
+  resolveNextPublicHostUrl,
   wsUrlToHttpUrl,
   resolveRoomIdByCode,
 } from "./utils/colyseus";
 
-export type { ResolveRoomIdResult } from "./utils/colyseus";
+export type { ResolveRoomIdResult, RuntimePublicConfig } from "./utils/colyseus";
 
 export { pickRandom, randomFloat, randomInt, shuffleInPlace } from "./utils/random";
 

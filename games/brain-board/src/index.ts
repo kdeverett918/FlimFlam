@@ -35,12 +35,22 @@ const CLUE_RESULT_DELAY_MS = 6000;
 const ROUND_TRANSITION_DELAY_MS = 4000;
 const ALL_IN_CATEGORY_DELAY_MS = 5000;
 const ALL_IN_REVEAL_DELAY_MS = 8000;
+const BRAIN_BOARD_E2E_CLUE_RESULT_MIN_MS = 5000;
+const BRAIN_BOARD_E2E_ALL_IN_REVEAL_MIN_MS = 6000;
 
 const FUZZY_THRESHOLD = 0.7;
 const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 15000;
 const BRAIN_BOARD_JUDGE_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL;
 const BRAIN_BOARD_CHAT_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_CHAT_MODEL;
 const BRAIN_BOARD_GENERATION_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL;
+const DEFAULT_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY = 3;
+export const BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY = (() => {
+  const rawValue = process.env.FLIMFLAM_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY;
+  if (!rawValue) return DEFAULT_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY;
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return DEFAULT_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY;
+  return Math.max(1, Math.floor(parsed));
+})();
 const TOPIC_CHAT_FALLBACK_TOPICS = [
   "movies",
   "music",
@@ -53,6 +63,67 @@ const TOPIC_CHAT_FALLBACK_TOPICS = [
   "technology",
   "animals",
 ];
+
+export function normalizeTopicSuggestion(raw: string): string | null {
+  const cleaned = raw
+    .trim()
+    .replace(
+      /^(i (love|like|want|am into)|anything about|let'?s do|how about|maybe|more|topics? like)\s+/i,
+      "",
+    )
+    .replace(/\b(please|thanks|thank you)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (cleaned.length < 3 || cleaned.length > 48) {
+    return null;
+  }
+
+  return cleaned;
+}
+
+export function extractTopicSuggestions(messages: string[]): string[] {
+  const suggestions: string[] = [];
+  const seen = new Set<string>();
+
+  for (const message of messages) {
+    const fragments = message
+      .split(/[\n,.;!?/]+|\band\b/gi)
+      .map((fragment) => normalizeTopicSuggestion(fragment))
+      .filter((fragment): fragment is string => Boolean(fragment));
+
+    for (const fragment of fragments) {
+      const dedupeKey = fragment.toLowerCase();
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      suggestions.push(fragment);
+    }
+  }
+
+  return suggestions;
+}
+
+export function createAsyncLimiter(maxConcurrency: number) {
+  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
+  let activeCount = 0;
+  const waitingResolvers: Array<() => void> = [];
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (activeCount >= concurrency) {
+      await new Promise<void>((resolve) => {
+        waitingResolvers.push(resolve);
+      });
+    }
+    activeCount += 1;
+    try {
+      return await task();
+    } finally {
+      activeCount = Math.max(0, activeCount - 1);
+      const next = waitingResolvers.shift();
+      if (next) next();
+    }
+  };
+}
 
 /** Power Play counts per round. Round 1 always has 1, Round 2 always has 2. */
 function getPowerPlayCount(_complexity: Complexity, round: number): number {
@@ -223,6 +294,23 @@ interface BrainBoardPublicGameStateInput {
   finalRound: FinalRoundData | null;
   answeredCount: number;
   totalPlayerCount: number;
+  personalizationStatus: "pending" | "ai" | "curated";
+  personalizationMessage: string | null;
+  personalizationTopics: string[];
+  clueResult: {
+    results: ClueResultEntry[];
+    correctAnswer: string;
+    question: string;
+    value: number;
+    isPowerPlay: boolean;
+    anyCorrect: boolean;
+    correctCount: number;
+  } | null;
+  allInReveal: {
+    results: AllInRevealResultEntry[];
+    correctAnswer: string;
+    question: string;
+  } | null;
 }
 
 export function buildBrainBoardPublicGameState(
@@ -264,6 +352,11 @@ export function buildBrainBoardPublicGameState(
     totalPlayerCount: input.totalPlayerCount,
     currentRound: input.currentRound,
     doubleDownValues: isDoubleDown,
+    clueResult: input.phase === "clue-result" ? input.clueResult : null,
+    allInReveal: input.phase === "all-in-reveal" ? input.allInReveal : null,
+    personalizationStatus: input.personalizationStatus,
+    personalizationMessage: input.personalizationMessage,
+    personalizationTopics: input.personalizationTopics,
   };
 }
 
@@ -313,6 +406,20 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
   // Power Play wager stored separately so we don't mutate clue objects
   private powerPlayWager = 5;
+  private lastClueResult: {
+    results: ClueResultEntry[];
+    correctAnswer: string;
+    question: string;
+    value: number;
+    isPowerPlay: boolean;
+    anyCorrect: boolean;
+    correctCount: number;
+  } | null = null;
+  private lastAllInReveal: {
+    results: AllInRevealResultEntry[];
+    correctAnswer: string;
+    question: string;
+  } | null = null;
 
   private finalRound: FinalRoundData | null = null;
 
@@ -331,10 +438,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private _aiGeneratedBoard = false;
 
   // ─── Category Submit (Quick Pick) State ────────────────────────────
-  private _categoryMode: "quick-pick" | "chat" = "quick-pick";
+  private _categoryMode: "quick-pick" | "chat" = "chat";
   private _playerCategories: Map<string, string[]> = new Map();
   private _categorySubmissions: Map<string, boolean> = new Map();
   private _usedCategories: Set<string> = new Set();
+  private _personalizationStatus: "pending" | "ai" | "curated" = "pending";
+  private _personalizationMessage: string | null = null;
+  private _personalizationTopics: string[] = [];
+  private readonly _runAiJudgeWithLimit = createAsyncLimiter(BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY);
+  private _answerJudgeCache: Map<string, JudgedAnswer> = new Map();
 
   createState(): Schema {
     return null as unknown as Schema;
@@ -360,6 +472,10 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this._playerCategories.clear();
     this._categorySubmissions.clear();
     this._usedCategories.clear();
+    this._personalizationStatus = "pending";
+    this._personalizationMessage = null;
+    this._personalizationTopics = [];
+    this._answerJudgeCache.clear();
 
     // Build player order from connected players
     players.forEach((player: unknown, key: string) => {
@@ -406,6 +522,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
     });
 
     if (this._categoryMode === "quick-pick") {
+      this._personalizationStatus = "pending";
+      this._personalizationMessage =
+        "Send a couple of topics. We will try to build the board around what your group picks.";
       // ── Quick Pick: structured category submission ──
       this.phase = "category-submit";
       this.setPhase(state, "category-submit");
@@ -433,6 +552,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
         if (this.phase === "category-submit") broadcastCategorySubmit();
       }, 500);
     } else {
+      this._personalizationStatus = "pending";
+      this._personalizationMessage =
+        "Throw out topics in chat. If AI can lock onto them, the board will reflect your conversation.";
       // ── Chat Mode: original topic chat flow ──
       const greeting: ChatMessage = {
         id: `ai-${Date.now()}`,
@@ -456,6 +578,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
           type: "game-state",
           phase: "topic-chat",
           chatMessages: this._chatMessages,
+          personalizationTopics: this._personalizationTopics,
           timerEndsAt: this.getTimerEndsAt(state),
           serverTimeOffset: 0,
         });
@@ -551,12 +674,14 @@ class BrainBoardPlugin extends BaseGamePlugin {
           timestamp: Date.now(),
         };
         this._chatMessages.push(chatEntry);
+        this.refreshTopicPreviewFromChat();
 
         // Broadcast updated chat
         room.broadcast("game-data", {
           type: "game-state",
           phase: "topic-chat",
           chatMessages: this._chatMessages,
+          personalizationTopics: this._personalizationTopics,
           timerEndsAt: this.getTimerEndsAt(state),
           serverTimeOffset: 0,
         });
@@ -635,7 +760,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
   onPlayerReconnect(room: Room, state: Schema, client: Client): void {
     this.sendPrivateData(room, state, client.sessionId);
     if (this.phase === "category-submit") {
-      room.send(client, "game-data", {
+      client.send("game-data", {
         type: "game-state",
         phase: "category-submit",
         timerEndsAt: this.getTimerEndsAt(state),
@@ -643,10 +768,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
         submissions: this._buildSubmissionsPayload(state),
       });
     } else if (this.phase === "topic-chat") {
-      room.send(client, "game-data", {
+      client.send("game-data", {
         type: "game-state",
         phase: "topic-chat",
         chatMessages: this._chatMessages,
+        personalizationTopics: this._personalizationTopics,
         timerEndsAt: this.getTimerEndsAt(state),
         serverTimeOffset: 0,
       });
@@ -664,6 +790,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.isPowerPlay = false;
     this.playerAnswers.clear();
     this.powerPlayWager = 5;
+    this._answerJudgeCache.clear();
 
     this.setPhase(state, "clue-select");
     this.broadcastGameState(room, state);
@@ -822,19 +949,24 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     try {
       const value = this.currentClue.value;
+      const judgedEntries = await Promise.all(
+        this.playerOrder.map(async (sessionId) => {
+          const answer = this.playerAnswers.get(sessionId) ?? "";
+          const judged =
+            answer.length > 0
+              ? await this.judgeAnswerWithModeration(
+                  room,
+                  this.currentClue?.question ?? "",
+                  this.currentClue?.answer ?? "",
+                  answer,
+                )
+              : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+          return { sessionId, answer, judged };
+        }),
+      );
       const results: ClueResultEntry[] = [];
 
-      for (const sessionId of this.playerOrder) {
-        const answer = this.playerAnswers.get(sessionId) ?? "";
-        const judged =
-          answer.length > 0
-            ? await this.judgeAnswerWithModeration(
-                room,
-                this.currentClue.question,
-                this.currentClue.answer,
-                answer,
-              )
-            : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+      for (const { sessionId, answer, judged } of judgedEntries) {
         const isCorrect = judged.correct;
 
         let delta = 0;
@@ -994,6 +1126,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.setPhase(state, "clue-result");
     const correctCount = results.filter((entry) => entry.correct).length;
     const anyCorrect = correctCount > 0;
+    this.lastClueResult = {
+      results,
+      correctCount,
+      anyCorrect,
+      correctAnswer: this.currentClue?.answer ?? "",
+      question: this.currentClue?.question ?? "",
+      value: this.currentClue?.value ?? 0,
+      isPowerPlay: this.isPowerPlay,
+    };
 
     room.broadcast("game-data", {
       type: "clue-result",
@@ -1013,9 +1154,14 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this.sendAllPrivateData(room, state);
 
     // Auto-advance after delay
-    this.scheduleDelayed(room, CLUE_RESULT_DELAY_MS, () => {
-      this.advanceAfterClue(room, state);
-    });
+    this.scheduleDelayed(
+      room,
+      CLUE_RESULT_DELAY_MS,
+      () => {
+        this.advanceAfterClue(room, state);
+      },
+      BRAIN_BOARD_E2E_CLUE_RESULT_MIN_MS,
+    );
   }
 
   private advanceAfterClue(room: Room, state: Schema): void {
@@ -1169,6 +1315,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private goToFinalAnswer(room: Room, state: Schema): void {
     this.phase = "all-in-answer";
     this.resolvingFinalAnswers = false;
+    this._answerJudgeCache.clear();
     this.setPhase(state, "all-in-answer");
     this.broadcastGameState(room, state);
     this.sendAllPrivateData(room, state);
@@ -1211,19 +1358,24 @@ class BrainBoardPlugin extends BaseGamePlugin {
     }
 
     try {
+      const judgedEntries = await Promise.all(
+        [...this.finalRound.wagers.entries()].map(async ([sessionId, wager]) => {
+          const answer = this.finalRound?.answers.get(sessionId) ?? "";
+          const judged =
+            answer.length > 0
+              ? await this.judgeAnswerWithModeration(
+                  room,
+                  this.finalRound?.clue.question ?? "",
+                  this.finalRound?.clue.answer ?? "",
+                  answer,
+                )
+              : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+          return { sessionId, wager, answer, judged };
+        }),
+      );
       const results: AllInRevealResultEntry[] = [];
 
-      for (const [sessionId, wager] of this.finalRound.wagers) {
-        const answer = this.finalRound.answers.get(sessionId) ?? "";
-        const judged =
-          answer.length > 0
-            ? await this.judgeAnswerWithModeration(
-                room,
-                this.finalRound.clue.question,
-                this.finalRound.clue.answer,
-                answer,
-              )
-            : ({ correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer);
+      for (const { sessionId, wager, answer, judged } of judgedEntries) {
         const isCorrect = judged.correct;
         const delta = isCorrect ? wager : this.complexity === "kids" ? 0 : -wager;
 
@@ -1243,6 +1395,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
       this.phase = "all-in-reveal";
       this.setPhase(state, "all-in-reveal");
+      this.lastAllInReveal = {
+        results,
+        correctAnswer: this.finalRound.clue.answer,
+        question: this.finalRound.clue.question,
+      };
 
       room.broadcast("game-data", {
         type: "all-in-reveal",
@@ -1253,9 +1410,14 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
       this.broadcastGameState(room, state);
 
-      this.scheduleDelayed(room, ALL_IN_REVEAL_DELAY_MS, () => {
-        this.goToFinalScores(room, state);
-      });
+      this.scheduleDelayed(
+        room,
+        ALL_IN_REVEAL_DELAY_MS,
+        () => {
+          this.goToFinalScores(room, state);
+        },
+        BRAIN_BOARD_E2E_ALL_IN_REVEAL_MIN_MS,
+      );
     } finally {
       this.resolvingFinalAnswers = false;
     }
@@ -1272,34 +1434,71 @@ class BrainBoardPlugin extends BaseGamePlugin {
       return { correct: false, judgedBy: "local", judgeExplanation: null };
     }
 
-    // Preserve existing local behavior, then use AI only for borderline misses.
+    const cacheKey = this.buildAnswerJudgeCacheKey(correctQuestion, answer);
+    const cached = this._answerJudgeCache.get(cacheKey);
+    if (cached) return cached;
+
+    // Preserve deterministic local behavior first, then use AI only for borderline misses.
     if (judgeAnswer(answer, correctQuestion)) {
-      return { correct: true, judgedBy: "local", judgeExplanation: null };
+      const judged = { correct: true, judgedBy: "local", judgeExplanation: null } as JudgedAnswer;
+      this._answerJudgeCache.set(cacheKey, judged);
+      return judged;
     }
 
-    // Pre-compute fuzzy similarity for AI fallback
-    const similarity = stringSimilarity(normalizeAnswer(answer), normalizeAnswer(correctQuestion));
+    const normalizedAnswer = normalizeAnswer(answer);
+    const normalizedCorrect = normalizeAnswer(correctQuestion);
+    const similarity = stringSimilarity(normalizedAnswer, normalizedCorrect);
+    const hasStrongContainment =
+      normalizedAnswer.length >= 4 &&
+      normalizedCorrect.length >= 4 &&
+      (normalizedAnswer.includes(normalizedCorrect) ||
+        normalizedCorrect.includes(normalizedAnswer));
+
+    if (similarity < 0.42 && !hasStrongContainment) {
+      const judged = { correct: false, judgedBy: "local", judgeExplanation: null } as JudgedAnswer;
+      this._answerJudgeCache.set(cacheKey, judged);
+      return judged;
+    }
 
     try {
       const { system, user } = buildAnswerJudgePrompt(clueAnswer, correctQuestion, answer);
-      const response = await enqueueAIRequest(room.roomId, () =>
-        aiRequest(system, user, AnswerJudgeSchema, {
-          model: BRAIN_BOARD_JUDGE_MODEL,
-          timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
-          retries: 0,
-          maxTokens: 180,
-        }),
+      const response = await this._runAiJudgeWithLimit(() =>
+        enqueueAIRequest(room.roomId, () =>
+          aiRequest(system, user, AnswerJudgeSchema, {
+            model: BRAIN_BOARD_JUDGE_MODEL,
+            timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
+            retries: 0,
+            maxTokens: 180,
+          }),
+        ),
       );
-      return {
+      const judged = {
         correct: response.parsed.correct,
         judgedBy: "ai",
         judgeExplanation: this.normalizeJudgeExplanation(response.parsed.explanation),
-      };
+      } as JudgedAnswer;
+      this._answerJudgeCache.set(cacheKey, judged);
+      return judged;
     } catch {
-      // AI unavailable: benefit of the doubt if fuzzy similarity is decent
-      const correct = similarity >= 0.5;
-      return { correct, judgedBy: "fallback", judgeExplanation: null };
+      // AI unavailable: benefit of the doubt only for genuinely borderline answers.
+      const correct = similarity >= 0.55 || hasStrongContainment;
+      const judged = { correct, judgedBy: "fallback", judgeExplanation: null } as JudgedAnswer;
+      this._answerJudgeCache.set(cacheKey, judged);
+      return judged;
     }
+  }
+
+  private buildAnswerJudgeCacheKey(correctQuestion: string, answer: string): string {
+    return `${normalizeAnswer(correctQuestion)}::${normalizeAnswer(answer)}`;
+  }
+
+  private collectTopicSuggestions(maxTopics = 15): string[] {
+    const playerMessages = this._chatMessages.filter((m) => !m.isAI).map((m) => m.message);
+    return extractTopicSuggestions(playerMessages).slice(0, maxTopics);
+  }
+
+  private refreshTopicPreviewFromChat(): void {
+    this._personalizationTopics = this.collectTopicSuggestions(8);
   }
 
   private normalizeJudgeExplanation(explanation: string | undefined): string | null {
@@ -1467,10 +1666,27 @@ class BrainBoardPlugin extends BaseGamePlugin {
       allCategories.push(...cats);
     }
 
+    const promptTopics =
+      allCategories.length > 0
+        ? allCategories.slice(0, 16)
+        : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
+    this._personalizationTopics = promptTopics;
+    this._personalizationStatus = "pending";
+    this._personalizationMessage =
+      allCategories.length > 0
+        ? `Building the board from your picks: ${promptTopics.slice(0, 6).join(", ")}`
+        : "No player categories locked in. Falling back to a curated house mix if personalization misses.";
+
     // Show generating phase
     this.phase = "generating-board";
     this.setPhase(state, "generating-board");
-    room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
+    room.broadcast("game-data", {
+      type: "game-state",
+      phase: "generating-board",
+      personalizationStatus: this._personalizationStatus,
+      personalizationMessage: this._personalizationMessage,
+      personalizationTopics: this._personalizationTopics,
+    });
 
     try {
       const playerNames = this.playerOrder.map((sid) => {
@@ -1481,11 +1697,6 @@ class BrainBoardPlugin extends BaseGamePlugin {
           ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
           : "Player";
       });
-
-      const promptTopics =
-        allCategories.length > 0
-          ? allCategories.slice(0, 16)
-          : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
 
       const chatContext =
         allCategories.length > 0
@@ -1523,6 +1734,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.round1Board = aiBoard;
       this.board = aiBoard;
       this._aiGeneratedBoard = true;
+      this._personalizationStatus = allCategories.length > 0 ? "ai" : "curated";
+      this._personalizationMessage =
+        allCategories.length > 0
+          ? `Board personalized from your picks: ${promptTopics.slice(0, 6).join(", ")}`
+          : "No player categories were submitted in time, so this round is using our curated house mix.";
 
       // Track used categories for dedup
       for (const cat of aiBoard.categories) {
@@ -1545,6 +1761,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
         "[BrainBoard] AI board generation failed (Quick Pick), using static board:",
         error,
       );
+      this._personalizationStatus = "curated";
+      this._personalizationMessage =
+        "We could not personalize the board in time, so this round is using a curated house board.";
     }
 
     this._startCategoryReveal(room, state);
@@ -1599,6 +1818,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         type: "game-state",
         phase: "topic-chat",
         chatMessages: this._chatMessages,
+        personalizationTopics: this._personalizationTopics,
         timerEndsAt: this.getTimerEndsAt(state),
         serverTimeOffset: 0,
       });
@@ -1618,6 +1838,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
         type: "game-state",
         phase: "topic-chat",
         chatMessages: this._chatMessages,
+        personalizationTopics: this._personalizationTopics,
         timerEndsAt: this.getTimerEndsAt(state),
         serverTimeOffset: 0,
       });
@@ -1636,10 +1857,28 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     const chatContext = this._chatMessages.map((m) => `${m.sender}: ${m.message}`).join("\n");
 
+    const extractedTopics = this.collectTopicSuggestions(15);
+    const promptTopics =
+      extractedTopics.length > 0
+        ? extractedTopics.slice(0, 15)
+        : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
+    this._personalizationTopics = promptTopics;
+    this._personalizationStatus = "pending";
+    this._personalizationMessage =
+      extractedTopics.length > 0
+        ? `Building the board from your chat: ${promptTopics.slice(0, 6).join(", ")}`
+        : "No clear player topics were captured, so the game will fall back to a curated house mix if needed.";
+
     // Show generating phase while AI builds the board
     this.phase = "generating-board";
     this.setPhase(state, "generating-board");
-    room.broadcast("game-data", { type: "game-state", phase: "generating-board" });
+    room.broadcast("game-data", {
+      type: "game-state",
+      phase: "generating-board",
+      personalizationStatus: this._personalizationStatus,
+      personalizationMessage: this._personalizationMessage,
+      personalizationTopics: this._personalizationTopics,
+    });
 
     try {
       const playerNames = this.playerOrder.map((sid) => {
@@ -1650,18 +1889,6 @@ class BrainBoardPlugin extends BaseGamePlugin {
           ? (((player as unknown as Record<string, unknown>).name as string) ?? "Player")
           : "Player";
       });
-
-      // Extract topic keywords from player messages.
-      // If players don't send chat (or the phase is skipped quickly), seed with sensible defaults.
-      const extractedTopics = playerMessages
-        .join(" ")
-        .split(/[,.\n!?]+/)
-        .map((t) => t.trim())
-        .filter((t) => t.length > 2 && t.length < 50);
-      const promptTopics =
-        extractedTopics.length > 0
-          ? extractedTopics.slice(0, 15)
-          : TOPIC_CHAT_FALLBACK_TOPICS.slice(0, 15);
 
       if (playerMessages.length === 0) {
         console.log(
@@ -1701,6 +1928,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
       this.round1Board = aiBoard;
       this.board = aiBoard;
       this._aiGeneratedBoard = true;
+      this._personalizationStatus = extractedTopics.length > 0 ? "ai" : "curated";
+      this._personalizationMessage =
+        extractedTopics.length > 0
+          ? `Board personalized from your chat: ${promptTopics.slice(0, 6).join(", ")}`
+          : "No clear player topics were captured, so this round is using a curated house mix.";
 
       // Track used categories for dedup across rounds
       for (const cat of aiBoard.categories) {
@@ -1721,6 +1953,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
       );
     } catch (error) {
       console.error("[BrainBoard] AI board generation failed, using static board:", error);
+      this._personalizationStatus = "curated";
+      this._personalizationMessage =
+        "We could not personalize the board in time, so this round is using a curated house board.";
     }
 
     // Proceed to the normal category-reveal flow
@@ -1746,6 +1981,11 @@ class BrainBoardPlugin extends BaseGamePlugin {
         finalRound: this.finalRound,
         answeredCount: this.playerAnswers.size,
         totalPlayerCount: this.playerOrder.length,
+        clueResult: this.lastClueResult,
+        allInReveal: this.lastAllInReveal,
+        personalizationStatus: this._personalizationStatus,
+        personalizationMessage: this._personalizationMessage,
+        personalizationTopics: this._personalizationTopics,
       }),
     );
   }
@@ -1782,7 +2022,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
     const highestClueValue = this.currentRound === 2 ? 2000 : 1000;
     const maxWager = Math.max(score, highestClueValue);
 
-    room.send(client, "private-data", {
+    client.send("private-data", {
       type: "player-state",
       score,
       isSelector,
@@ -1905,13 +2145,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
     return standings;
   }
 
-  private scheduleDelayed(room: Room, delayMs: number, callback: () => void): void {
+  private scheduleDelayed(room: Room, delayMs: number, callback: () => void, minE2eMs = 0): void {
     this.clearPendingTimer();
     const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
     const scale = rawScale ? Number(rawScale) : 1;
     const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
     const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
-    const delayed = room.clock.setTimeout(callback, scaledDelay);
+    const finalDelay =
+      process.env.FLIMFLAM_E2E === "1" ? Math.max(scaledDelay, minE2eMs) : scaledDelay;
+    const delayed = room.clock.setTimeout(callback, finalDelay);
     this.pendingTimerId = delayed as unknown as ReturnType<typeof setTimeout>;
   }
 

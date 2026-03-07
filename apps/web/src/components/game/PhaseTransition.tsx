@@ -30,7 +30,9 @@ export function PhaseTransition({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[70] flex items-center justify-center pointer-events-auto"
+      data-testid="phase-transition"
+      aria-hidden="true"
     >
       <AnimatedBackground gameId={gameId} isFinalRound={isFinalRound} />
 

@@ -10,6 +10,7 @@ interface CategoryVoteCardsProps {
 }
 
 export function CategoryVoteCards({ categories, maxSelections, onVote }: CategoryVoteCardsProps) {
+  const safeScrollMarginBottom = "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 1rem)";
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
 
@@ -52,7 +53,7 @@ export function CategoryVoteCards({ categories, maxSelections, onVote }: Categor
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4">
+    <div className="flex flex-col gap-4 px-4 pb-6">
       <p className="text-center font-display text-base font-bold text-text-primary">
         Pick up to {maxSelections} categories
       </p>
@@ -83,7 +84,7 @@ export function CategoryVoteCards({ categories, maxSelections, onVote }: Categor
         onClick={handleSubmit}
         disabled={selected.size === 0}
         className="min-h-[48px] rounded-xl bg-accent-wheel/20 border-2 border-accent-wheel/50 px-6 py-3 font-display text-base font-bold text-accent-wheel uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-        style={{ touchAction: "manipulation" }}
+        style={{ touchAction: "manipulation", scrollMarginBottom: safeScrollMarginBottom }}
       >
         Submit Vote ({selected.size}/{maxSelections})
       </button>

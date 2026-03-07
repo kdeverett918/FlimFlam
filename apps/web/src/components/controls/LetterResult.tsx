@@ -29,10 +29,26 @@ export function LetterResult({
   return (
     <div className="flex flex-col items-center gap-3 px-4 animate-fade-in-up">
       <motion.div
-        initial={{ scale: 0, rotate: -10 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+        data-reveal-style="cinematic-pop"
+        initial={{ scale: 0, rotate: -10, y: 18, opacity: 0 }}
+        animate={{
+          scale: [0.7, 1.14, 1],
+          rotate: [-10, 3, 0],
+          y: [18, -4, 0],
+          opacity: 1,
+        }}
+        transition={{ type: "spring", stiffness: 420, damping: 22 }}
+        className="relative"
       >
+        {inPuzzle && (
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-[-14px] rounded-[22px] bg-emerald-400/25 blur-xl"
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: [0, 0.8, 0], scale: [0.5, 1.15, 1.5] }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+          />
+        )}
         <div
           className={`flex h-16 w-16 items-center justify-center rounded-xl border-2 font-display text-3xl font-black ${
             inPuzzle
@@ -46,9 +62,14 @@ export function LetterResult({
 
       {inPuzzle ? (
         <div className="flex flex-col items-center gap-1">
-          <p className="font-display text-lg font-bold text-emerald-400">
+          <motion.p
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.25 }}
+            className="font-display text-lg font-bold text-emerald-400"
+          >
             {count}x! +${earned.toLocaleString()}
-          </p>
+          </motion.p>
           {vowelCost && (
             <p className="font-mono text-xs text-red-400">-${vowelCost.toLocaleString()}</p>
           )}

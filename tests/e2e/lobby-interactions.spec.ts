@@ -140,4 +140,25 @@ test.describe("Lobby Interactions", () => {
     await p2.context.close();
     await p3.context.close();
   });
+
+  test("player ready toggles on and off", async ({ page, browser }) => {
+    await page.goto("/");
+    await waitForColyseusHealthy(page);
+    const { code } = await createRoom(page);
+
+    const controller = await joinPlayerForRoom(browser, page, { code, name: "ReadyTester" });
+    const controllerPage = controller.controllerPage;
+    const readyButton = controllerPage.getByRole("button", { name: /ready up|ready!/i });
+
+    await expect(readyButton).toBeVisible({ timeout: 15_000 });
+    await expect(readyButton).toHaveText(/ready up/i, { timeout: 10_000 });
+
+    await readyButton.click();
+    await expect(readyButton).toHaveText(/ready!/i, { timeout: 10_000 });
+
+    await readyButton.click();
+    await expect(readyButton).toHaveText(/ready up/i, { timeout: 10_000 });
+
+    await controller.context.close();
+  });
 });

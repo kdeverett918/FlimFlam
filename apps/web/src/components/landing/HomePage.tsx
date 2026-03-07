@@ -154,6 +154,9 @@ export default function HomePage() {
           <h2 className="mb-4 font-display text-xl font-bold text-text-primary uppercase tracking-wider sm:text-2xl">
             Join Game
           </h2>
+          <p className="mb-4 text-center font-body text-sm text-text-muted sm:text-base">
+            Join the party from your phone.
+          </p>
           <JoinForm onJoin={handleJoin} error={error} />
         </motion.div>
 
@@ -194,7 +197,7 @@ export default function HomePage() {
                   key={c}
                   type="button"
                   onClick={() => setCreatorColor(c)}
-                  className={`h-10 w-10 rounded-full border-2 transition-all ${
+                  className={`h-11 w-11 rounded-full border-2 transition-all ${
                     creatorColor === c
                       ? "scale-110 border-white shadow-[0_0_12px_var(--tw-shadow-color)]"
                       : "border-transparent opacity-60 hover:opacity-100"

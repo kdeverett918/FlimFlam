@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { closeAllControllers, startGame } from "./e2e-helpers";
+import { closeAllControllers, skipToPhase, startGame } from "./e2e-helpers";
 
 test.describe("Host Controls", () => {
   test("skip advances phase in Brain Board", async ({ page, browser }) => {
@@ -49,7 +49,7 @@ test.describe("Host Controls", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // Should start at round-intro with "ROUND 1"
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 20_000 });
+    await skipToPhase(page, /choose your categories/i);
 
     // Skip -> spinning (one controller should see spin button)
     await skipBtn.click();

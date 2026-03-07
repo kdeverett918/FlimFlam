@@ -20,6 +20,8 @@ interface ScoreBadgeProps {
   players?: PlayerStanding[];
   /** Current player's session ID (used to highlight "You" in standings) */
   mySessionId?: string | null;
+  scoreMode?: "points" | "cash";
+  allowExpansion?: boolean;
 }
 
 /* ── Medal colors for top 3 ── */
@@ -43,6 +45,8 @@ export function ScoreBadge({
   totalPlayers,
   players = [],
   mySessionId = null,
+  scoreMode = "points",
+  allowExpansion = true,
 }: ScoreBadgeProps) {
   const [animating, setAnimating] = useState(false);
   const [scoreDelta, setScoreDelta] = useState<number | null>(null);
@@ -98,6 +102,7 @@ export function ScoreBadge({
   /* ── Sorted standings for the mini-panel ── */
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const hasStandings = players.length > 0;
+  const isCashMode = scoreMode === "cash";
 
   /* ── Medal/rank color for the badge bar itself ── */
   const myMedalColor = getMedalColor(rank);
@@ -105,19 +110,38 @@ export function ScoreBadge({
   /* ── Delta glow color ── */
   const deltaColor =
     scoreDelta !== null && scoreDelta > 0 ? "oklch(0.7 0.2 145)" : "oklch(0.65 0.25 25)";
+  const formatScore = useCallback(
+    (value: number) => (isCashMode ? `$${value.toLocaleString()}` : value.toLocaleString()),
+    [isCashMode],
+  );
+  const formatDelta = useCallback(
+    (value: number) => {
+      const prefix = value > 0 ? "+" : "";
+      if (isCashMode) {
+        return `${prefix}$${Math.abs(value).toLocaleString()}`;
+      }
+      return `${prefix}${value.toLocaleString()}`;
+    },
+    [isCashMode],
+  );
+
+  useEffect(() => {
+    if (!allowExpansion) {
+      setExpanded(false);
+    }
+  }, [allowExpansion]);
 
   return (
     <>
       {/* ── Expandable standings panel (renders above the bar) ── */}
       <AnimatePresence>
-        {expanded && hasStandings && (
+        {expanded && hasStandings && allowExpansion && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 340, mass: 0.8 }}
-            className="fixed inset-x-0 bottom-14 z-[49] overflow-hidden"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+            className="pointer-events-auto absolute inset-x-0 bottom-14 z-[49] overflow-hidden"
           >
             <div
               className="border-t border-white/[0.12] px-3 pb-2 pt-3"
@@ -192,7 +216,7 @@ export function ScoreBadge({
                         className="font-mono text-sm font-bold tabular-nums"
                         style={{ color: medalColor ?? "oklch(0.8 0 0)" }}
                       >
-                        {player.score.toLocaleString()}
+                        {formatScore(player.score)}
                       </span>
                     </motion.div>
                   );
@@ -206,9 +230,9 @@ export function ScoreBadge({
       {/* ── Main score bar ── */}
       <button
         type="button"
-        onClick={hasStandings ? toggleExpanded : undefined}
-        className={`fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-between border-t px-4 ${
-          hasStandings ? "cursor-pointer active:bg-white/[0.03]" : ""
+        onClick={hasStandings && allowExpansion ? toggleExpanded : undefined}
+        className={`pointer-events-auto absolute inset-x-0 bottom-0 z-50 flex h-14 items-center justify-between border-t px-4 ${
+          hasStandings && allowExpansion ? "cursor-pointer active:bg-white/[0.03]" : ""
         } animate-glass-breathe`}
         style={{
           background:
@@ -245,9 +269,9 @@ export function ScoreBadge({
                   : (myMedalColor ?? "oklch(0.75 0.22 25)"),
             }}
           >
-            {score.toLocaleString()}
+            {formatScore(score)}
           </span>
-          <span className="font-body text-sm text-text-dim">pts</span>
+          <span className="font-body text-sm text-text-dim">{isCashMode ? "cash" : "pts"}</span>
 
           {/* Score delta floating up -- enhanced with delta-pop and glow */}
           {scoreDelta !== null && (
@@ -258,7 +282,7 @@ export function ScoreBadge({
                 textShadow: `0 0 10px ${deltaColor}, 0 0 20px ${deltaColor}60`,
               }}
             >
-              {scoreDelta > 0 ? `+${scoreDelta.toLocaleString()}` : scoreDelta.toLocaleString()}
+              {formatDelta(scoreDelta)}
             </span>
           )}
         </div>
@@ -280,7 +304,7 @@ export function ScoreBadge({
           <span className="font-mono text-xs text-text-dim">/ {totalPlayers}</span>
 
           {/* Expand/collapse chevron (only when standings data is available) */}
-          {hasStandings && (
+          {hasStandings && allowExpansion && (
             <motion.div
               animate={{ rotate: expanded ? 180 : 0 }}
               transition={{ type: "spring", damping: 20, stiffness: 300 }}

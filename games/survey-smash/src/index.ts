@@ -2,7 +2,12 @@ import type { Schema } from "@colyseus/schema";
 import type { MapSchema } from "@colyseus/schema";
 import { BaseGamePlugin } from "@flimflam/game-engine";
 import type { Complexity, GameManifest } from "@flimflam/shared";
-import { fuzzyMatch, shuffleInPlace } from "@flimflam/shared";
+import {
+  COMPLEXITY_TIMER_MULTIPLIERS,
+  DEFAULT_PHASE_TIMERS,
+  fuzzyMatch,
+  shuffleInPlace,
+} from "@flimflam/shared";
 import type { Client, Room } from "colyseus";
 import {
   ADVANCED_SURVEYS,
@@ -31,6 +36,11 @@ const PHASE_REVEAL_DELAY_MS = 3_000;
 const ANSWER_REVEAL_DELAY_MS = 5_000;
 const ROUND_RESULT_DELAY_MS = 5_000;
 const LIGHTNING_REVEAL_DELAY_MS = 8_000;
+const SURVEY_SMASH_E2E_OPENING_MIN_MS = 3_000;
+const SURVEY_SMASH_E2E_INTERACTION_MIN_MS = 4_000;
+const SURVEY_SMASH_E2E_REVEAL_MIN_MS = 1_500;
+const SURVEY_SMASH_E2E_LIGHTNING_INTERACTION_MIN_MS = 15_000;
+const SURVEY_SMASH_E2E_LIGHTNING_REVEAL_MIN_MS = 2_500;
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -197,6 +207,7 @@ function buildHostData(gs: SurveySmashInternalState): Record<string, unknown> {
     stealTeamId: gs.stealTeamId,
     lightningPlayerId: gs.lightningPlayerId,
     lightningCurrentIndex: gs.lightningCurrentIndex,
+    lightningQuestionCount: gs.lightningQuestions.length,
     lightningAnswers: gs.lightningAnswers,
     lightningTotalPoints: gs.lightningTotalPoints,
     guessAlongEligible: gs.guessAlongEligible,
@@ -278,6 +289,34 @@ export function pickFaceOffPlayers(gs: SurveySmashInternalState): string[] {
   return result;
 }
 
+export function pickLightningPlayerId(
+  playerIds: string[],
+  getScore: (playerId: string) => number,
+  options?: { activePlayerIds?: string[]; hostSessionId?: string | null },
+): string {
+  const activeSet = new Set(options?.activePlayerIds ?? []);
+  const hostSessionId = options?.hostSessionId ?? null;
+  const activePlayers = playerIds.filter((pid) => activeSet.size === 0 || activeSet.has(pid));
+  const preferredPlayers = activePlayers.filter((pid) => pid !== hostSessionId);
+  const candidates =
+    preferredPlayers.length > 0
+      ? preferredPlayers
+      : activePlayers.length > 0
+        ? activePlayers
+        : playerIds;
+
+  let topPid = candidates[0] ?? "";
+  let topScore = topPid ? getScore(topPid) : -1;
+  for (const pid of candidates) {
+    const score = getScore(pid);
+    if (score > topScore) {
+      topScore = score;
+      topPid = pid;
+    }
+  }
+  return topPid;
+}
+
 // ─── Plugin ──────────────────────────────────────────────────────────
 
 class SurveySmashPlugin extends BaseGamePlugin {
@@ -299,6 +338,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   private _room: Room | null = null;
   private _roomState: Schema | null = null;
   private _phaseTimeout: { clear: () => void } | null = null;
+  private _lastHostSkipAt = 0;
 
   private _freshState(): SurveySmashInternalState {
     return {
@@ -354,6 +394,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   ): Promise<void> {
     this._room = room;
     this._roomState = state;
+    this._lastHostSkipAt = 0;
     this.gs = this._freshState();
     this.gs.complexity = complexity;
 
@@ -482,7 +523,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     } else if (this.gs.phase === "lightning-round") {
       if (sessionId === this.gs.lightningPlayerId) {
         // Lightning player disconnected — record no-answer for remaining questions and finish
-        this._clearPhaseTimeout();
+        this._clearPhaseTiming(state);
         const q = this.gs.lightningQuestions[this.gs.lightningCurrentIndex];
         if (q) {
           this.gs.lightningAnswers.push({
@@ -537,11 +578,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   }
 
   private _sendPrivateData(room: Room, client: Client, payload: Record<string, unknown>): void {
-    (room as unknown as { send(client: Client, type: string, data: unknown): void }).send(
-      client,
-      "private-data",
-      payload,
-    );
+    client.send("private-data", payload);
   }
 
   private _buildPlayerContext(sessionId: string): Record<string, unknown> {
@@ -577,6 +614,60 @@ class SurveySmashPlugin extends BaseGamePlugin {
     }
   }
 
+  private _refreshPrivateActions(room: Room): void {
+    const roomState = this._roomState;
+    const activePlayers = roomState ? new Set(this.getActivePlayers(roomState)) : null;
+    const currentGuesser = this.gs.guessingOrder[this.gs.currentGuesserIndex] ?? null;
+    const currentLightningQuestion = this.gs.lightningQuestions[this.gs.lightningCurrentIndex];
+
+    for (const pid of this.gs.allPlayerIds) {
+      const payload: Record<string, unknown> = {
+        action: null,
+        question: this.gs.currentSurvey?.question ?? "",
+      };
+
+      switch (this.gs.phase) {
+        case "face-off":
+          if (this.gs.faceOffPlayers.includes(pid)) {
+            payload.action = "face-off-your-turn";
+          }
+          break;
+        case "guessing":
+          if (pid === currentGuesser) {
+            payload.action = "your-turn-to-guess";
+            payload.revealedAnswers = this.gs.revealedAnswers;
+            payload.strikes = this.gs.strikes;
+          } else if (!activePlayers || activePlayers.has(pid)) {
+            payload.action = "guess-along";
+            payload.currentGuesserId = currentGuesser;
+            payload.guessAlongSubmitted = this.gs.guessAlongGuesses.has(pid);
+            if (this.gs.guessAlongGuesses.has(pid)) {
+              payload.guessAlongGuess = this.gs.guessAlongGuesses.get(pid) ?? "";
+            }
+          }
+          break;
+        case "steal-chance":
+          if ((this.gs.playerTeamMap.get(pid) ?? "") === this.gs.stealTeamId) {
+            payload.action = "snag-your-turn";
+            payload.revealedAnswers = this.gs.revealedAnswers;
+          }
+          break;
+        case "lightning-round":
+          if (pid === this.gs.lightningPlayerId && currentLightningQuestion) {
+            payload.action = "lightning-question";
+            payload.question = currentLightningQuestion.question;
+            payload.questionIndex = this.gs.lightningCurrentIndex;
+            payload.totalQuestions = this.gs.lightningQuestions.length;
+          }
+          break;
+        default:
+          break;
+      }
+
+      this._sendPrivateToPlayer(room, pid, payload);
+    }
+  }
+
   private _clearPhaseTimeout(): void {
     if (this._phaseTimeout !== null) {
       this._phaseTimeout.clear();
@@ -584,14 +675,65 @@ class SurveySmashPlugin extends BaseGamePlugin {
     }
   }
 
-  private _scheduleTimeout(delayMs: number, callback: () => void): void {
+  private _clearPhaseTiming(state?: Schema | null): void {
+    this.clearTimer();
     this._clearPhaseTimeout();
-    if (!this._room) return;
+    if (state) {
+      this.setTimerEndsAt(state, 0);
+    }
+  }
+
+  private _getScaledDelay(delayMs: number, minE2eMs = 0): number {
     const rawScale = process.env.FLIMFLAM_TIMER_SCALE;
     const scale = rawScale ? Number(rawScale) : 1;
     const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
     const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
-    this._phaseTimeout = this._room.clock.setTimeout(callback, scaledDelay);
+    const shouldApplyE2eFloor =
+      process.env.FLIMFLAM_E2E === "1" ||
+      process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" ||
+      (rawScale !== undefined && safeScale < 1);
+    if (shouldApplyE2eFloor) {
+      return Math.max(scaledDelay, minE2eMs);
+    }
+    return scaledDelay;
+  }
+
+  private _startManagedPhaseTimer(
+    room: Room,
+    state: Schema,
+    phaseKey: string,
+    complexity: Complexity,
+    onExpiry: () => void,
+    minE2eMs = 0,
+  ): void {
+    this._clearPhaseTiming(state);
+    const baseMs = DEFAULT_PHASE_TIMERS[phaseKey] ?? 30_000;
+    const multiplier = COMPLEXITY_TIMER_MULTIPLIERS[complexity] ?? 1;
+    const durationMs = this._getScaledDelay(baseMs * multiplier, minE2eMs);
+    this.setTimerEndsAt(state, Date.now() + durationMs);
+    this._phaseTimeout = room.clock.setTimeout(() => {
+      this._phaseTimeout = null;
+      this.setTimerEndsAt(state, 0);
+      onExpiry();
+    }, durationMs);
+  }
+
+  private _scheduleTimeout(
+    delayMs: number,
+    callback: () => void,
+    options?: { state?: Schema | null; minE2eMs?: number },
+  ): void {
+    const state = options?.state ?? this._roomState;
+    this._clearPhaseTiming(state);
+    if (!this._room) return;
+    const scaledDelay = this._getScaledDelay(delayMs, options?.minE2eMs ?? 0);
+    this._phaseTimeout = this._room.clock.setTimeout(() => {
+      this._phaseTimeout = null;
+      if (state) {
+        this.setTimerEndsAt(state, 0);
+      }
+      callback();
+    }, scaledDelay);
   }
 
   private _recordRoundGuess(entry: RoundGuessEntry): void {
@@ -644,9 +786,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this._broadcastGameData(room);
 
     // After delay, move to face-off
-    this._scheduleTimeout(PHASE_REVEAL_DELAY_MS, () => {
-      this._startFaceOff(room, state);
-    });
+    this._scheduleTimeout(
+      PHASE_REVEAL_DELAY_MS,
+      () => {
+        this._startFaceOff(room, state);
+      },
+      { state, minE2eMs: SURVEY_SMASH_E2E_OPENING_MIN_MS },
+    );
   }
 
   private _startFaceOff(room: Room, state: Schema): void {
@@ -658,19 +804,19 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.setPhase(state, "face-off");
     this.resetSubmissions(state);
     this._broadcastGameData(room);
-
-    // Notify face-off players
-    for (const pid of this.gs.faceOffPlayers) {
-      this._sendPrivateToPlayer(room, pid, {
-        action: "face-off-your-turn",
-        question: this.gs.currentSurvey?.question ?? "",
-      });
-    }
+    this._refreshPrivateActions(room);
 
     // Timer for face-off
-    this.startPhaseTimer(room, "ss-face-off", this.gs.complexity, () => {
-      this._resolveFaceOff(room, state);
-    });
+    this._startManagedPhaseTimer(
+      room,
+      state,
+      "ss-face-off",
+      this.gs.complexity,
+      () => {
+        this._resolveFaceOff(room, state);
+      },
+      SURVEY_SMASH_E2E_INTERACTION_MIN_MS,
+    );
   }
 
   private _handleFaceOffAnswer(room: Room, state: Schema, client: Client, data: unknown): void {
@@ -721,7 +867,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   private _resolveFaceOff(room: Room, state: Schema): void {
     if (this.gs.faceOffResolved) return;
     this.gs.faceOffResolved = true;
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
 
     // Find the entry with the best (lowest) rank
     let bestEntry: FaceOffEntry | null = null;
@@ -799,12 +945,20 @@ class SurveySmashPlugin extends BaseGamePlugin {
     // Notify current guesser
     this._notifyCurrentGuesser(room);
     this._startGuessAlongWindow(room);
+    this._refreshPrivateActions(room);
 
     // Timer
-    this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
-      // Time ran out for this guess: count as strike
-      this._recordStrike(room, state);
-    });
+    this._startManagedPhaseTimer(
+      room,
+      state,
+      "ss-guessing",
+      this.gs.complexity,
+      () => {
+        // Time ran out for this guess: count as strike
+        this._recordStrike(room, state);
+      },
+      SURVEY_SMASH_E2E_INTERACTION_MIN_MS,
+    );
   }
 
   private _notifyCurrentGuesser(room: Room): void {
@@ -835,15 +989,6 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.guessAlongEligible = eligible.length;
     this.gs.guessAlongSubmissions = 0;
 
-    for (const pid of eligible) {
-      this._sendPrivateToPlayer(room, pid, {
-        action: "guess-along",
-        question: this.gs.currentSurvey?.question ?? "",
-        currentGuesserId: currentGuesser,
-        guessAlongSubmitted: false,
-      });
-    }
-
     this._broadcastGameData(room);
   }
 
@@ -867,14 +1012,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.guessAlongGuesses.set(client.sessionId, content.trim());
     this.gs.guessAlongSubmissions = this.gs.guessAlongGuesses.size;
 
-    this._sendPrivateToPlayer(room, client.sessionId, {
-      action: "guess-along",
-      question: this.gs.currentSurvey?.question ?? "",
-      currentGuesserId: currentGuesser,
-      guessAlongSubmitted: true,
-      guessAlongGuess: content.trim(),
-    });
-
+    this._refreshPrivateActions(room);
     this._broadcastGameData(room);
   }
 
@@ -912,10 +1050,8 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this._clearGuessAlongWindow();
     this._broadcastGameData(room);
 
-    // Refresh per-player private context (guessAlongPoints).
-    for (const pid of this.gs.allPlayerIds) {
-      this._sendPrivateToPlayer(room, pid, {});
-    }
+    // Refresh all per-player contexts so stale actions do not persist across phases.
+    this._refreshPrivateActions(room);
   }
 
   private _handleGuess(room: Room, state: Schema, client: Client, data: unknown): void {
@@ -977,7 +1113,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
       // Check if all answers revealed
       if (this.gs.revealedAnswers.length >= survey.answers.length) {
-        this._clearPhaseTimeout();
+        this._clearPhaseTiming(state);
         this._goToAnswerReveal(room, state);
         return;
       }
@@ -990,9 +1126,16 @@ class SurveySmashPlugin extends BaseGamePlugin {
       this._notifyCurrentGuesser(room);
 
       // Reset timer
-      this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
-        this._recordStrike(room, state);
-      });
+      this._startManagedPhaseTimer(
+        room,
+        state,
+        "ss-guessing",
+        this.gs.complexity,
+        () => {
+          this._recordStrike(room, state);
+        },
+        SURVEY_SMASH_E2E_INTERACTION_MIN_MS,
+      );
     } else {
       this._resolveGuessAlong(room, state, null);
       this._recordRoundGuess({
@@ -1008,35 +1151,51 @@ class SurveySmashPlugin extends BaseGamePlugin {
   }
 
   private _recordStrike(room: Room, state: Schema): void {
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
     this.gs.strikes++;
 
     // Show strike phase briefly
     this.gs.phase = "strike";
     this.setPhase(state, "strike");
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
     if (this.gs.strikes >= MAX_STRIKES) {
       // 3 strikes: move to steal chance
-      this._scheduleTimeout(1500, () => {
-        this._startStealChance(room, state);
-      });
+      this._scheduleTimeout(
+        1500,
+        () => {
+          this._startStealChance(room, state);
+        },
+        { state },
+      );
     } else {
       // Continue guessing with next player
-      this._scheduleTimeout(1500, () => {
-        this.gs.phase = "guessing";
-        this.setPhase(state, "guessing");
-        this.gs.currentGuesserIndex =
-          (this.gs.currentGuesserIndex + 1) % this.gs.guessingOrder.length;
-        this._startGuessAlongWindow(room);
-        this.resetSubmissions(state);
-        this._broadcastGameData(room);
-        this._notifyCurrentGuesser(room);
+      this._scheduleTimeout(
+        1500,
+        () => {
+          this.gs.phase = "guessing";
+          this.setPhase(state, "guessing");
+          this.gs.currentGuesserIndex =
+            (this.gs.currentGuesserIndex + 1) % this.gs.guessingOrder.length;
+          this._startGuessAlongWindow(room);
+          this.resetSubmissions(state);
+          this._broadcastGameData(room);
+          this._notifyCurrentGuesser(room);
 
-        this.startPhaseTimer(room, "ss-guessing", this.gs.complexity, () => {
-          this._recordStrike(room, state);
-        });
-      });
+          this._startManagedPhaseTimer(
+            room,
+            state,
+            "ss-guessing",
+            this.gs.complexity,
+            () => {
+              this._recordStrike(room, state);
+            },
+            SURVEY_SMASH_E2E_INTERACTION_MIN_MS,
+          );
+        },
+        { state },
+      );
     }
   }
 
@@ -1063,19 +1222,20 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.setPhase(state, "steal-chance");
     this.resetSubmissions(state);
     this._broadcastGameData(room);
-
-    // Notify steal team
-    this._sendPrivateToTeam(room, this.gs.stealTeamId, {
-      action: "snag-your-turn",
-      question: this.gs.currentSurvey?.question ?? "",
-      revealedAnswers: this.gs.revealedAnswers,
-    });
+    this._refreshPrivateActions(room);
 
     // Timer
-    this.startPhaseTimer(room, "ss-steal", this.gs.complexity, () => {
-      // Time ran out: controlling team keeps points
-      this._resolveSteal(room, state, false);
-    });
+    this._startManagedPhaseTimer(
+      room,
+      state,
+      "ss-steal",
+      this.gs.complexity,
+      () => {
+        // Time ran out: controlling team keeps points
+        this._resolveSteal(room, state, false);
+      },
+      SURVEY_SMASH_E2E_INTERACTION_MIN_MS,
+    );
   }
 
   private _handleStealGuess(room: Room, state: Schema, client: Client, data: unknown): void {
@@ -1092,7 +1252,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const survey = this.gs.currentSurvey;
     if (!survey) return;
 
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
 
     const matched = findMatchingAnswer(content, survey, this.gs.revealedAnswers);
     if (matched) {
@@ -1125,7 +1285,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   }
 
   private _resolveSteal(room: Room, state: Schema, stealSuccessful: boolean): void {
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
 
     const winningTeamId = stealSuccessful ? this.gs.stealTeamId : this.gs.controllingTeamId;
     this._awardRoundPoints(state, winningTeamId, this.gs.roundPoints);
@@ -1134,7 +1294,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
   }
 
   private _goToAnswerReveal(room: Room, state: Schema): void {
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
     this._clearGuessAlongWindow();
 
     // If no steal phase happened (all answers found during guessing), award points to controlling team
@@ -1145,29 +1305,39 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.phase = "answer-reveal";
     this.setPhase(state, "answer-reveal");
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
-    this._scheduleTimeout(ANSWER_REVEAL_DELAY_MS, () => {
-      this._goToRoundResult(room, state);
-    });
+    this._scheduleTimeout(
+      ANSWER_REVEAL_DELAY_MS,
+      () => {
+        this._goToRoundResult(room, state);
+      },
+      { state, minE2eMs: SURVEY_SMASH_E2E_REVEAL_MIN_MS },
+    );
   }
 
   private _goToRoundResult(room: Room, state: Schema): void {
     this.gs.phase = "round-result";
     this.setPhase(state, "round-result");
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
-    this._scheduleTimeout(ROUND_RESULT_DELAY_MS, () => {
-      if (this.gs.round >= this.gs.totalRounds) {
-        // All regular rounds done
-        if (this.gs.complexity !== "kids") {
-          this._startLightningRound(room, state);
+    this._scheduleTimeout(
+      ROUND_RESULT_DELAY_MS,
+      () => {
+        if (this.gs.round >= this.gs.totalRounds) {
+          // All regular rounds done
+          if (this.gs.complexity !== "kids") {
+            this._startLightningRound(room, state);
+          } else {
+            this._goToFinalScores(room, state);
+          }
         } else {
-          this._goToFinalScores(room, state);
+          this._startRound(room, state);
         }
-      } else {
-        this._startRound(room, state);
-      }
-    });
+      },
+      { state, minE2eMs: SURVEY_SMASH_E2E_REVEAL_MIN_MS },
+    );
   }
 
   private _awardRoundPoints(state: Schema, teamId: string, points: number): void {
@@ -1194,17 +1364,16 @@ class SurveySmashPlugin extends BaseGamePlugin {
   // ─── Lightning Round ─────────────────────────────────────────────
 
   private _startLightningRound(room: Room, state: Schema): void {
-    // Find top scoring player
-    let topPid = "";
-    let topScore = -1;
-    for (const pid of this.gs.allPlayerIds) {
-      const s = this.scoringEngine.getTotalPoints(pid);
-      if (s > topScore) {
-        topScore = s;
-        topPid = pid;
-      }
-    }
-    this.gs.lightningPlayerId = topPid;
+    const roomState = this._roomState as (Schema & { hostSessionId?: string }) | null;
+    const activePlayerIds = roomState ? this.getActivePlayers(roomState) : [];
+    this.gs.lightningPlayerId = pickLightningPlayerId(
+      this.gs.allPlayerIds,
+      (pid) => this.scoringEngine.getTotalPoints(pid),
+      {
+        activePlayerIds,
+        hostSessionId: roomState?.hostSessionId ?? null,
+      },
+    );
 
     // Pick 5 surveys for lightning round
     this.gs.lightningQuestions = [];
@@ -1222,6 +1391,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.phase = "lightning-round";
     this.setPhase(state, "lightning-round");
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
     // Send first question to the player
     this._sendLightningQuestion(room);
@@ -1234,24 +1404,25 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.currentSurvey = q;
 
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
-    this._sendPrivateToPlayer(room, this.gs.lightningPlayerId, {
-      action: "lightning-question",
-      questionIndex: this.gs.lightningCurrentIndex,
-      question: q.question,
-      totalQuestions: this.gs.lightningQuestions.length,
-    });
-
-    this.startPhaseTimer(room, "ss-lightning", this.gs.complexity, () => {
-      // Time ran out: record 0 points
-      this.gs.lightningAnswers.push({
-        question: q.question,
-        answer: "(no answer)",
-        points: 0,
-        matched: false,
-      });
-      this._advanceLightning(room);
-    });
+    this._startManagedPhaseTimer(
+      room,
+      this._roomState as Schema,
+      "ss-lightning",
+      this.gs.complexity,
+      () => {
+        // Time ran out: record 0 points
+        this.gs.lightningAnswers.push({
+          question: q.question,
+          answer: "(no answer)",
+          points: 0,
+          matched: false,
+        });
+        this._advanceLightning(room);
+      },
+      SURVEY_SMASH_E2E_LIGHTNING_INTERACTION_MIN_MS,
+    );
   }
 
   private _handleLightningAnswer(room: Room, _state: Schema, client: Client, data: unknown): void {
@@ -1265,7 +1436,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const q = this.gs.lightningQuestions[this.gs.lightningCurrentIndex];
     if (!q) return;
 
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(this._roomState);
 
     // Check for match against #1 answer
     const topAnswer = q.answers[0];
@@ -1308,10 +1479,10 @@ class SurveySmashPlugin extends BaseGamePlugin {
   }
 
   private _finishLightning(room: Room): void {
-    this._clearPhaseTimeout();
+    const state = this._roomState;
+    this._clearPhaseTiming(state);
 
     // Award lightning round points
-    const state = this._roomState;
     if (state) {
       const pid = this.gs.lightningPlayerId;
       this.addPoints(state, pid, this.gs.lightningTotalPoints, "Lightning Round answers");
@@ -1324,14 +1495,19 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.phase = "lightning-round-reveal";
     this.setPhase(state as Schema, "lightning-round-reveal");
     this._broadcastGameData(room);
+    this._refreshPrivateActions(room);
 
-    this._scheduleTimeout(LIGHTNING_REVEAL_DELAY_MS, () => {
-      this._goToFinalScores(room, state as Schema);
-    });
+    this._scheduleTimeout(
+      LIGHTNING_REVEAL_DELAY_MS,
+      () => {
+        this._goToFinalScores(room, state as Schema);
+      },
+      { state, minE2eMs: SURVEY_SMASH_E2E_LIGHTNING_REVEAL_MIN_MS },
+    );
   }
 
   private _goToFinalScores(room: Room, state: Schema): void {
-    this._clearPhaseTimeout();
+    this._clearPhaseTiming(state);
 
     this.gs.phase = "final-scores";
     this.setPhase(state, "final-scores");
@@ -1350,6 +1526,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
       lightningAnswers: this.gs.lightningAnswers,
       lightningTotalPoints: this.gs.lightningTotalPoints,
     });
+    this._refreshPrivateActions(room);
   }
 
   // ─── Host Messages ─────────────────────────────────────────────────
@@ -1362,8 +1539,16 @@ class SurveySmashPlugin extends BaseGamePlugin {
     _data: unknown,
   ): void {
     if (type === "host:skip") {
+      const now = Date.now();
+      // Guard against duplicate skip deliveries from rapid UI rebinds or repeated
+      // host control surfaces collapsing multiple phases into one click.
+      if (now - this._lastHostSkipAt < 250) {
+        return;
+      }
+      this._lastHostSkipAt = now;
+
       // Advance current phase (skip timer)
-      this._clearPhaseTimeout();
+      this._clearPhaseTiming(state);
       switch (this.gs.phase) {
         case "question-reveal":
           this._startFaceOff(room, state);

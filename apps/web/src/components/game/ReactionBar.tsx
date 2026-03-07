@@ -39,12 +39,14 @@ export function ReactionBar({ sendMessage }: ReactionBarProps) {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-14 z-40 flex items-center justify-center gap-1 px-2 py-2"
+      data-testid="hud-floating"
+      className="pointer-events-auto absolute left-1/2 top-2 z-40 flex -translate-x-1/2 items-center justify-center gap-1 rounded-full border border-white/10 px-2 py-2 shadow-[0_18px_45px_oklch(0_0_0/0.22)]"
       style={{
-        background: "oklch(0.09 0.02 250 / 0.7)",
+        background:
+          "linear-gradient(135deg, oklch(0.1 0.025 250 / 0.88), oklch(0.08 0.02 248 / 0.9))",
         backdropFilter: "blur(12px) saturate(1.2)",
         WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        maxWidth: "min(calc(100vw - 1rem), 30rem)",
       }}
     >
       {EMOJIS.map((emoji) => (
@@ -53,7 +55,7 @@ export function ReactionBar({ sendMessage }: ReactionBarProps) {
           type="button"
           disabled={coolingDown}
           onClick={() => handleReaction(emoji)}
-          className="flex h-12 w-12 items-center justify-center rounded-xl text-2xl transition-all active:scale-90 disabled:opacity-40"
+          className="flex h-11 w-11 items-center justify-center rounded-full text-xl transition-all active:scale-90 disabled:opacity-40"
           aria-label={`React with ${emoji}`}
         >
           {emoji}

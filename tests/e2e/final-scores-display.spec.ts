@@ -21,10 +21,16 @@ test.describe("Final Scores Display", () => {
 
     await driveSurveySmashKidsToFinalScores(page, controllerPages);
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
-    await expect(page.getByText("Ari", { exact: true })).toBeVisible();
-    await expect(page.getByText("Bea", { exact: true })).toBeVisible();
-    await expect(page.getByText("Cam", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Ari"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Bea"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Cam"]').first(),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: /play again/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /new game/i })).toBeVisible();
 
@@ -52,7 +58,7 @@ test.describe("Final Scores Display", () => {
         await forceToFinalScores(page);
       }
 
-      await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
+      await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
       await expect(page.getByRole("button", { name: /play again/i })).toBeVisible();
       await expect(page.getByRole("button", { name: /new game/i })).toBeVisible();
 
@@ -92,7 +98,7 @@ test.describe("Final Scores Display", () => {
     await driveBrainBoardToFinalScores(page, controllerPages);
     await page.getByRole("button", { name: /play again/i }).click();
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toHaveCount(0, {
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toHaveCount(0, {
       timeout: 20_000,
     });
     await expect(page.getByRole("button", { name: /^skip$/i })).toBeVisible({ timeout: 20_000 });

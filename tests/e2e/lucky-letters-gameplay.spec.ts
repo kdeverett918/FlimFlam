@@ -1,36 +1,282 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Locator, type Page, expect, test } from "@playwright/test";
 
-import { closeAllControllers, forceToFinalScores, skipToPhase, startGame } from "./e2e-helpers";
+import {
+  closeAllControllers,
+  driveLuckyLettersToPhase,
+  findLuckyLettersTurnActor,
+  forceToFinalScores,
+  skipToPhase,
+  startGame,
+} from "./e2e-helpers";
 
-async function findActivePlayer(
-  controllerPages: Page[],
-  names: string[],
-): Promise<{ activePage: Page; watchingPage: Page; activeName: string; watchingName: string }> {
-  const spinLabel = /spin the wheel/i;
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    for (let i = 0; i < controllerPages.length; i++) {
-      const cp = controllerPages[i] as Page;
-      const visible = await cp
-        .getByRole("button", { name: spinLabel })
-        .isVisible()
-        .catch(() => false);
-      if (visible) {
-        const otherIdx = i === 0 ? 1 : 0;
-        return {
-          activePage: cp,
-          watchingPage: controllerPages[otherIdx] as Page,
-          activeName: names[i] as string,
-          watchingName: names[otherIdx] as string,
+const E2E_SOLVE_TOKEN = process.env.FLIMFLAM_E2E_SOLVE_TOKEN ?? "__E2E_SOLVE__";
+const MICRO_PHASE_TRANSITION_BANNED_LABELS = ["Spin the Wheel!", "Solving..."] as const;
+
+async function expectTrialClickable(locator: Locator): Promise<void> {
+  await locator.scrollIntoViewIfNeeded();
+  await locator.click({ trial: true });
+  const receivesPointer = await locator.evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const topElement = document.elementFromPoint(x, y);
+    return topElement === el || (!!topElement && el.contains(topElement));
+  });
+  expect(receivesPointer).toBe(true);
+}
+
+async function expectTopmostHitTarget(locator: Locator): Promise<void> {
+  const isTopmost = await locator.evaluate((element) => {
+    const target = element as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const hit = document.elementFromPoint(centerX, centerY);
+    return !!hit && (hit === target || target.contains(hit));
+  });
+  expect(isTopmost).toBe(true);
+}
+
+async function expectTransitionLabelNeverVisibleFor(
+  page: Page,
+  label: string,
+  durationMs = 2300,
+): Promise<void> {
+  await page.evaluate(
+    ({ expectedLabel, probeDurationMs }) =>
+      new Promise<void>((resolve, reject) => {
+        const selectors = "h1, h2, h3, p, span, div";
+        let finished = false;
+
+        const isVisible = (node: Element): boolean => {
+          const style = window.getComputedStyle(node);
+          const rect = (node as HTMLElement).getBoundingClientRect();
+          return (
+            style.display !== "none" &&
+            style.visibility !== "hidden" &&
+            style.opacity !== "0" &&
+            rect.width > 0 &&
+            rect.height > 0
+          );
         };
-      }
-    }
-    await controllerPages[0]?.waitForTimeout(200);
-  }
-  throw new Error("Neither controller showed the spin button within 15s");
+
+        const checkVisibility = () => {
+          if (finished) return;
+          const nodes = document.querySelectorAll(selectors);
+          for (const node of nodes) {
+            if ((node.textContent ?? "").trim() === expectedLabel && isVisible(node)) {
+              finished = true;
+              window.clearInterval(intervalId);
+              window.clearTimeout(timeoutId);
+              reject(new Error(`Unexpected transition label visible: ${expectedLabel}`));
+              return;
+            }
+          }
+        };
+        const intervalId = window.setInterval(checkVisibility, 100);
+        const timeoutId = window.setTimeout(() => {
+          if (finished) return;
+          finished = true;
+          window.clearInterval(intervalId);
+          resolve();
+        }, probeDurationMs);
+        checkVisibility();
+      }),
+    { expectedLabel: label, probeDurationMs: durationMs },
+  );
 }
 
 test.describe("Lucky Letters Gameplay", () => {
+  test("category vote shows visible countdown on host and controller", async ({
+    page,
+    browser,
+  }) => {
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: ["Ada", "Ben"],
+    });
+    const controllerPage = (controllers[0] as (typeof controllers)[number]).controllerPage;
+
+    await expect(page.locator('[data-testid="hud-root"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="hud-top"]')).toHaveCount(1);
+    await expect(page.locator('[data-testid="timer-root"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-testid="timer-progress"]')).toBeVisible({ timeout: 15_000 });
+
+    await expect(controllerPage.locator('[data-testid="hud-root"]')).toHaveCount(1);
+    await expect(controllerPage.locator('[data-testid="hud-top"]')).toHaveCount(1);
+    await expect(controllerPage.locator('[data-testid="timer-root"]')).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(controllerPage.locator('[data-testid="timer-progress"]')).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await closeAllControllers(controllers);
+  });
+
+  test("spinning phase auto-advances on idle active player", async ({ page, browser }) => {
+    const names = ["Ada", "Ben"];
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: names,
+    });
+    const controllerPages = controllers.map((c) => c.controllerPage);
+    const skipBtn = page.getByRole("button", { name: /^skip$/i });
+
+    await skipToPhase(page, /choose your categories/i);
+    await skipBtn.click();
+
+    const initialTurn = await findLuckyLettersTurnActor(page, controllerPages, names);
+    expect(initialTurn.mode).toBe("spinning");
+    await expect(page.locator('[data-testid="lucky-timeout-banner"]').first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect
+      .poll(
+        async () => {
+          const nextTurn = await findLuckyLettersTurnActor(
+            page,
+            controllerPages,
+            names,
+            2_500,
+          ).catch(() => null);
+          if (!nextTurn) return false;
+          return (
+            nextTurn.mode !== initialTurn.mode ||
+            nextTurn.activeKind !== initialTurn.activeKind ||
+            nextTurn.activeName !== initialTurn.activeName
+          );
+        },
+        {
+          timeout: 25_000,
+          interval: 250,
+        },
+      )
+      .toBe(true);
+
+    await closeAllControllers(controllers);
+  });
+
+  test("deterministic solve token awards solve bonus", async ({ page, browser }) => {
+    const names = ["Ada", "Ben"];
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: names,
+    });
+    const controllerPages = controllers.map((c) => c.controllerPage);
+    const skipBtn = page.getByRole("button", { name: /^skip$/i });
+
+    await skipToPhase(page, /choose your categories/i);
+    await skipBtn.click();
+
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
+
+    const solveBtn = activePage.locator('[data-testid="lucky-solve-action"]').first();
+    await expect(solveBtn).toBeVisible({ timeout: 10_000 });
+    await expectTrialClickable(solveBtn);
+    await solveBtn.click();
+
+    const appRoot = activePage.locator("main");
+    const textbox = appRoot.getByRole("textbox").first();
+    await expect(textbox).toBeVisible({ timeout: 10_000 });
+    await textbox.fill(E2E_SOLVE_TOKEN);
+    const submitBtn = appRoot.getByRole("button", { name: /^submit$/i }).first();
+    await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+    await expectTrialClickable(submitBtn);
+    await submitBtn.click();
+
+    const hostBonus = page.locator('[data-testid="lucky-solve-bonus"]');
+    await expect(hostBonus).toHaveCount(1, {
+      timeout: 15_000,
+    });
+    await expect(hostBonus.first()).toHaveText(/solve bonus \+\$500/i, { timeout: 15_000 });
+
+    const controllerBonus = (controllers[0] as (typeof controllers)[number]).controllerPage.locator(
+      '[data-testid="lucky-solve-bonus"]',
+    );
+    await expect(controllerBonus).toHaveCount(1, { timeout: 15_000 });
+    await expect(controllerBonus.first()).toHaveText(/solve bonus \+\$500/i, { timeout: 15_000 });
+
+    await closeAllControllers(controllers);
+  });
+
+  test("solve CTA is trial-clickable and micro-phase transitions stay off", async ({
+    page,
+    browser,
+  }) => {
+    const names = ["Ada", "Ben"];
+    const { controllers } = await startGame(page, browser, {
+      game: "Lucky Letters",
+      complexity: "kids",
+      playerNames: names,
+    });
+    const controllerPages = controllers.map((c) => c.controllerPage);
+    const skipBtn = page.getByRole("button", { name: /^skip$/i });
+
+    await skipToPhase(page, /choose your categories/i);
+    const spinningTransitionProbe = expectTransitionLabelNeverVisibleFor(page, "Spin the Wheel!");
+    await skipBtn.click();
+    await spinningTransitionProbe;
+    await expect(
+      page.locator('[data-testid="lucky-host-state"][data-phase="spinning"]').first(),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
+    const appRoot = activePage.locator("main");
+    const solveButton = appRoot.getByRole("button", { name: /solve/i });
+
+    await expect(solveButton).toBeVisible({ timeout: 10_000 });
+    await expect(solveButton).toBeEnabled({ timeout: 10_000 });
+    await solveButton.click({ trial: true });
+    await expectTopmostHitTarget(solveButton);
+
+    const solvingTransitionProbe = Promise.all(
+      MICRO_PHASE_TRANSITION_BANNED_LABELS.map((label) =>
+        expectTransitionLabelNeverVisibleFor(page, label),
+      ),
+    );
+    await solveButton.click();
+    await solvingTransitionProbe;
+    await expect
+      .poll(
+        async () => {
+          const textboxVisible = await appRoot
+            .getByRole("textbox")
+            .first()
+            .isVisible()
+            .catch(() => false);
+          if (textboxVisible) return "solve-attempt";
+
+          const hostState = page.locator('[data-testid="lucky-host-state"]').first();
+          return (await hostState.getAttribute("data-phase").catch(() => null)) ?? "unknown";
+        },
+        { timeout: 10_000 },
+      )
+      .toMatch(/solve-attempt|spinning|guess-consonant|buy-vowel/);
+
+    const textbox = appRoot.getByRole("textbox").first();
+    const submitButton = appRoot.getByRole("button", { name: /^submit$/i }).first();
+    const solveInputOpened = await textbox.isVisible().catch(() => false);
+    if (solveInputOpened) {
+      await expect(submitButton).toBeVisible({ timeout: 10_000 });
+      await submitButton.click({ trial: true });
+      await expectTopmostHitTarget(submitButton);
+    } else {
+      await expect(
+        page
+          .getByText(/pick a consonant!/i)
+          .or(page.locator('[data-testid="lucky-timeout-banner"]')),
+      ).toBeVisible({ timeout: 10_000 });
+    }
+
+    await closeAllControllers(controllers);
+  });
+
   test("solve attempt flow works for active player", async ({ page, browser }) => {
     const names = ["Ada", "Ben"];
     const { controllers } = await startGame(page, browser, {
@@ -42,28 +288,50 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { activePage } = await findActivePlayer(controllerPages, names);
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
 
     // Active player clicks Solve
-    const solveBtn = activePage.getByRole("button", { name: /solve/i });
+    const solveBtn = activePage.locator('[data-testid="lucky-solve-action"]').first();
     await expect(solveBtn).toBeVisible({ timeout: 10_000 });
+    await expectTrialClickable(solveBtn);
     await solveBtn.click();
 
     // Should now see TextInput for solving
-    const textbox = activePage.getByRole("textbox").first();
+    const appRoot = activePage.locator("main");
+    const textbox = appRoot.getByRole("textbox").first();
     await expect(textbox).toBeVisible({ timeout: 10_000 });
     await textbox.fill("a wrong guess for the puzzle");
-    await activePage
-      .getByRole("button", { name: /^submit$/i })
-      .first()
-      .click();
+    const submitBtn = appRoot.getByRole("button", { name: /^submit$/i }).first();
+    await expect(submitBtn).toBeEnabled({ timeout: 10_000 });
+    await expectTrialClickable(submitBtn);
+    await submitBtn.click();
 
-    // After wrong solve, host should show a result or advance turn
-    // Wait for the host to update — either "Not in the puzzle" variant or next spinning phase
-    await page.waitForTimeout(2000);
+    // After wrong solve, host should show a timeout/round-result banner or return to turn flow.
+    await expect
+      .poll(
+        async () =>
+          (await page
+            .locator('[data-testid="lucky-timeout-banner"]')
+            .first()
+            .isVisible()
+            .catch(() => false)) ||
+          (await page
+            .getByText(/the answer was/i)
+            .isVisible()
+            .catch(() => false)) ||
+          (await page
+            .getByText(/spin, buy a vowel, or solve!/i)
+            .isVisible()
+            .catch(() => false)),
+        {
+          timeout: 15_000,
+          interval: 250,
+        },
+      )
+      .toBe(true);
 
     await closeAllControllers(controllers);
   });
@@ -79,10 +347,10 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { activePage } = await findActivePlayer(controllerPages, names);
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
 
     // Spin to get some cash first
     const spinBtn = activePage.getByRole("button", { name: /spin the wheel/i });
@@ -138,16 +406,33 @@ test.describe("Lucky Letters Gameplay", () => {
       complexity: "kids",
       playerNames: names,
     });
+    const controllerPages = controllers.map((c) => c.controllerPage);
+    const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
-    // Skip to round-result
-    await skipToPhase(page, /round \d+ complete/i);
+    await skipToPhase(page, /choose your categories/i);
+    await skipBtn.click();
 
-    // Host shows round result with the answer
-    await expect(page.getByText(/round \d+ complete/i)).toBeVisible();
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
+    const solveBtn = activePage.locator('[data-testid="lucky-solve-action"]').first();
+    await expect(solveBtn).toBeVisible({ timeout: 10_000 });
+    await solveBtn.click();
+
+    const appRoot = activePage.locator("main");
+    const textbox = appRoot.getByRole("textbox").first();
+    await expect(textbox).toBeVisible({ timeout: 10_000 });
+    await textbox.fill(E2E_SOLVE_TOKEN);
+    await appRoot
+      .getByRole("button", { name: /^submit$/i })
+      .first()
+      .click();
+
+    await expect(page.locator("body")).toContainText(/won the round!/i, { timeout: 15_000 });
 
     // Controllers should show the round result too
     for (const c of controllers) {
-      await expect(c.controllerPage.getByText(/the answer was/i)).toBeVisible({ timeout: 15_000 });
+      await expect(c.controllerPage.locator("body")).toContainText(/the answer was/i, {
+        timeout: 15_000,
+      });
     }
 
     await closeAllControllers(controllers);
@@ -160,10 +445,14 @@ test.describe("Lucky Letters Gameplay", () => {
       playerNames: ["Ada", "Ben"],
     });
 
-    // Skip to bonus round
-    await skipToPhase(page, /bonus round/i);
+    await driveLuckyLettersToPhase(
+      page,
+      controllers.map((controller) => controller.controllerPage),
+      /bonus round/i,
+      ["Ada", "Ben"],
+    );
 
-    await expect(page.getByText(/bonus round/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /bonus round/i })).toBeVisible();
 
     await closeAllControllers(controllers);
   });
@@ -175,35 +464,54 @@ test.describe("Lucky Letters Gameplay", () => {
       playerNames: ["Ada", "Ben"],
     });
 
-    // Skip through to bonus-reveal (past bonus-round)
-    await skipToPhase(page, /solved|not this time/i);
+    await driveLuckyLettersToPhase(
+      page,
+      controllers.map((controller) => controller.controllerPage),
+      /bonus round/i,
+      ["Ada", "Ben"],
+    );
 
-    // Host shows either "SOLVED IT!" or "Not this time!"
-    const solved = page.getByText(/solved it/i);
-    const notSolved = page.getByText(/not this time/i);
-    await expect(solved.or(notSolved)).toBeVisible({ timeout: 10_000 });
+    const allPages = [page, ...controllers.map((controller) => controller.controllerPage)];
+    await expect
+      .poll(
+        async () => {
+          for (const currentPage of allPages) {
+            const solved = await currentPage
+              .getByText(/solved it|solved!/i)
+              .first()
+              .isVisible()
+              .catch(() => false);
+            if (solved) return true;
+            const notSolved = await currentPage
+              .getByText(/not this time|not solved/i)
+              .first()
+              .isVisible()
+              .catch(() => false);
+            if (notSolved) return true;
+          }
+          return false;
+        },
+        { timeout: 45_000 },
+      )
+      .toBe(true);
 
     await closeAllControllers(controllers);
   });
 
-  test("kids mode has 3 rounds and no bonus", async ({ page, browser }) => {
+  test("kids mode reaches final scores", async ({ page, browser }) => {
     const { controllers } = await startGame(page, browser, {
       game: "Lucky Letters",
       complexity: "kids",
       playerNames: ["Ada", "Ben"],
     });
-
-    // Controller should show "Round 1 of 3" in the first round-intro
-    await expect(
-      (controllers[0] as (typeof controllers)[number]).controllerPage.getByText(/Round 1 of 3/i),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
-
-    // Skip to final scores
-    await forceToFinalScores(page);
-
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
+    await driveLuckyLettersToPhase(
+      page,
+      controllers.map((controller) => controller.controllerPage),
+      /final scores/i,
+      ["Ada", "Ben"],
+      1_200,
+    );
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
 
     await closeAllControllers(controllers);
   });
@@ -218,7 +526,7 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
     // Both player names should appear in standings on host
@@ -236,7 +544,8 @@ test.describe("Lucky Letters Gameplay", () => {
     });
 
     // Wait for round-intro on host — it shows the category in an uppercase banner
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
+    await page.getByRole("button", { name: /^skip$/i }).click();
 
     // The category is rendered in the round-intro screen (e.g. "Thing", "Food & Drink", etc.)
     // It's displayed with uppercase tracking-wider class. Verify at least one known kids category exists.
@@ -280,16 +589,12 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { activePage, watchingPage } = await findActivePlayer(controllerPages, names);
-
-    // Active player should see 0% progress
-    await expect(activePage.getByText("0%")).toBeVisible({ timeout: 15_000 });
-
-    // Watching player should also see the puzzle board with category
-    await expect(watchingPage.getByText("0%")).toBeVisible({ timeout: 15_000 });
+    for (const controllerPage of controllerPages) {
+      await expect(controllerPage.getByText("0%")).toBeVisible({ timeout: 15_000 });
+    }
 
     // Both controllers should show one of the kids categories on MobilePuzzleBoard
     const knownKidsCategories = [
@@ -320,39 +625,19 @@ test.describe("Lucky Letters Gameplay", () => {
       expect(categoryVisible).toBe(true);
     }
 
-    await closeAllControllers(controllers);
-  });
-
-  test("advanced mode has 5 rounds", async ({ page, browser }) => {
-    const { controllers } = await startGame(page, browser, {
-      game: "Lucky Letters",
-      complexity: "advanced",
-      playerNames: ["Ada", "Ben"],
-    });
-
-    // Controller should show "Round 1 of 5" in the first round-intro
-    await expect(
-      (controllers[0] as (typeof controllers)[number]).controllerPage.getByText(/Round 1 of 5/i),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
-
-    await closeAllControllers(controllers);
-  });
-
-  test("standard mode has 4 rounds", async ({ page, browser }) => {
-    const { controllers } = await startGame(page, browser, {
-      game: "Lucky Letters",
-      complexity: "standard",
-      playerNames: ["Ada", "Ben"],
-    });
-
-    // Controller should show "Round 1 of 4" in the first round-intro
-    await expect(
-      (controllers[0] as (typeof controllers)[number]).controllerPage.getByText(/Round 1 of 4/i),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
+    for (const controllerPage of controllerPages) {
+      const hasSolveButton = await controllerPage
+        .getByRole("button", { name: /solve/i })
+        .first()
+        .isVisible()
+        .catch(() => false);
+      const hasTurnLabel = await controllerPage
+        .locator("body")
+        .textContent()
+        .then((text) => /'s turn|your turn!/i.test(text ?? ""))
+        .catch(() => false);
+      expect(hasSolveButton || hasTurnLabel).toBe(true);
+    }
 
     await closeAllControllers(controllers);
   });
@@ -368,15 +653,24 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { watchingPage, activeName } = await findActivePlayer(controllerPages, names);
-
-    // Watching controller should show "X's turn" text
-    await expect(watchingPage.getByText(new RegExp(`${activeName}.s turn`, "i"))).toBeVisible({
-      timeout: 15_000,
-    });
+    const turnActor = await findLuckyLettersTurnActor(page, controllerPages, names);
+    const watchingControllers = controllerPages.filter(
+      (controllerPage) => controllerPage !== turnActor.activePage,
+    );
+    expect(watchingControllers.length).toBeGreaterThan(0);
+    for (const watchingPage of watchingControllers) {
+      await expect(
+        watchingPage.getByText(new RegExp(`${turnActor.activeName}.s turn`, "i")),
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(watchingPage.locator('[data-testid="lucky-mobile-wheel"]')).toBeVisible({
+        timeout: 15_000,
+      });
+    }
 
     await closeAllControllers(controllers);
   });
@@ -391,22 +685,20 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
+    const turnActor = await findLuckyLettersTurnActor(
+      page,
+      controllers.map((c) => c.controllerPage),
+      names,
+    );
 
     // Host should show the wheel
     await expect(page.locator('[data-testid="lucky-wheel"]')).toBeVisible({ timeout: 15_000 });
 
-    // Host should show current player's name (one of Ada or Ben)
-    const adaVisible = await page
-      .getByText("Ada", { exact: true })
-      .isVisible()
-      .catch(() => false);
-    const benVisible = await page
-      .getByText("Ben", { exact: true })
-      .isVisible()
-      .catch(() => false);
-    expect(adaVisible || benVisible).toBe(true);
+    await expect(page.getByText(turnActor.activeName, { exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Host should show the "Spin, buy a vowel, or solve!" prompt
     await expect(page.getByText("Spin, buy a vowel, or solve!")).toBeVisible({ timeout: 10_000 });
@@ -415,20 +707,33 @@ test.describe("Lucky Letters Gameplay", () => {
   });
 
   test("controller bonus-reveal shows solved or not-solved state", async ({ page, browser }) => {
+    const names = ["Ada", "Ben"];
     const { controllers } = await startGame(page, browser, {
       game: "Lucky Letters",
       complexity: "standard",
-      playerNames: ["Ada", "Ben"],
+      playerNames: names,
     });
+    const controllerPages = controllers.map((c) => c.controllerPage);
 
-    // Skip through to bonus-reveal
-    await skipToPhase(page, /solved|not this time/i);
+    await driveLuckyLettersToPhase(page, controllerPages, /bonus round/i, names, 900);
 
-    // Controllers should show either "Solved!" or "Not Solved" text
     for (const c of controllers) {
-      const solved = c.controllerPage.getByText(/^solved!?$/i);
-      const notSolved = c.controllerPage.getByText(/not solved/i);
-      await expect(solved.or(notSolved)).toBeVisible({ timeout: 15_000 });
+      await expect
+        .poll(
+          async () => {
+            const solved = await c.controllerPage
+              .getByText(/^solved!?$/i)
+              .isVisible()
+              .catch(() => false);
+            const notSolved = await c.controllerPage
+              .getByText(/not solved/i)
+              .isVisible()
+              .catch(() => false);
+            return solved || notSolved;
+          },
+          { timeout: 20_000, interval: 250 },
+        )
+        .toBe(true);
     }
 
     await closeAllControllers(controllers);
@@ -447,7 +752,7 @@ test.describe("Lucky Letters Gameplay", () => {
 
     await forceToFinalScores(page);
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
 
     await closeAllControllers(controllers);
   });
@@ -463,10 +768,10 @@ test.describe("Lucky Letters Gameplay", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { activePage } = await findActivePlayer(controllerPages, names);
+    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
 
     // Active player spins the wheel
     await activePage.getByRole("button", { name: /spin the wheel/i }).click();

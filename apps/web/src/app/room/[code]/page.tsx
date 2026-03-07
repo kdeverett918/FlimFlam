@@ -2,26 +2,145 @@
 
 import { GameReels } from "@/components/game/GameReels";
 import { useGameRoomContext } from "@/components/game/GameRoomProvider";
+import {
+  HUD_BOTTOM_DOCK_COLLAPSED_HEIGHT,
+  HUD_BOTTOM_DOCK_EXPANDED_HEIGHT,
+  HUD_TOP_DOCK_HEIGHT,
+  HudShell,
+} from "@/components/game/HudShell";
 import { PhaseTransition } from "@/components/game/PhaseTransition";
 import { ReactionOverlay } from "@/components/game/ReactionOverlay";
-import { ScoreBadge } from "@/components/game/ScoreBadge";
-import { TimerBar } from "@/components/game/TimerBar";
 import { VolumeControl } from "@/components/game/VolumeControl";
 import { UnifiedGameView } from "@/components/games/UnifiedGameView";
 import { UnifiedLobby } from "@/components/lobby/UnifiedLobby";
 import { GAME_MANIFESTS, analyzeGameState, getLastRoundCommentary } from "@flimflam/shared";
-import { soundManager, sounds } from "@flimflam/ui";
+import { emitAudioEvent, soundManager } from "@flimflam/ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useParams, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 
 const LOBBY_PHASES = new Set(["lobby", "", "between-games"]);
+const REACTION_SUPPRESSED_PHASES = new Set([
+  "topic-chat",
+  "generating-board",
+  "category-submit",
+  "category-vote",
+  "clue-select",
+  "guessing",
+  "answering",
+  "all-in-answer",
+  "solve-attempt",
+]);
+const VOLUME_ALLOWED_PHASES = new Set(["final-scores", "round-result", "bonus-reveal"]);
+const BOTTOM_DOCK_HIDDEN_PHASES = new Set([
+  "topic-chat",
+  "generating-board",
+  "category-submit",
+  "category-vote",
+]);
+const BRAIN_BOARD_BOTTOM_DOCK_HIDDEN_PHASES = new Set([
+  "clue-select",
+  "answering",
+  "power-play-wager",
+  "power-play-answer",
+  "all-in-wager",
+  "all-in-answer",
+]);
+const LUCKY_LETTERS_REACTION_SUPPRESSED_PHASES = new Set([
+  "round-intro",
+  "spinning",
+  "guess-consonant",
+  "buy-vowel",
+  "bonus-round",
+]);
+const LUCKY_LETTERS_BOTTOM_DOCK_HIDDEN_PHASES = new Set([
+  "category-vote",
+  "round-intro",
+  "spinning",
+  "guess-consonant",
+  "buy-vowel",
+  "solve-attempt",
+  "bonus-pick",
+  "bonus-solve",
+  "bonus-round",
+]);
+const MACRO_TRANSITION_PHASES: Record<string, Set<string>> = {
+  "brain-board": new Set([
+    "category-reveal",
+    "round-transition",
+    "all-in-category",
+    "all-in-reveal",
+    "final-scores",
+  ]),
+  "lucky-letters": new Set(["round-intro", "round-result", "bonus-round", "final-scores"]),
+  "survey-smash": new Set([
+    "question-reveal",
+    "answer-reveal",
+    "lightning-round-reveal",
+    "final-scores",
+  ]),
+};
+const ROOM_WHOOSH_PHASES: Record<string, Set<string>> = {
+  "brain-board": new Set([
+    "category-reveal",
+    "round-transition",
+    "all-in-category",
+    "final-scores",
+  ]),
+  "lucky-letters": new Set(["round-intro", "round-result", "bonus-round", "final-scores"]),
+  "survey-smash": new Set(["question-reveal", "lightning-round", "final-scores"]),
+};
+const ROOM_REVEAL_PHASES: Record<string, Set<string>> = {
+  "brain-board": new Set(["category-reveal", "round-transition", "all-in-category"]),
+  "lucky-letters": new Set(["round-intro", "round-result", "bonus-round"]),
+  "survey-smash": new Set(["question-reveal", "lightning-round"]),
+};
+const ROOM_AUDIO_DEDUPE_MS = 2500;
+const ROOM_AUDIO_THROTTLE_MS = 120;
 
 const phaseTransition = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const } },
   exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
 };
+
+function shouldShowReactionBar(gameId: string, phase: string, isInputFocused: boolean): boolean {
+  if (isInputFocused || phase === "final-scores") return false;
+  if (REACTION_SUPPRESSED_PHASES.has(phase)) return false;
+  if (gameId === "lucky-letters" && LUCKY_LETTERS_REACTION_SUPPRESSED_PHASES.has(phase)) {
+    return false;
+  }
+  return true;
+}
+
+function shouldShowBottomDock(gameId: string, phase: string): boolean {
+  if (BOTTOM_DOCK_HIDDEN_PHASES.has(phase)) return false;
+  if (gameId === "brain-board" && BRAIN_BOARD_BOTTOM_DOCK_HIDDEN_PHASES.has(phase)) {
+    return false;
+  }
+  if (gameId === "lucky-letters" && LUCKY_LETTERS_BOTTOM_DOCK_HIDDEN_PHASES.has(phase)) {
+    return false;
+  }
+  return true;
+}
+
+function shouldShowPhaseTransition(gameId: string, phase: string): boolean {
+  const allowlist = MACRO_TRANSITION_PHASES[gameId];
+  if (!allowlist) {
+    return phase === "final-scores";
+  }
+  return allowlist.has(phase);
+}
+
+function shouldPlayRoomCue(
+  phaseMap: Record<string, Set<string>>,
+  gameId: string,
+  phase: string,
+): boolean {
+  const allowlist = phaseMap[gameId];
+  if (!allowlist) return phase === "final-scores";
+  return allowlist.has(phase);
+}
 
 export default function RoomPage() {
   const params = useParams();
@@ -56,6 +175,8 @@ export default function RoomPage() {
   const [showTransition, setShowTransition] = useState(false);
   const [transitionLabel, setTransitionLabel] = useState("");
   const [transitionSubtitle, setTransitionSubtitle] = useState<string | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const hasAutoUnlockedAudio = useRef(false);
   const prevPhase = useRef("lobby");
   const prevAudioPhase = useRef("lobby");
 
@@ -135,6 +256,31 @@ export default function RoomPage() {
     };
   }, []);
 
+  // E2E: enable audio/motion event capture when requested by the test harness.
+  useEffect(() => {
+    soundManager.setE2EEnabled(process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1");
+  }, []);
+
+  // Auto-unlock audio on the first user gesture so gameplay cues work without opening volume controls.
+  useEffect(() => {
+    if (hasAutoUnlockedAudio.current) return;
+
+    const unlock = () => {
+      if (hasAutoUnlockedAudio.current) return;
+      hasAutoUnlockedAudio.current = true;
+      soundManager.unlock();
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+
+    window.addEventListener("pointerdown", unlock, true);
+    window.addEventListener("keydown", unlock, true);
+    return () => {
+      window.removeEventListener("pointerdown", unlock, true);
+      window.removeEventListener("keydown", unlock, true);
+    };
+  }, []);
+
   // Per-game BGM
   useEffect(() => {
     if (isLobby || !gameId) {
@@ -150,12 +296,33 @@ export default function RoomPage() {
 
   // Phase transition SFX
   useEffect(() => {
-    if (prevAudioPhase.current !== phase) {
-      sounds.whoosh();
-      if (phase === "final-scores") sounds.win();
-      prevAudioPhase.current = phase;
+    if (prevAudioPhase.current === phase) return;
+    const previousPhase = prevAudioPhase.current;
+    prevAudioPhase.current = phase;
+    if (isLobby || !gameId) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+
+    const round = state?.round ?? 0;
+    const context = `phase:${previousPhase}->${phase}:round:${round}`;
+    if (shouldPlayRoomCue(ROOM_WHOOSH_PHASES, gameId, phase)) {
+      soundManager.playSfx("game:whoosh", {
+        source: "room-shell",
+        context,
+        dedupeKey: `room-shell:whoosh:${gameId}:${phase}:${round}`,
+        dedupeMs: ROOM_AUDIO_DEDUPE_MS,
+        throttleMs: ROOM_AUDIO_THROTTLE_MS,
+      });
     }
-  }, [phase]);
+    if (phase === "final-scores") {
+      soundManager.playSfx("celebration:win", {
+        source: "room-shell",
+        context,
+        dedupeKey: `room-shell:win:${gameId}:${phase}:${round}`,
+        dedupeMs: ROOM_AUDIO_DEDUPE_MS,
+        throttleMs: ROOM_AUDIO_THROTTLE_MS,
+      });
+    }
+  }, [gameId, isLobby, phase, state?.round]);
 
   // Phase transition overlay
   useEffect(() => {
@@ -166,6 +333,12 @@ export default function RoomPage() {
     }
 
     if (prevPhase.current !== phase) {
+      if (!shouldShowPhaseTransition(gameId, phase)) {
+        setShowTransition(false);
+        prevPhase.current = phase;
+        return;
+      }
+
       const label = formatPhaseLabel(phase);
       const isLastRound = state?.round === state?.totalRounds && (state?.round ?? 0) > 0;
 
@@ -180,14 +353,42 @@ export default function RoomPage() {
         const commentary = analyzeGameState(standings, isLastRound ?? false);
         setTransitionSubtitle(commentary ?? (isLastRound ? getLastRoundCommentary() : null));
         setShowTransition(true);
-        sounds.reveal();
+        if (shouldPlayRoomCue(ROOM_REVEAL_PHASES, gameId, phase)) {
+          const round = state?.round ?? 0;
+          soundManager.playSfx("game:reveal", {
+            source: "room-shell",
+            context: `phase-transition:${gameId}:${phase}:round:${round}`,
+            dedupeKey: `room-shell:reveal:${gameId}:${phase}:${round}`,
+            dedupeMs: ROOM_AUDIO_DEDUPE_MS,
+            throttleMs: ROOM_AUDIO_THROTTLE_MS,
+          });
+          if (gameId === "brain-board" && phase === "category-reveal") {
+            emitAudioEvent("audio.brain.board.reveal", { round, phase });
+          }
+        }
         const timer = setTimeout(() => setShowTransition(false), 2000);
         prevPhase.current = phase;
         return () => clearTimeout(timer);
       }
     }
     prevPhase.current = phase;
-  }, [phase, playerList, state?.round, state?.totalRounds]);
+  }, [phase, gameId, playerList, state?.round, state?.totalRounds]);
+
+  useEffect(() => {
+    const syncFocusState = () => {
+      setIsInputFocused(isEditableElement(document.activeElement));
+    };
+
+    const deferredSync = () => requestAnimationFrame(syncFocusState);
+
+    syncFocusState();
+    document.addEventListener("focusin", syncFocusState, true);
+    document.addEventListener("focusout", deferredSync, true);
+    return () => {
+      document.removeEventListener("focusin", syncFocusState, true);
+      document.removeEventListener("focusout", deferredSync, true);
+    };
+  }, []);
 
   // Loading / reconnecting state
   if (!connected || !room) {
@@ -246,8 +447,25 @@ export default function RoomPage() {
     return idx >= 0 ? idx + 1 : playerList.length;
   })();
 
+  const showReactionBar = shouldShowReactionBar(gameId, phase, isInputFocused);
+  const showBottomDock = shouldShowBottomDock(gameId, phase);
+  const showVolumeControl = !isInputFocused && VOLUME_ALLOWED_PHASES.has(phase);
+  const bottomDockHeight = !showBottomDock
+    ? 0
+    : showReactionBar
+      ? HUD_BOTTOM_DOCK_EXPANDED_HEIGHT
+      : HUD_BOTTOM_DOCK_COLLAPSED_HEIGHT;
+  const hudSafeTop = `calc(env(safe-area-inset-top) + ${HUD_TOP_DOCK_HEIGHT}px)`;
+  const hudSafeBottom = `calc(env(safe-area-inset-bottom) + ${bottomDockHeight}px)`;
+  const roomShellStyle: CSSProperties & Record<"--hud-safe-top" | "--hud-safe-bottom", string> = {
+    "--hud-safe-top": hudSafeTop,
+    "--hud-safe-bottom": hudSafeBottom,
+    paddingTop: "var(--hud-safe-top)",
+    paddingBottom: "var(--hud-safe-bottom)",
+  };
+
   return (
-    <main className="relative flex min-h-dvh flex-col pb-14 pt-2">
+    <main className="relative flex min-h-dvh flex-col" style={roomShellStyle}>
       {/* Phase transition overlay */}
       {showTransition && (
         <PhaseTransition
@@ -263,15 +481,33 @@ export default function RoomPage() {
       {/* Reaction overlay */}
       <ReactionOverlay room={room} />
 
-      {/* Volume control */}
-      <VolumeControl />
+      {showVolumeControl && <VolumeControl />}
 
-      {/* Timer bar */}
-      <TimerBar timerEndsAt={timerEndTime ?? 0} />
+      <div className={showTransition ? "pointer-events-none" : undefined}>
+        <HudShell
+          gameId={gameId}
+          isHost={isHost}
+          phase={phase}
+          timerEndTime={timerEndTime}
+          sendMessage={sendMessage}
+          showReactions={showReactionBar}
+          showBottomDock={showBottomDock}
+          myScore={myScore}
+          myColor={myColor}
+          myRank={myRank}
+          players={playerList}
+          mySessionId={mySessionId}
+        />
+      </div>
 
       {/* Game content with phase transitions */}
       <AnimatePresence mode="wait">
-        <motion.div key={`${gameId}-${phase}`} {...phaseTransition} className="flex-1">
+        <motion.div
+          key={`${gameId}-${phase}`}
+          {...phaseTransition}
+          className={`flex-1 ${showTransition ? "invisible pointer-events-none" : ""}`}
+          data-testid="hero-surface"
+        >
           <UnifiedGameView
             gameId={gameId}
             phase={phase}
@@ -294,7 +530,10 @@ export default function RoomPage() {
       {/* View Reels button (final-scores phase only) */}
       {phase === "final-scores" && (
         <motion.div
-          className="fixed bottom-20 left-1/2 z-30 -translate-x-1/2"
+          className="fixed left-1/2 z-30 -translate-x-1/2"
+          style={{
+            bottom: "calc(var(--hud-safe-bottom) + 20px)",
+          }}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2, duration: 0.5 }}
@@ -314,17 +553,18 @@ export default function RoomPage() {
       {showReels && (
         <GameReels players={playerList} gameId={gameId} onClose={() => setShowReels(false)} />
       )}
-
-      {/* Score badge footer */}
-      <ScoreBadge
-        avatarColor={myColor}
-        score={myScore}
-        rank={myRank}
-        totalPlayers={playerList.length}
-        players={playerList}
-        mySessionId={mySessionId}
-      />
     </main>
+  );
+}
+
+function isEditableElement(target: Element | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName;
+  return (
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT" ||
+    target.isContentEditable
   );
 }
 

@@ -14,6 +14,7 @@ import {
   buildPublicGameView,
   findMatchingAnswer,
   pickFaceOffPlayers,
+  pickLightningPlayerId,
 } from "../index";
 
 // ─── Helper: build a minimal internal state for testing ─────────────
@@ -448,6 +449,46 @@ describe("Lightning Round Scoring", () => {
     const total = answers.reduce((sum, a) => sum + a.points, 0);
     expect(total).toBe(115);
     expect(total < LIGHTNING_BONUS_THRESHOLD).toBe(true);
+  });
+});
+
+describe("Lightning player selection", () => {
+  it("prefers the top-scoring non-host active player", () => {
+    const scores = new Map([
+      ["host", 900],
+      ["p1", 400],
+      ["p2", 650],
+      ["p3", 250],
+    ]);
+
+    const selected = pickLightningPlayerId(
+      ["host", "p1", "p2", "p3"],
+      (playerId) => scores.get(playerId) ?? 0,
+      {
+        activePlayerIds: ["host", "p1", "p2", "p3"],
+        hostSessionId: "host",
+      },
+    );
+
+    expect(selected).toBe("p2");
+  });
+
+  it("falls back to the host when no non-host player is available", () => {
+    const scores = new Map([
+      ["host", 900],
+      ["p1", 400],
+    ]);
+
+    const selected = pickLightningPlayerId(
+      ["host", "p1"],
+      (playerId) => scores.get(playerId) ?? 0,
+      {
+        activePlayerIds: ["host"],
+        hostSessionId: "host",
+      },
+    );
+
+    expect(selected).toBe("host");
   });
 });
 

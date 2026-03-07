@@ -6,46 +6,65 @@ import path from "node:path";
 
 const requireFromHere = createRequire(import.meta.url);
 const nextCliPath = requireFromHere.resolve("next/dist/bin/next");
+const tsxCliPath = path.join(path.dirname(requireFromHere.resolve("tsx/package.json")), "dist", "cli.mjs");
 
 const isWin = process.platform === "win32";
 const PNPM_BIN = "pnpm";
 
+if (process.env.FORCE_COLOR && process.env.NO_COLOR) {
+  process.env.NO_COLOR = undefined;
+}
+
 const repoRoot = process.cwd();
 const webCwd = path.join(repoRoot, "apps", "web");
+const serverCwd = path.join(repoRoot, "packages", "server");
 
 const appPort = process.env.FLIMFLAM_E2E_HOST_PORT ?? "5310";
 const serverPort = process.env.PORT ?? process.env.FLIMFLAM_E2E_COLYSEUS_PORT ?? "5567";
-const appDistDir = process.env.FLIMFLAM_E2E_HOST_DIST_DIR ?? ".next-e2e-host";
+const configuredDistDir = process.env.FLIMFLAM_E2E_HOST_DIST_DIR?.trim();
+const legacyDistDirName = `.next-e2e-host-${appPort}`;
+const appDistDir =
+  configuredDistDir && configuredDistDir.length > 0 && configuredDistDir !== legacyDistDirName
+    ? configuredDistDir
+    : `${legacyDistDirName}-${process.pid}`;
 
 const appUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? `http://127.0.0.1:${appPort}`;
 const serverHealthUrl =
   process.env.FLIMFLAM_E2E_COLYSEUS_HEALTH_URL ?? `http://127.0.0.1:${serverPort}/health`;
 
-const runtimeModeInput = (process.env.FLIMFLAM_E2E_RUNTIME ?? "development").toLowerCase();
-const runtimeMode = runtimeModeInput === "production" ? "production" : "development";
+const runtimeModeInput = (process.env.FLIMFLAM_E2E_RUNTIME ?? "production").toLowerCase();
+const runtimeMode = runtimeModeInput === "development" ? "development" : "production";
 const useProductionRuntime = runtimeMode === "production";
 const skipServer =
   process.env.FLIMFLAM_E2E_SKIP_SERVER === "1" || process.env.FLIMFLAM_E2E_SKIP_SERVER === "true";
+const skipBuildRaw = process.env.FLIMFLAM_E2E_SKIP_BUILD;
 const skipBuild =
-  process.env.FLIMFLAM_E2E_SKIP_BUILD === undefined ||
-  process.env.FLIMFLAM_E2E_SKIP_BUILD === "1" ||
-  process.env.FLIMFLAM_E2E_SKIP_BUILD === "true";
+  skipBuildRaw === undefined
+    ? !useProductionRuntime
+    : skipBuildRaw === "1" || skipBuildRaw === "true";
 const skipNextClean =
   process.env.FLIMFLAM_SKIP_NEXT_CLEAN === "1" || process.env.FLIMFLAM_SKIP_NEXT_CLEAN === "true";
 const reclaimPorts =
   process.env.FLIMFLAM_E2E_RECLAIM_PORTS === undefined ||
   process.env.FLIMFLAM_E2E_RECLAIM_PORTS === "1" ||
   process.env.FLIMFLAM_E2E_RECLAIM_PORTS === "true";
-const reclaimRunnersMode = (process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ?? "0").toLowerCase();
-const reclaimRunners = reclaimRunnersMode === "force";
+const reclaimRunnersMode = (
+  process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ?? (isWin ? "force" : "0")
+).toLowerCase();
+const reclaimRunnerLockOwners = reclaimRunnersMode === "force" || reclaimRunnersMode === "sweep";
+const sweepStaleRunners = reclaimRunnersMode === "sweep";
 const buildAttemptCountRaw = Number.parseInt(process.env.FLIMFLAM_E2E_BUILD_ATTEMPTS ?? "3", 10);
 const buildAttemptCount =
   Number.isFinite(buildAttemptCountRaw) && buildAttemptCountRaw > 0 ? buildAttemptCountRaw : 3;
+const lockDir = path.join(repoRoot, ".tmp", "e2e-webserver-locks");
+const lockName = `e2e-runner-${appPort}-${serverPort}`.replace(/[^a-zA-Z0-9_.-]/g, "_");
+const lockPath = path.join(lockDir, `${lockName}.json`);
 
 let shuttingDown = false;
 let keepAliveTimer = null;
 const children = [];
 const managedServicePorts = new Set();
+let lockHeld = false;
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -130,6 +149,139 @@ function killTree(pid) {
   }
 }
 
+function isPidAlive(pid) {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error && typeof error === "object" && "code" in error && error.code === "EPERM";
+  }
+}
+
+function isRunnerPid(pid) {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+
+  if (isWin) {
+    const result = spawnSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-Command",
+        [
+          `$pid = ${pid}`,
+          '$p = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $pid)',
+          "if (-not $p) { exit 1 }",
+          "if (-not $p.Name -or $p.Name -notmatch '^node(\\.exe)?$') { exit 1 }",
+          "if (-not $p.CommandLine -or $p.CommandLine -notmatch 'scripts[\\\\/]e2e-webserver\\.mjs') { exit 1 }",
+          "exit 0",
+        ].join("; "),
+      ],
+      {
+        encoding: "utf8",
+        shell: false,
+        stdio: ["ignore", "ignore", "ignore"],
+      },
+    );
+    return result.status === 0;
+  }
+
+  try {
+    const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8");
+    return /scripts[\\/]+e2e-webserver\.mjs/.test(cmdline);
+  } catch {
+    return false;
+  }
+}
+
+function readLockRecord() {
+  try {
+    const raw = fs.readFileSync(lockPath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    const pid = Number.parseInt(String(parsed.pid ?? ""), 10);
+    const createdAt = typeof parsed.createdAt === "string" ? parsed.createdAt : "";
+    return {
+      pid: Number.isFinite(pid) ? pid : null,
+      createdAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function acquireRunnerLock() {
+  fs.mkdirSync(lockDir, { recursive: true });
+
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    try {
+      fs.writeFileSync(
+        lockPath,
+        JSON.stringify(
+          {
+            pid: process.pid,
+            createdAt: new Date().toISOString(),
+            distDir: appDistDir,
+            appPort: String(appPort),
+          },
+          null,
+          2,
+        ),
+        { flag: "wx", encoding: "utf8" },
+      );
+      lockHeld = true;
+      console.log(`[e2e-webserver] acquired runner lock ${lockPath}`);
+      return;
+    } catch (error) {
+      const code = error && typeof error === "object" && "code" in error ? error.code : null;
+      if (code !== "EEXIST") {
+        throw error;
+      }
+
+      const record = readLockRecord();
+      const lockPid = record?.pid ?? null;
+      if (lockPid && lockPid !== process.pid && isPidAlive(lockPid)) {
+        if (isRunnerPid(lockPid)) {
+          if (!reclaimRunnerLockOwners) {
+            throw new Error(
+              `runner lock already held by active pid ${lockPid}; set FLIMFLAM_E2E_RECLAIM_RUNNERS=force to reclaim`,
+            );
+          }
+          console.warn(
+            `[e2e-webserver] reclaiming runner lock held by pid ${lockPid} (created ${record?.createdAt || "unknown"})`,
+          );
+          killTree(lockPid);
+          await sleep(400);
+        } else {
+          console.warn(
+            `[e2e-webserver] lock pid ${lockPid} is active but not an e2e-webserver runner; treating lock as stale`,
+          );
+        }
+      }
+
+      try {
+        fs.rmSync(lockPath, { force: true });
+      } catch {
+        // retry
+      }
+      await sleep(200);
+    }
+  }
+
+  throw new Error(`failed to acquire runner lock at ${lockPath}`);
+}
+
+function releaseRunnerLock() {
+  if (!lockHeld) return;
+  lockHeld = false;
+  try {
+    fs.rmSync(lockPath, { force: true });
+    console.log(`[e2e-webserver] released runner lock ${lockPath}`);
+  } catch {
+    // best effort
+  }
+}
+
 function shutdown(exitCode = 0) {
   if (shuttingDown) return;
   shuttingDown = true;
@@ -147,6 +299,7 @@ function shutdown(exitCode = 0) {
       killTree(pid);
     }
   }
+  releaseRunnerLock();
 
   process.exitCode = exitCode;
   setTimeout(() => process.exit(exitCode), isWin ? 250 : 100).unref();
@@ -195,6 +348,7 @@ function launchManagedChild(
     typeof options.daemonizedPort === "number" && Number.isFinite(options.daemonizedPort)
       ? options.daemonizedPort
       : null;
+  const treatActiveListenerAsHealthy = options.treatActiveListenerAsHealthy !== false;
   let restartCount = 0;
 
   const launch = () => {
@@ -218,7 +372,7 @@ function launchManagedChild(
     child.on("exit", (code, signal) => {
       if (shuttingDown) return;
       const detail = signal ? `signal ${signal}` : `code ${code ?? 0}`;
-      if (code === 0 && daemonizedPort !== null) {
+      if (daemonizedPort !== null && treatActiveListenerAsHealthy) {
         void (async () => {
           const daemonizeDeadline = Date.now() + 5_000;
           while (Date.now() < daemonizeDeadline) {
@@ -260,16 +414,20 @@ function launchManagedChild(
   launch();
 }
 
-function spawnPnpmService(label, args, envOverrides = {}) {
-  launchManagedChild(label, () =>
-    spawnPnpm(args, {
-      stdio: ["ignore", "inherit", "inherit"],
-      env: {
-        ...process.env,
-        ...envOverrides,
-      },
-      shell: false,
-    }),
+function spawnPnpmService(label, args, envOverrides = {}, options = {}) {
+  launchManagedChild(
+    label,
+    () =>
+      spawnPnpm(args, {
+        stdio: ["ignore", "inherit", "inherit"],
+        env: {
+          ...process.env,
+          ...envOverrides,
+        },
+        shell: false,
+      }),
+    useProductionRuntime ? 0 : 3,
+    options,
   );
 }
 
@@ -301,7 +459,36 @@ function spawnNextService(label, cwd, command, port, distDir) {
   );
 }
 
-function cleanNextArtifacts() {
+async function removeDirWithRetries(nextDir, maxAttempts = isWin ? 10 : 5) {
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      fs.rmSync(nextDir, { recursive: true, force: true });
+      if (!fs.existsSync(nextDir)) {
+        console.log(`[e2e-webserver] cleaned ${nextDir}`);
+        return;
+      }
+      lastError = new Error(`Directory still exists after cleanup attempt ${attempt}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < maxAttempts) {
+      await sleep(isWin ? 500 : 250);
+    }
+  }
+
+  const detail =
+    lastError instanceof Error
+      ? lastError.message
+      : lastError
+        ? String(lastError)
+        : "unknown error";
+  throw new Error(`failed to clean ${nextDir}: ${detail}`);
+}
+
+async function cleanNextArtifacts() {
   if (skipNextClean) {
     console.log("[e2e-webserver] skipping .next cleanup (FLIMFLAM_SKIP_NEXT_CLEAN=1)");
     return;
@@ -311,14 +498,7 @@ function cleanNextArtifacts() {
 
   for (const target of targets) {
     const nextDir = path.join(target.cwd, target.distDir);
-    try {
-      fs.rmSync(nextDir, { recursive: true, force: true });
-      console.log(`[e2e-webserver] cleaned ${nextDir}`);
-    } catch (error) {
-      console.warn(
-        `[e2e-webserver] failed to clean ${nextDir}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    await removeDirWithRetries(nextDir);
   }
 }
 
@@ -458,19 +638,35 @@ async function ensureRequiredPortsAvailable() {
   return !blocked;
 }
 
-async function waitForHttpReady(url, label, timeoutMs = 120_000) {
+function isHttpReadyStatus(status) {
+  return status >= 200 && status < 400;
+}
+
+async function waitForHttpReady(
+  url,
+  label,
+  { timeoutMs = 120_000, pollMs = 300, requiredConsecutive = 1 } = {},
+) {
   const deadline = Date.now() + timeoutMs;
+  let consecutive = 0;
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url, { cache: "no-store", redirect: "manual" });
-      if (response.status >= 200 && response.status < 500) {
-        console.log(`[e2e-webserver] ${label} ready (${response.status}) at ${url}`);
+      if (isHttpReadyStatus(response.status)) {
+        consecutive += 1;
+      } else {
+        consecutive = 0;
+      }
+      if (consecutive >= requiredConsecutive) {
+        console.log(
+          `[e2e-webserver] ${label} ready (${response.status}) at ${url} after ${consecutive} stable checks`,
+        );
         return;
       }
     } catch {
-      // retry
+      consecutive = 0;
     }
-    await sleep(300);
+    await sleep(pollMs);
   }
   throw new Error(`Timed out waiting for ${label} at ${url}`);
 }
@@ -486,6 +682,8 @@ async function prebuildIfNeeded() {
   const buildEnv = {
     NEXT_TELEMETRY_DISABLED: "1",
     FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
+    FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
+    NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
   };
 
   runPnpmStep(
@@ -506,20 +704,59 @@ function startServerIfNeeded() {
     console.log("[e2e-webserver] Skipping @flimflam/server (FLIMFLAM_E2E_SKIP_SERVER=1)");
     return;
   }
+  const serverPortNumber = Number.parseInt(String(serverPort), 10);
+  if (Number.isFinite(serverPortNumber)) {
+    managedServicePorts.add(serverPortNumber);
+  }
 
-  spawnPnpmService("server", ["--filter", "@flimflam/server", "start:e2e"], {
-    PORT: String(serverPort),
-  });
+  launchManagedChild(
+    "server",
+    () =>
+      spawn(process.execPath, [tsxCliPath, "src/index.ts"], {
+        cwd: serverCwd,
+        stdio: ["ignore", "inherit", "inherit"],
+        env: {
+          ...process.env,
+          FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
+          NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
+          FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
+          FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
+          FLIMFLAM_E2E_RUNTIME: runtimeMode,
+          PORT: String(serverPort),
+        },
+        shell: false,
+      }),
+    useProductionRuntime ? 0 : 3,
+    {
+      daemonizedPort: serverPortNumber,
+    },
+  );
 }
 
 function startApp() {
   const command = useProductionRuntime ? "start" : "dev";
-  console.log(`[e2e-webserver] launching web app via next ${command} on ${appPort}`);
-  spawnNextService("web", webCwd, command, appPort, appDistDir);
+  console.log(`[e2e-webserver] launching web app via pnpm ${command} on ${appPort}`);
+  const appPortNumber = Number.parseInt(String(appPort), 10);
+  spawnPnpmService(
+    "web",
+    ["--filter", "@flimflam/web", command, "--hostname", "127.0.0.1", "--port", String(appPort)],
+    {
+      FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
+      NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
+      FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
+      FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
+      FLIMFLAM_E2E_RUNTIME: runtimeMode,
+      FLIMFLAM_NEXT_DIST_DIR: appDistDir,
+    },
+    {
+      daemonizedPort: Number.isFinite(appPortNumber) ? appPortNumber : null,
+    },
+  );
 }
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
+process.on("exit", () => releaseRunnerLock());
 process.on("uncaughtException", (error) => {
   console.error("[e2e-webserver] uncaught exception", error);
   shutdown(1);
@@ -532,35 +769,34 @@ process.on("unhandledRejection", (error) => {
 async function main() {
   fs.mkdirSync(path.join(repoRoot, ".tmp", "playwright-artifacts"), { recursive: true });
   fs.mkdirSync(path.join(repoRoot, ".tmp", "playwright-report"), { recursive: true });
+  await acquireRunnerLock();
 
   console.log(
     `[e2e-webserver] bootstrap runtime=${runtimeMode} app=${appPort} server=${serverPort}`,
   );
   if (runtimeModeInput !== runtimeMode) {
     console.warn(
-      `[e2e-webserver] unknown FLIMFLAM_E2E_RUNTIME='${runtimeModeInput}', defaulting to development`,
+      `[e2e-webserver] unknown FLIMFLAM_E2E_RUNTIME='${runtimeModeInput}', defaulting to production`,
     );
   }
 
-  if (reclaimRunners) {
+  if (sweepStaleRunners) {
     reclaimStaleRunners();
   } else if (reclaimRunnersMode === "1" || reclaimRunnersMode === "true") {
     console.warn(
-      "[e2e-webserver] FLIMFLAM_E2E_RECLAIM_RUNNERS=1 is deprecated; use 'force' for cross-runner reclaim.",
+      "[e2e-webserver] FLIMFLAM_E2E_RECLAIM_RUNNERS=1 is deprecated; use 'force' (lock reclaim) or 'sweep' (lock reclaim + process sweep).",
     );
   }
-  cleanNextArtifacts();
+  await cleanNextArtifacts();
 
   if (!(await ensureRequiredPortsAvailable())) {
-    process.exitCode = 1;
-    return;
+    throw new Error("required ports unavailable before startup");
   }
 
   await prebuildIfNeeded();
 
   if (!(await ensureRequiredPortsAvailable())) {
-    process.exitCode = 1;
-    return;
+    throw new Error("required ports unavailable after prebuild");
   }
 
   startServerIfNeeded();
@@ -569,7 +805,11 @@ async function main() {
   if (!skipServer) {
     await waitForHttpReady(serverHealthUrl, "server");
   }
-  await waitForHttpReady(appUrl, "web app");
+  await waitForHttpReady(appUrl, "web app", { requiredConsecutive: 3 });
+  const prewarmRoomNewUrl = new URL("/room/new", appUrl).toString();
+  await waitForHttpReady(prewarmRoomNewUrl, "web app prewarm /room/new", {
+    requiredConsecutive: 3,
+  });
 
   console.log(`[e2e-webserver] Ready (runtime=${runtimeMode})`);
   keepAliveTimer = setInterval(() => {}, 1000);

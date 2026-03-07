@@ -12,17 +12,48 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
     "noEmit": true,
-    "lib": ["dom", "dom.iterable", "esnext"]
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ]
   },
   "include": [
     "**/*.ts",
+    "**/*.ts",
     "**/*.tsx",
+    "**/*.tsx",
+    ".next-e2e-host*/types/**/*.ts",
+    ".next-e2e-host*/types/**/*.ts",
+    ".next-e2e-host-5310-118860/types/**/*.ts",
+    ".next-e2e-host-5390-5244/types/**/*.ts",
+    ".next-e2e-host-5390-63384/types/**/*.ts",
+    ".next-e2e-host-5390-89344/types/**/*.ts",
+    ".next-e2e-host-5470-112028/types/**/*.ts",
+    ".next-e2e-host-5470-46028/types/**/*.ts",
+    ".next-e2e-host-5470-62048/types/**/*.ts",
+    ".next-e2e-host-5470-62048/types/**/*.ts",
+    ".next-e2e-host-5550-116132/types/**/*.ts",
+    ".next-e2e-host-5550-138352/types/**/*.ts",
+    ".next-e2e-host-5550-56732/types/**/*.ts",
+    ".next-e2e-host-5550-56732/types/**/*.ts",
+    ".next-e2e-host-5550-57172/types/**/*.ts",
+    ".next-e2e-host-5550-57172/types/**/*.ts",
+    ".next-e2e-host-5550-64972/types/**/*.ts",
+    ".next-e2e-host-5630-51996/types/**/*.ts",
+    ".next-e2e-host-5630-90116/types/**/*.ts",
+    ".next/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-e2e-host/types/**/*.ts"
+    "next-env.d.ts",
+    ".next-e2e-host-5630-76676/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }
