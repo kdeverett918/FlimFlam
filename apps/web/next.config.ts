@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 function validateEnv() {
+  if (process.env.FLIMFLAM_E2E === "1" || process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1") return;
   if (process.env.NODE_ENV !== "production") return;
 
   const colyseusUrl = process.env.NEXT_PUBLIC_COLYSEUS_URL;
@@ -28,7 +29,9 @@ function validateEnv() {
 }
 
 validateEnv();
-const e2eDistDir = process.env.FLIMFLAM_NEXT_DIST_DIR?.trim();
+const e2eDistDir =
+  process.env.FLIMFLAM_NEXT_DIST_DIR?.trim() ?? process.env.FLIMFLAM_E2E_HOST_DIST_DIR?.trim();
+const isE2E = process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" || process.env.FLIMFLAM_E2E === "1";
 
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -43,6 +46,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   ...(e2eDistDir ? { distDir: e2eDistDir } : {}),
   transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
+  webpack: (config) => {
+    if (isE2E) {
+      // E2E cold starts on Windows are more stable without filesystem pack cache renames.
+      config.cache = false;
+    }
+    return config;
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

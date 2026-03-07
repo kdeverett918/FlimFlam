@@ -9,6 +9,14 @@ export interface SoundConfig {
   volume?: number;
 }
 
+export interface PlaySfxOptions {
+  source?: string;
+  context?: string;
+  dedupeKey?: string;
+  dedupeMs?: number;
+  throttleMs?: number;
+}
+
 interface SynthStep {
   frequency: number;
   duration: number;
@@ -89,6 +97,29 @@ const SYNTH_EFFECTS: Record<string, SynthStep[]> = {
     { frequency: 960, duration: 0.05, wave: "square", gain: 0.1 },
     { frequency: 1220, duration: 0.05, wave: "square", gain: 0.09 },
     { frequency: 1440, duration: 0.05, wave: "square", gain: 0.08 },
+  ],
+  // Premium moment cues (game-specific ids) used by E2E and authored beats.
+  "brain.board.reveal": [
+    { frequency: 260, duration: 0.08, wave: "triangle", gain: 0.12 },
+    { frequency: 390, duration: 0.09, wave: "triangle", gain: 0.11 },
+    { frequency: 520, duration: 0.12, wave: "triangle", gain: 0.1 },
+    { frequency: 780, duration: 0.14, wave: "triangle", gain: 0.09 },
+  ],
+  "lucky.prize.cash": [
+    { frequency: 880, duration: 0.06, wave: "square", gain: 0.11 },
+    { frequency: 1320, duration: 0.08, wave: "square", gain: 0.1 },
+  ],
+  "lucky.prize.pass": [
+    { frequency: 340, slideTo: 700, duration: 0.12, wave: "sawtooth", gain: 0.1 },
+  ],
+  "lucky.prize.bust": [
+    { frequency: 190, slideTo: 110, duration: 0.18, wave: "sawtooth", gain: 0.24 },
+    { frequency: 140, duration: 0.08, wave: "square", gain: 0.12 },
+  ],
+  "lucky.prize.wild": [
+    { frequency: 1040, duration: 0.05, wave: "triangle", gain: 0.1 },
+    { frequency: 1560, duration: 0.07, wave: "triangle", gain: 0.09 },
+    { frequency: 2080, duration: 0.08, wave: "triangle", gain: 0.08 },
   ],
 };
 
@@ -198,6 +229,8 @@ class SoundManager {
   private _desiredMusicTheme: MusicTheme | null = null;
   private _unlockReady: boolean;
   private _e2eEnabled = false;
+  private _dedupeSfxAt = new Map<string, number>();
+  private _throttleSfxAt = new Map<string, number>();
 
   constructor() {
     this._volume = getStoredVolume();
@@ -286,6 +319,10 @@ class SoundManager {
       return;
     }
     if (this._muted) return;
+    this._emitAudioEvent(
+      spriteId ? `audio.${id}.${spriteId}` : `audio.${id}`,
+      spriteId ? { id, spriteId } : { id },
+    );
     const howl = this._howls.get(id);
     if (!howl) {
       const key = spriteId ? `${id}:${spriteId}` : id;
@@ -299,12 +336,53 @@ class SoundManager {
     }
   }
 
-  playSfx(id: string): void {
+  playSfx(id: string, opts?: PlaySfxOptions): void {
     if (!this._unlockReady) {
       this._emitAudioEvent("audio.locked", { reason: "sfx", id });
       return;
     }
     if (this._muted) return;
+    const now = Date.now();
+    const dedupeWindowMs = opts?.dedupeMs ?? 0;
+    if (dedupeWindowMs > 0) {
+      const dedupeKey = opts?.dedupeKey ?? `${opts?.source ?? "unknown"}:${id}`;
+      const dedupeAt = this._dedupeSfxAt.get(dedupeKey) ?? 0;
+      if (now - dedupeAt < dedupeWindowMs) {
+        this._emitAudioEvent("audio.sfx.skipped", {
+          id,
+          reason: "dedupe",
+          dedupeKey,
+          dedupeWindowMs,
+          source: opts?.source ?? "unknown",
+          context: opts?.context ?? null,
+        });
+        return;
+      }
+      this._dedupeSfxAt.set(dedupeKey, now);
+    }
+    const throttleWindowMs = opts?.throttleMs ?? 0;
+    if (throttleWindowMs > 0) {
+      const throttleKey = `${opts?.source ?? "global"}:${id}`;
+      const throttleAt = this._throttleSfxAt.get(throttleKey) ?? 0;
+      if (now - throttleAt < throttleWindowMs) {
+        this._emitAudioEvent("audio.sfx.skipped", {
+          id,
+          reason: "throttle",
+          throttleKey,
+          throttleWindowMs,
+          source: opts?.source ?? "unknown",
+          context: opts?.context ?? null,
+        });
+        return;
+      }
+      this._throttleSfxAt.set(throttleKey, now);
+    }
+    this._emitAudioEvent(`audio.${id}`, { id });
+    this._emitAudioEvent("audio.sfx.play", {
+      id,
+      source: opts?.source ?? "unknown",
+      context: opts?.context ?? null,
+    });
     const synthKey = this._resolveSynthKey(id);
     this._playSynth(synthKey);
   }
@@ -647,6 +725,21 @@ export function emitMotionEvent(type: string, payload?: unknown): void {
     store.motionEvents = [];
   }
   store.motionEvents.push({ ts: Date.now(), type, payload });
+}
+
+export function emitAudioEvent(type: string, payload?: unknown): void {
+  if (typeof window === "undefined") return;
+  const e2eEnabled =
+    process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" || process.env.FLIMFLAM_E2E === "1";
+  if (!e2eEnabled) return;
+
+  const store = window.__FLIMFLAM_E2E__ ?? {};
+  window.__FLIMFLAM_E2E__ = store;
+  window.__flimflamTestHooks = store;
+  if (!store.audioEvents) {
+    store.audioEvents = [];
+  }
+  store.audioEvents.push({ ts: Date.now(), type, payload });
 }
 
 /** Global singleton — import this everywhere. */

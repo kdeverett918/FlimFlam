@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ADVANCED_BOARDS,
+  BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY,
   CATEGORIES_PER_BOARD,
   CLUES_PER_CATEGORY,
   CLUE_VALUES,
@@ -9,6 +10,7 @@ import {
   KIDS_BOARDS,
   STANDARD_BOARDS,
   buildBrainBoardPublicGameState,
+  createAsyncLimiter,
   getClueBank,
   getPowerPlayCount,
   judgeAnswer,
@@ -541,6 +543,11 @@ describe("public game-state redaction", () => {
       finalRound: null,
       answeredCount: 0,
       totalPlayerCount: 2,
+      clueResult: null,
+      allInReveal: null,
+      personalizationStatus: "pending" as const,
+      personalizationMessage: null,
+      personalizationTopics: [],
     };
 
     const hiddenPayload = buildBrainBoardPublicGameState({
@@ -573,6 +580,11 @@ describe("public game-state redaction", () => {
       finalRound: null,
       answeredCount: 1,
       totalPlayerCount: 2,
+      clueResult: null,
+      allInReveal: null,
+      personalizationStatus: "pending",
+      personalizationMessage: null,
+      personalizationTopics: [],
     }) as Record<string, unknown>;
 
     expect("correctAnswer" in payload).toBe(false);
@@ -588,6 +600,33 @@ describe("public game-state redaction", () => {
         expect("answer" in publicClue).toBe(false);
       }
     }
+  });
+});
+
+describe("AI judging concurrency controls", () => {
+  it("uses a valid exported max concurrency constant", () => {
+    expect(Number.isFinite(BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY)).toBe(true);
+    expect(BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY).toBeGreaterThanOrEqual(1);
+  });
+
+  it("caps concurrent async executions at configured limit", async () => {
+    const runLimited = createAsyncLimiter(2);
+    let activeCount = 0;
+    let maxObserved = 0;
+
+    await Promise.all(
+      Array.from({ length: 8 }, (_, index) =>
+        runLimited(async () => {
+          activeCount += 1;
+          maxObserved = Math.max(maxObserved, activeCount);
+          await new Promise((resolve) => setTimeout(resolve, index % 2 === 0 ? 5 : 1));
+          activeCount -= 1;
+          return index;
+        }),
+      ),
+    );
+
+    expect(maxObserved).toBeLessThanOrEqual(2);
   });
 });
 

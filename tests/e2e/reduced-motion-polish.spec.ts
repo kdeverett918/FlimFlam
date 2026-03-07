@@ -100,7 +100,7 @@ test.describe("Reduced Motion Polish", () => {
     });
     const skipButton = page.getByRole("button", { name: /^skip$/i });
 
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipButton.click();
     const anyTile = page.locator('[data-testid="lucky-letter-tile"]').first();
     for (let i = 0; i < 8; i++) {

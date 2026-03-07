@@ -90,6 +90,7 @@ interface FeudGameState {
   snagTeamId: string;
   lightningPlayerId: string;
   lightningCurrentIndex: number;
+  lightningQuestionCount?: number;
   lightningAnswers: LightningAnswer[];
   lightningTotalPoints: number;
   roundGuesses: Array<{
@@ -273,6 +274,7 @@ export function SurveySmashGame({
   round,
   totalRounds,
   players,
+  gamePayload,
   privateData,
   gameEvents,
   mySessionId,
@@ -284,6 +286,9 @@ export function SurveySmashGame({
 }: SurveySmashGameProps) {
   const reducedMotion = useReducedMotion();
   const pd = privateData ?? {};
+  const payloadGameState =
+    typeof gamePayload?.action === "string" ? (gamePayload as unknown as FeudGameState) : null;
+  const eventGameState = (gameEvents?.["survey-smash-state"] ?? null) as FeudGameState | null;
 
   // ─── Host state ──────────────────────────────────────────────────
   const [gameState, setGameState] = useState<FeudGameState | null>(null);
@@ -296,6 +301,13 @@ export function SurveySmashGame({
   const prevStrikesRef = useRef(0);
   const prevPhaseRef = useRef(phase);
   const revealTimersRef = useRef<number[]>([]);
+  const canonicalGameState = gameState ?? eventGameState ?? payloadGameState;
+  const canonicalPhase =
+    typeof phase === "string" && phase.length > 0
+      ? phase
+      : typeof canonicalGameState?.phase === "string"
+        ? canonicalGameState.phase
+        : phase;
 
   const clearRevealTimers = useCallback(() => {
     for (const timerId of revealTimersRef.current) {
@@ -334,14 +346,13 @@ export function SurveySmashGame({
   }, [room, handleMessage]);
 
   useEffect(() => {
-    if (!gameState) return;
-    if (prevPhaseRef.current !== gameState.phase) {
-      if (["question-reveal", "face-off", "answer-reveal"].includes(gameState.phase))
+    if (prevPhaseRef.current !== canonicalPhase) {
+      if (["question-reveal", "face-off", "answer-reveal"].includes(canonicalPhase))
         sounds.reveal();
-      if (["round-result", "lightning-round-reveal"].includes(gameState.phase)) sounds.win();
-      prevPhaseRef.current = gameState.phase;
+      if (["round-result", "lightning-round-reveal"].includes(canonicalPhase)) sounds.win();
+      prevPhaseRef.current = canonicalPhase;
     }
-  }, [gameState]);
+  }, [canonicalPhase]);
 
   useEffect(() => {
     if (strikeFxNonce <= 0 || typeof document === "undefined" || reducedMotion) return;
@@ -358,7 +369,7 @@ export function SurveySmashGame({
 
   useEffect(() => {
     clearRevealTimers();
-    if (!gameState || phase !== "answer-reveal") {
+    if (!canonicalGameState || canonicalPhase !== "answer-reveal") {
       setDramaticStage("idle");
       setSequentialRevealCount(0);
       return;
@@ -370,7 +381,7 @@ export function SurveySmashGame({
       sounds.tick();
       const buildTimer = window.setTimeout(() => {
         setDramaticStage("reveal");
-        const total = gameState.allAnswers?.length || gameState.answerCount || 0;
+        const total = canonicalGameState.allAnswers?.length || canonicalGameState.answerCount || 0;
         if (total <= 0) return;
         let revealIndex = 0;
         const seqTimer = window.setInterval(() => {
@@ -385,7 +396,7 @@ export function SurveySmashGame({
     }, ANIMATION_DURATIONS.dramaticPauseMs);
     revealTimersRef.current.push(pauseTimer);
     return clearRevealTimers;
-  }, [phase, gameState, clearRevealTimers]);
+  }, [canonicalPhase, canonicalGameState, clearRevealTimers]);
 
   useEffect(() => clearRevealTimers, [clearRevealTimers]);
 
@@ -406,13 +417,74 @@ export function SurveySmashGame({
   );
 
   // ─── Derived controller data ────────────────────────────────────
-  const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+  const gs = (canonicalGameState ?? {}) as unknown as Record<string, unknown>;
   const isFaceOffPlayer = pd.action === "face-off-your-turn";
   const isCurrentGuesser = pd.action === "your-turn-to-guess";
   const isSnagTeam = pd.action === "snag-your-turn";
-  const isLightningPlayer = pd.action === "lightning-question";
+  const publicLightningPlayerId =
+    typeof gs.lightningPlayerId === "string" ? (gs.lightningPlayerId as string) : null;
+  const isLightningPlayer =
+    pd.action === "lightning-question" ||
+    (canonicalPhase === "lightning-round" &&
+      mySessionId !== null &&
+      publicLightningPlayerId === mySessionId);
   const isGuessAlongPlayer = pd.action === "guess-along";
-  const hasActiveAction = isFaceOffPlayer || isCurrentGuesser || isSnagTeam || isLightningPlayer;
+  const controllerPhase = useMemo(() => {
+    if (isHost) return canonicalPhase;
+
+    // The shared room phase is the source of truth. Private action flags only decide
+    // who is active inside interactive phases, so stale controller actions cannot
+    // keep rendering an old input surface after the game has advanced.
+    if (
+      canonicalPhase === "question-reveal" ||
+      canonicalPhase === "face-off" ||
+      canonicalPhase === "guessing" ||
+      canonicalPhase === "strike" ||
+      canonicalPhase === "steal-chance" ||
+      canonicalPhase === "answer-reveal" ||
+      canonicalPhase === "round-result" ||
+      canonicalPhase === "lightning-round" ||
+      canonicalPhase === "lightning-round-reveal" ||
+      canonicalPhase === "final-scores"
+    ) {
+      return canonicalPhase;
+    }
+
+    if (isSnagTeam) return "steal-chance";
+    if (isFaceOffPlayer) return "face-off";
+    if (isCurrentGuesser || isGuessAlongPlayer) return "guessing";
+    if (isLightningPlayer) return "lightning-round";
+    return canonicalPhase;
+  }, [
+    canonicalPhase,
+    isCurrentGuesser,
+    isFaceOffPlayer,
+    isGuessAlongPlayer,
+    isHost,
+    isLightningPlayer,
+    isSnagTeam,
+  ]);
+  const hasActiveAction = useMemo(() => {
+    switch (controllerPhase) {
+      case "face-off":
+        return isFaceOffPlayer;
+      case "guessing":
+        return isCurrentGuesser || isGuessAlongPlayer;
+      case "steal-chance":
+        return isSnagTeam;
+      case "lightning-round":
+        return isLightningPlayer;
+      default:
+        return false;
+    }
+  }, [
+    controllerPhase,
+    isCurrentGuesser,
+    isFaceOffPlayer,
+    isGuessAlongPlayer,
+    isLightningPlayer,
+    isSnagTeam,
+  ]);
 
   const surveyTeams = useMemo(
     () => (Array.isArray(gs.teams) ? (gs.teams as TeamData[]) : []),
@@ -429,10 +501,54 @@ export function SurveySmashGame({
   const myTeamLabel =
     myTeamId === "team-a" ? "Team A" : myTeamId === "team-b" ? "Team B" : myTeamId ? "Solo" : null;
   const guessAlongPoints = typeof pd.guessAlongPoints === "number" ? pd.guessAlongPoints : null;
+  const canonicalRound =
+    typeof round === "number" && Number.isFinite(round) ? round : canonicalGameState?.round;
+  const canonicalTotalRounds =
+    typeof totalRounds === "number" && Number.isFinite(totalRounds)
+      ? totalRounds
+      : canonicalGameState?.totalRounds;
+  const hostRound = Number.isFinite(canonicalRound)
+    ? String(canonicalRound)
+    : Number.isFinite(round)
+      ? String(round)
+      : undefined;
+  const hostTotalRounds = Number.isFinite(canonicalTotalRounds)
+    ? String(canonicalTotalRounds)
+    : Number.isFinite(totalRounds)
+      ? String(totalRounds)
+      : undefined;
+  const boardWithState = (
+    <div
+      data-testid="survey-smash-host-state"
+      data-phase={canonicalPhase}
+      data-round={hostRound}
+      data-total-rounds={hostTotalRounds}
+      data-lightning-player-id={
+        typeof canonicalGameState?.lightningPlayerId === "string"
+          ? canonicalGameState.lightningPlayerId
+          : undefined
+      }
+      className="contents"
+    >
+      {renderBoard()}
+    </div>
+  );
+
+  const wrapControls = (controls: React.ReactNode) => (
+    <div
+      data-testid="survey-smash-control-state"
+      data-phase={controllerPhase}
+      data-my-session-id={mySessionId ?? undefined}
+      data-is-host={isHost ? "true" : "false"}
+      data-is-lightning-player={isLightningPlayer ? "true" : "false"}
+    >
+      {controls}
+    </div>
+  );
 
   // ─── Board renderer ─────────────────────────────────────────────
   function renderBoard(): React.ReactNode {
-    const state = gameState;
+    const state = canonicalGameState;
     if (!state) {
       return (
         <div className="flex items-center justify-center p-8">
@@ -503,7 +619,7 @@ export function SurveySmashGame({
     );
 
     // ── Question Reveal ──
-    if (phase === "question-reveal") {
+    if (canonicalPhase === "question-reveal") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           {strikeOverlay}
@@ -535,13 +651,15 @@ export function SurveySmashGame({
     }
 
     // ── Face-Off ──
-    if (phase === "face-off") {
+    if (canonicalPhase === "face-off") {
       const player1 = state.faceOffPlayers[0];
       const player2 = state.faceOffPlayers[1];
       const name1 = getPlayerName(players, player1 ?? null);
       const name2 = getPlayerName(players, player2 ?? null);
       const color1 = getPlayerColor(players, player1 ?? null);
       const color2 = getPlayerColor(players, player2 ?? null);
+      const submittedCount = state.faceOffEntries.length;
+      const expectedCount = state.faceOffPlayers.length;
       return (
         <div className="flex flex-col items-center justify-center gap-6 p-8">
           {strikeOverlay}
@@ -601,6 +719,17 @@ export function SurveySmashGame({
               )}
             </motion.div>
           </div>
+          <GlassPanel
+            data-testid="submission-progress"
+            className="flex flex-col items-center gap-1 px-5 py-3"
+          >
+            <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-accent-surveysmash">
+              Submission Progress
+            </span>
+            <span className="font-body text-sm text-text-muted">
+              {submittedCount}/{expectedCount} submitted
+            </span>
+          </GlassPanel>
           {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
           {teamScoreBar}
         </div>
@@ -608,10 +737,12 @@ export function SurveySmashGame({
     }
 
     // ── Guessing ──
-    if (phase === "guessing") {
+    if (canonicalPhase === "guessing") {
       const currentGuesser = state.guessingOrder[state.currentGuesserIndex];
       const guesserName = getPlayerName(players, currentGuesser ?? null);
       const guesserColor = getPlayerColor(players, currentGuesser ?? null);
+      const guessAlongEligible = state.guessAlongEligible ?? 0;
+      const guessAlongSubmissions = state.guessAlongSubmissions ?? 0;
       return (
         <div className="flex flex-col items-center justify-center gap-6 p-6">
           {strikeOverlay}
@@ -638,6 +769,19 @@ export function SurveySmashGame({
                   <span className="font-body text-[18px] text-text-muted">is guessing...</span>
                 </div>
               </div>
+              {guessAlongEligible > 0 && (
+                <GlassPanel
+                  data-testid="guess-along-status"
+                  className="flex flex-col items-center gap-1 px-4 py-3"
+                >
+                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-accent-surveysmash">
+                    Guess Along
+                  </span>
+                  <span className="font-body text-sm text-text-muted">
+                    {guessAlongSubmissions}/{guessAlongEligible} spectators submitted
+                  </span>
+                </GlassPanel>
+              )}
               <StrikeDisplay strikes={state.strikes} />
               {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
             </div>
@@ -648,7 +792,7 @@ export function SurveySmashGame({
     }
 
     // ── Strike ──
-    if (phase === "strike") {
+    if (canonicalPhase === "strike") {
       const currentGuesser = state.guessingOrder[state.currentGuesserIndex];
       const guesserName = getPlayerName(players, currentGuesser ?? null);
       const guesserColor = getPlayerColor(players, currentGuesser ?? null);
@@ -684,7 +828,7 @@ export function SurveySmashGame({
     }
 
     // ── Steal Chance ──
-    if (phase === "steal-chance") {
+    if (canonicalPhase === "steal-chance") {
       const snagTeam = state.teams.find((t) => t.id === state.snagTeamId);
       const snagName = snagTeam ? getTeamDisplayName(snagTeam, players, state.teamMode) : "???";
       return (
@@ -734,7 +878,7 @@ export function SurveySmashGame({
     }
 
     // ── Answer Reveal ──
-    if (phase === "answer-reveal") {
+    if (canonicalPhase === "answer-reveal") {
       const totalAnswers = state.allAnswers?.length || state.answerCount || 0;
       const resolvedCount = Math.min(totalAnswers, sequentialRevealCount);
       return (
@@ -763,7 +907,7 @@ export function SurveySmashGame({
     }
 
     // ── Round Result ──
-    if (phase === "round-result") {
+    if (canonicalPhase === "round-result") {
       const controllingTeam = state.teams.find((t) => t.id === state.controllingTeamId);
       const winnerName = controllingTeam
         ? getTeamDisplayName(controllingTeam, players, state.teamMode)
@@ -814,7 +958,7 @@ export function SurveySmashGame({
     }
 
     // ── Lightning Round ──
-    if (phase === "lightning-round") {
+    if (canonicalPhase === "lightning-round") {
       const lrPlayerName = getPlayerName(players, state.lightningPlayerId);
       const lrPlayerColor = getPlayerColor(players, state.lightningPlayerId);
       return (
@@ -860,7 +1004,7 @@ export function SurveySmashGame({
     }
 
     // ── Lightning Round Reveal ──
-    if (phase === "lightning-round-reveal") {
+    if (canonicalPhase === "lightning-round-reveal") {
       const lrPlayerName = getPlayerName(players, state.lightningPlayerId);
       const lrPlayerColor = getPlayerColor(players, state.lightningPlayerId);
       const hitThreshold = state.lightningTotalPoints >= 200;
@@ -925,7 +1069,7 @@ export function SurveySmashGame({
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (canonicalPhase === "final-scores") {
       const scores: ScoreEntry[] = state.leaderboard ?? buildScores(players);
       const awards = generateAwards(
         players
@@ -972,7 +1116,7 @@ export function SurveySmashGame({
 
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="font-display text-[48px] text-text-muted">Survey Smash: {phase}</p>
+        <p className="font-display text-[48px] text-text-muted">Survey Smash: {canonicalPhase}</p>
       </div>
     );
   }
@@ -985,6 +1129,7 @@ export function SurveySmashGame({
         : typeof gs.question === "string"
           ? gs.question
           : "";
+    const activePhase = controllerPhase;
 
     // Team badge for controls
     const teamBadge = myTeamLabel ? (
@@ -992,12 +1137,16 @@ export function SurveySmashGame({
         <button
           type="button"
           onClick={() => setIsTeamRosterOpen((o) => !o)}
+          data-testid="team-pill"
           className="rounded-full border border-accent-surveysmash/35 bg-accent-surveysmash/15 px-3 py-1 font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash transition-all active:scale-95"
         >
           {myTeamLabel}
         </button>
         {isTeamRosterOpen && surveyTeams.length > 0 && (
-          <GlassPanel className="w-[min(92vw,360px)] rounded-2xl border border-accent-surveysmash/30 px-4 py-3">
+          <GlassPanel
+            data-testid="team-roster-sheet"
+            className="w-[min(92vw,360px)] rounded-2xl border border-accent-surveysmash/30 px-4 py-3"
+          >
             <p className="mb-2 text-center font-display text-xs font-bold uppercase tracking-wider text-accent-surveysmash">
               Team Roster
             </p>
@@ -1036,10 +1185,10 @@ export function SurveySmashGame({
     ) : null;
 
     // ── Face-Off ──
-    if (phase === "face-off") {
+    if (activePhase === "face-off") {
       if (isFaceOffPlayer) {
         return (
-          <div className="flex flex-col gap-4 pb-4 pt-4">
+          <div data-testid="survey-smash-faceoff-input" className="flex flex-col gap-4 pb-4 pt-4">
             {teamBadge}
             <TextInput
               prompt={question || "Name the top answer!"}
@@ -1068,10 +1217,10 @@ export function SurveySmashGame({
     }
 
     // ── Guessing ──
-    if (phase === "guessing") {
+    if (activePhase === "guessing") {
       if (isCurrentGuesser) {
         return (
-          <div className="flex flex-col gap-4 pb-4 pt-4">
+          <div data-testid="survey-smash-guesser-input" className="flex flex-col gap-4 pb-4 pt-4">
             {teamBadge}
             <TextInput
               prompt={question || "Name something..."}
@@ -1084,7 +1233,10 @@ export function SurveySmashGame({
       }
       if (isGuessAlongPlayer) {
         return (
-          <div className="flex flex-col gap-4 pb-4 pt-4">
+          <div
+            data-testid="survey-smash-guess-along-input"
+            className="flex flex-col gap-4 pb-4 pt-4"
+          >
             {teamBadge}
             {guessAlongPoints !== null && (
               <div className="mx-4 flex justify-center">
@@ -1104,7 +1256,10 @@ export function SurveySmashGame({
       }
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-6">
-          <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-3 px-6 py-5"
+          >
             {question && (
               <p className="text-center font-display text-sm font-bold text-text-primary">
                 {question}
@@ -1118,10 +1273,10 @@ export function SurveySmashGame({
     }
 
     // ── Steal Chance ──
-    if (phase === "steal-chance") {
+    if (activePhase === "steal-chance") {
       if (isSnagTeam) {
         return (
-          <div className="flex flex-col gap-4 pb-4 pt-4">
+          <div className="flex flex-col gap-4 pb-4 pt-4" data-testid="survey-smash-steal-input">
             {teamBadge}
             <TextInput
               prompt={`Snag it! ${question}`}
@@ -1134,7 +1289,10 @@ export function SurveySmashGame({
       }
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-6">
-          <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-3 px-6 py-5"
+          >
             <p className="font-display text-xs font-bold text-accent-surveysmash uppercase">
               Snag attempt!
             </p>
@@ -1148,10 +1306,20 @@ export function SurveySmashGame({
     }
 
     // ── Lightning Round ──
-    if (phase === "lightning-round") {
+    if (activePhase === "lightning-round") {
+      const qIndex =
+        typeof pd.questionIndex === "number"
+          ? pd.questionIndex + 1
+          : typeof gs.lightningCurrentIndex === "number"
+            ? Number(gs.lightningCurrentIndex) + 1
+            : "?";
+      const totalQ =
+        typeof pd.totalQuestions === "number"
+          ? pd.totalQuestions
+          : typeof gs.lightningQuestionCount === "number"
+            ? Number(gs.lightningQuestionCount)
+            : "?";
       if (isLightningPlayer) {
-        const qIndex = typeof pd.questionIndex === "number" ? pd.questionIndex + 1 : "?";
-        const totalQ = typeof pd.totalQuestions === "number" ? pd.totalQuestions : "?";
         return (
           <div className="flex flex-col gap-4 pb-4 pt-4">
             {teamBadge}
@@ -1160,20 +1328,28 @@ export function SurveySmashGame({
                 {qIndex}/{totalQ}
               </span>
             </div>
-            <QuickGuessInput
-              prompt={question || "Quick!"}
-              placeholder="Quick! Type your answer..."
-              onSubmit={handleTextSubmit}
-            />
+            <div data-testid="survey-smash-lightning-input">
+              <QuickGuessInput
+                prompt={question || "Quick!"}
+                placeholder="Quick! Type your answer..."
+                onSubmit={handleTextSubmit}
+              />
+            </div>
           </div>
         );
       }
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-6">
-          <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-3 px-6 py-5"
+          >
             <p className="font-display text-lg font-bold text-accent-surveysmash uppercase">
               Lightning Round
             </p>
+            <span className="rounded-full bg-accent-surveysmash/15 px-3 py-1 font-mono text-xs font-bold text-accent-surveysmash">
+              {qIndex}/{totalQ}
+            </span>
           </GlassPanel>
           {teamBadge}
         </div>
@@ -1188,11 +1364,14 @@ export function SurveySmashGame({
         "answer-reveal",
         "round-result",
         "lightning-round-reveal",
-      ].includes(phase)
+      ].includes(activePhase)
     ) {
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-6">
-          <GlassPanel className="flex flex-col items-center gap-3 px-6 py-5">
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="flex flex-col items-center gap-3 px-6 py-5"
+          >
             <p className="text-center font-body text-lg text-text-muted">Watch the board!</p>
           </GlassPanel>
           {teamBadge}
@@ -1201,7 +1380,7 @@ export function SurveySmashGame({
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (activePhase === "final-scores") {
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-4">
           <p className="text-center font-body text-sm text-text-muted">
@@ -1211,16 +1390,16 @@ export function SurveySmashGame({
       );
     }
 
-    return <WaitingScreen phase={phase} gameId="survey-smash" />;
+    return <WaitingScreen phase={activePhase} gameId="survey-smash" />;
   }
 
   // ─── Layout ──────────────────────────────────────────────────────
-  if (phase === "final-scores") {
+  if (canonicalPhase === "final-scores") {
     return (
       <div className="flex min-h-dvh flex-col">
-        {renderBoard()}
+        {boardWithState}
         <div className="border-t border-white/10 bg-bg-deep/80 backdrop-blur-sm p-4">
-          {renderControls()}
+          {wrapControls(renderControls())}
         </div>
       </div>
     );
@@ -1228,19 +1407,23 @@ export function SurveySmashGame({
 
   return (
     <GameBoard
-      board={renderBoard()}
-      controls={
+      board={boardWithState}
+      controls={wrapControls(
         <>
           <PlayerStatus
             turnPlayerName={null}
             isMyTurn={hasActiveAction}
             message={
-              hasActiveAction ? "Your turn!" : isGuessAlongPlayer ? "Guess along!" : undefined
+              hasActiveAction
+                ? controllerPhase === "guessing" && isGuessAlongPlayer && !isCurrentGuesser
+                  ? "Guess along!"
+                  : "Your turn!"
+                : undefined
             }
           />
           {renderControls()}
-        </>
-      }
+        </>,
+      )}
     />
   );
 }

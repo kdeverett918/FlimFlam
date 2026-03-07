@@ -61,7 +61,7 @@ test.describe("Host Submission Progress", () => {
     const initial = await readSubmittedProgressText(page);
     expect(initial.total).toBeGreaterThan(0);
 
-    const faceOffControllers = await findFaceOffPlayers(controllerPages, 2, 20_000);
+    const faceOffControllers = await findFaceOffPlayers([page, ...controllerPages], 2, 20_000);
     const disconnectedController = faceOffControllers[1];
     const disconnectedContext = controllers.find(
       (controller) => controller.controllerPage === disconnectedController,

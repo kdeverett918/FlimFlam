@@ -6,6 +6,7 @@ import {
   forceToFinalScores,
   joinControllersForRoom,
   selectGameAndStart,
+  skipToPhase,
   waitForColyseusHealthy,
 } from "./e2e-helpers";
 
@@ -74,7 +75,7 @@ test.describe("Cross-Game Sessions", () => {
     await startBtn.click();
 
     // Should be in Lucky Letters — shows ROUND 1
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
 
     await closeAllControllers(controllers);
   });

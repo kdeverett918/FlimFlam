@@ -60,7 +60,10 @@ export function FinalScoresLayout({
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12">
+    <div
+      className="relative flex min-h-screen flex-col items-center justify-center gap-10 p-12"
+      data-testid="final-scores-root"
+    >
       <AnimatedBackground variant="subtle" />
 
       {/* Triple confetti burst */}
@@ -80,6 +83,7 @@ export function FinalScoresLayout({
           👑
         </motion.span>
         <motion.h1
+          data-testid="final-scores-heading"
           initial={{ scale: 1.5, filter: "blur(12px)", opacity: 0 }}
           animate={{ scale: 1, filter: "blur(0px)", opacity: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}

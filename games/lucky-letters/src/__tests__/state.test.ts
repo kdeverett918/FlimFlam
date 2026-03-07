@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ADVANCED_PUZZLES,
   KIDS_PUZZLES,
@@ -8,7 +8,13 @@ import {
 } from "../content/phrase-bank";
 import {
   BONUS_PRIZE,
+  BUY_VOWEL_IDLE_TIMEOUT_MS,
+  CATEGORY_VOTE_TIMEOUT_MS,
+  E2E_SOLVE_TOKEN_DEFAULT,
+  GUESS_IDLE_TIMEOUT_MS,
   RSTLNE,
+  SOLVE_IDLE_TIMEOUT_MS,
+  SPIN_IDLE_TIMEOUT_MS,
   VOWELS,
   VOWEL_COST,
   buildLuckyLettersBonusRevealPayload,
@@ -17,7 +23,12 @@ import {
   buildPuzzleDisplay,
   countLetterInPhrase,
   getConsonantsRemaining,
+  getIdleTimeoutForPhase,
+  getRoundsForComplexity,
+  getSolveBonus,
   getVowelsRemaining,
+  hasBonusRound,
+  isDeterministicE2ESolveAttempt,
   isPuzzleFullyRevealed,
   isSolveCorrect,
   normalizeSolve,
@@ -61,6 +72,23 @@ describe("spinWheel", () => {
   it("contains 1 wild segment", () => {
     const wilds = WHEEL_SEGMENTS.filter((s) => s.type === "wild");
     expect(wilds).toHaveLength(1);
+  });
+});
+
+describe("complexity configuration", () => {
+  it("uses three rounds and no bonus round for kids", () => {
+    expect(getRoundsForComplexity("kids")).toBe(3);
+    expect(hasBonusRound("kids")).toBe(false);
+  });
+
+  it("uses four rounds and enables the bonus round for standard", () => {
+    expect(getRoundsForComplexity("standard")).toBe(4);
+    expect(hasBonusRound("standard")).toBe(true);
+  });
+
+  it("uses five rounds and enables the bonus round for advanced", () => {
+    expect(getRoundsForComplexity("advanced")).toBe(5);
+    expect(hasBonusRound("advanced")).toBe(true);
   });
 });
 
@@ -157,6 +185,74 @@ describe("isSolveCorrect", () => {
 
   it("rejects partial answers", () => {
     expect(isSolveCorrect("ICE CREAM", "ICE CREAM CONE")).toBe(false);
+  });
+});
+
+describe("solve bonus amounts", () => {
+  it("returns the configured solve bonus per complexity", () => {
+    expect(getSolveBonus("kids")).toBe(500);
+    expect(getSolveBonus("standard")).toBe(1000);
+    expect(getSolveBonus("advanced")).toBe(1500);
+  });
+
+  it("does not award solve bonus for incorrect solves", () => {
+    const attempt = "THIS IS WRONG";
+    const phrase = "HELLO WORLD";
+    const awarded = isSolveCorrect(attempt, phrase) ? getSolveBonus("kids") : 0;
+    expect(awarded).toBe(0);
+  });
+});
+
+describe("idle action timers", () => {
+  it("uses explicit anti-stall timeouts for interactive phases", () => {
+    expect(getIdleTimeoutForPhase("category-vote")).toBe(CATEGORY_VOTE_TIMEOUT_MS);
+    expect(getIdleTimeoutForPhase("spinning")).toBe(SPIN_IDLE_TIMEOUT_MS);
+    expect(getIdleTimeoutForPhase("guess-consonant")).toBe(GUESS_IDLE_TIMEOUT_MS);
+    expect(getIdleTimeoutForPhase("buy-vowel")).toBe(BUY_VOWEL_IDLE_TIMEOUT_MS);
+    expect(getIdleTimeoutForPhase("solve-attempt")).toBe(SOLVE_IDLE_TIMEOUT_MS);
+  });
+
+  it("returns null for non-interactive phases", () => {
+    expect(getIdleTimeoutForPhase("round-result")).toBeNull();
+    expect(getIdleTimeoutForPhase("final-scores")).toBeNull();
+  });
+});
+
+describe("deterministic e2e solve token", () => {
+  const initialE2E = process.env.FLIMFLAM_E2E;
+  const initialPublicE2E = process.env.NEXT_PUBLIC_FLIMFLAM_E2E;
+  const initialToken = process.env.FLIMFLAM_E2E_SOLVE_TOKEN;
+
+  afterEach(() => {
+    process.env.FLIMFLAM_E2E = initialE2E;
+    process.env.NEXT_PUBLIC_FLIMFLAM_E2E = initialPublicE2E;
+    process.env.FLIMFLAM_E2E_SOLVE_TOKEN = initialToken;
+    vi.unstubAllEnvs();
+  });
+
+  it("does not allow token solves outside E2E mode", () => {
+    vi.stubEnv("FLIMFLAM_E2E", "0");
+    expect(isDeterministicE2ESolveAttempt(E2E_SOLVE_TOKEN_DEFAULT)).toBe(false);
+  });
+
+  it("accepts default token in E2E mode", () => {
+    vi.stubEnv("FLIMFLAM_E2E", "1");
+    vi.stubEnv("FLIMFLAM_E2E_SOLVE_TOKEN", E2E_SOLVE_TOKEN_DEFAULT);
+    expect(isDeterministicE2ESolveAttempt("__e2e_solve__")).toBe(true);
+  });
+
+  it("accepts custom token in E2E mode", () => {
+    vi.stubEnv("FLIMFLAM_E2E", "1");
+    vi.stubEnv("FLIMFLAM_E2E_SOLVE_TOKEN", "WIN NOW");
+    expect(isDeterministicE2ESolveAttempt("win now")).toBe(true);
+    expect(isDeterministicE2ESolveAttempt(E2E_SOLVE_TOKEN_DEFAULT)).toBe(false);
+  });
+
+  it("accepts the token when only the public E2E flag is present", () => {
+    vi.stubEnv("FLIMFLAM_E2E", "0");
+    vi.stubEnv("NEXT_PUBLIC_FLIMFLAM_E2E", "1");
+    vi.stubEnv("FLIMFLAM_E2E_SOLVE_TOKEN", E2E_SOLVE_TOKEN_DEFAULT);
+    expect(isDeterministicE2ESolveAttempt(E2E_SOLVE_TOKEN_DEFAULT)).toBe(true);
   });
 });
 
@@ -455,11 +551,13 @@ describe("public game-data redaction", () => {
       answer: "HELLO WORLD",
       category: "SAYINGS",
       roundCashEarned: 1200,
+      solveBonusAwarded: 1000,
       standings: [{ sessionId: "p1", roundCash: 1200, totalCash: 2200 }],
     }) as Record<string, unknown>;
 
     expect(payload.type).toBe("round-result");
     expect(payload.answer).toBe("HELLO WORLD");
+    expect(payload.solveBonusAwarded).toBe(1000);
   });
 
   it("bonus-reveal payload can include answer after reveal", () => {

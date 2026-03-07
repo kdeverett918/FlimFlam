@@ -19,6 +19,7 @@ export function TextInput({
   maxChars = 140,
   resetNonce,
 }: TextInputProps) {
+  const safeScrollMarginBottom = "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 1rem)";
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -84,7 +85,7 @@ export function TextInput({
   }
 
   return (
-    <div className="flex w-full flex-col gap-4 px-4">
+    <div className="flex w-full flex-col gap-4 px-4 pb-6">
       {prompt && (
         <p className="text-center font-body text-lg font-medium text-text-primary">{prompt}</p>
       )}
@@ -98,6 +99,7 @@ export function TextInput({
           placeholder={placeholder}
           rows={4}
           className="glass-input w-full resize-none rounded-xl p-4 font-body text-lg text-text-primary placeholder:text-text-dim transition-all focus:border-primary/50 focus:shadow-[0_0_12px_oklch(0.72_0.22_25_/_0.15)]"
+          style={{ scrollMarginBottom: safeScrollMarginBottom }}
         />
         <span
           className={`absolute right-3 bottom-3 font-mono text-xs font-medium transition-colors ${
@@ -115,6 +117,7 @@ export function TextInput({
         className="h-14 w-full rounded-xl bg-primary font-display text-lg text-white uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40 disabled:active:scale-100"
         style={{
           boxShadow: text.trim() ? "0 0 16px oklch(0.72 0.22 25 / 0.25)" : "none",
+          scrollMarginBottom: safeScrollMarginBottom,
         }}
       >
         Submit

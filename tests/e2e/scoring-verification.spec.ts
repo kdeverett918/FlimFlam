@@ -4,6 +4,7 @@ import {
   closeAllControllers,
   driveSurveySmashToFinalScores,
   findControllerWithButton,
+  skipToPhase,
   startGame,
   submitTextAnswer,
 } from "./e2e-helpers";
@@ -109,7 +110,7 @@ test.describe("Scoring Verification", () => {
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
 
     // round-intro -> spinning
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
     // Host standings should show $ amounts for both players

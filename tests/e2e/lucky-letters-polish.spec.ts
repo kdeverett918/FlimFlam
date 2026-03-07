@@ -1,22 +1,13 @@
 import { type Page, expect, test } from "@playwright/test";
 
-import { closeAllControllers, startGame } from "./e2e-helpers";
+import {
+  closeAllControllers,
+  findLuckyLettersTurnActor,
+  skipToPhase,
+  startGame,
+} from "./e2e-helpers";
 
 type MotionEvent = { type: string };
-
-async function findLuckyLettersActiveController(controllerPages: Page[]): Promise<Page> {
-  const deadline = Date.now() + 20_000;
-  while (Date.now() < deadline) {
-    for (const controllerPage of controllerPages) {
-      const spinButton = controllerPage.getByRole("button", { name: /spin the wheel/i });
-      if (await spinButton.isVisible().catch(() => false)) {
-        return controllerPage;
-      }
-    }
-    await controllerPages[0]?.waitForTimeout(150);
-  }
-  throw new Error("Timed out waiting for Lucky Letters active controller");
-}
 
 async function clickAnySpinButton(controllerPages: Page[]): Promise<boolean> {
   for (const controllerPage of controllerPages) {
@@ -118,7 +109,7 @@ async function expectNoAudioErrors(page: Page): Promise<void> {
 }
 
 async function skipRoundIntro(page: Page): Promise<void> {
-  await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+  await skipToPhase(page, /choose your categories/i);
   await page.getByRole("button", { name: /^skip$/i }).click();
 }
 
@@ -141,8 +132,8 @@ test.describe("Lucky Letters Polish", () => {
       await expect(page.locator('[data-testid="lucky-wheel-segment"]')).toHaveCount(24);
 
       await clearMotionEvents(page);
-      const activeController = await findLuckyLettersActiveController(controllerPages);
-      await activeController.getByRole("button", { name: /spin the wheel/i }).click();
+      const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, ["Ada", "Ben"]);
+      await activePage.getByRole("button", { name: /spin the wheel/i }).click();
 
       await expect
         .poll(async () => {
@@ -274,13 +265,13 @@ test.describe("Lucky Letters Letter Picker", () => {
       const controllerPages = controllers.map((c) => c.controllerPage);
       await skipRoundIntro(page);
 
-      const activeController = await findLuckyLettersActiveController(controllerPages);
+      const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, ["Ada", "Ben"]);
 
       // Spin the wheel
-      await activeController.getByRole("button", { name: /spin the wheel/i }).click();
+      await activePage.getByRole("button", { name: /spin the wheel/i }).click();
 
       // Wait for consonant picker to appear (may not appear if bust/pass)
-      const consonantPrompt = activeController.getByText("Pick a consonant");
+      const consonantPrompt = activePage.getByText("Pick a consonant");
       const deadline = Date.now() + 15_000;
       let hasConsonantPicker = false;
       while (Date.now() < deadline) {
@@ -289,22 +280,22 @@ test.describe("Lucky Letters Letter Picker", () => {
           break;
         }
         // If spin button reappeared (bust/pass), spin again
-        const spinBtn = activeController.getByRole("button", { name: /spin the wheel/i });
+        const spinBtn = activePage.getByRole("button", { name: /spin the wheel/i });
         if (await spinBtn.isVisible().catch(() => false)) {
           await spinBtn.click();
         }
-        await activeController.waitForTimeout(300);
+        await activePage.waitForTimeout(300);
       }
 
       if (hasConsonantPicker) {
         // Vowels should be disabled in consonant mode
         for (const vowel of ["A", "E", "I", "O", "U"]) {
-          const vowelBtn = activeController.getByRole("button", { name: `Letter ${vowel}` });
+          const vowelBtn = activePage.getByRole("button", { name: `Letter ${vowel}` });
           await expect(vowelBtn).toBeDisabled();
         }
 
         // At least one consonant should be enabled
-        const letterT = activeController.getByRole("button", { name: "Letter T" });
+        const letterT = activePage.getByRole("button", { name: "Letter T" });
         await expect(letterT).toBeEnabled();
       }
     } finally {

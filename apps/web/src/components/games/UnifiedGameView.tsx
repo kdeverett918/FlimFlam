@@ -4,8 +4,6 @@ import type { PlayerData } from "@flimflam/shared";
 import { GameThemeProvider } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 
-import { HostControls } from "@/components/game/HostControls";
-import { ReactionBar } from "@/components/game/ReactionBar";
 import { BrainBoardGame } from "@/components/games/BrainBoardGame";
 import { LuckyLettersGame } from "@/components/games/LuckyLettersGame";
 import { SurveySmashGame } from "@/components/games/SurveySmashGame";
@@ -94,11 +92,5 @@ export function UnifiedGameView({
       );
   }
 
-  return (
-    <GameThemeProvider defaultTheme={themeKey}>
-      {gameContent}
-      <ReactionBar sendMessage={sendMessage} />
-      <HostControls isHost={isHost} sendMessage={sendMessage} phase={phase} />
-    </GameThemeProvider>
-  );
+  return <GameThemeProvider defaultTheme={themeKey}>{gameContent}</GameThemeProvider>;
 }

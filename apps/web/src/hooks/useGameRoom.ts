@@ -283,13 +283,18 @@ export function useGameRoom(): UseGameRoomReturn {
 
         // Also store in gameEvents for controller-style access
         const dataObj = data as unknown as Record<string, unknown>;
-        const msgType = typeof dataObj.type === "string" ? dataObj.type : "unknown";
+        const msgType =
+          typeof dataObj.type === "string"
+            ? dataObj.type
+            : typeof dataObj.action === "string"
+              ? dataObj.action
+              : "unknown";
         setGameEvents((prev) => ({ ...prev, [msgType]: dataObj }));
       });
 
       // Private data messages (role assignment, personal outcomes)
       joinedRoom.onMessage("private-data", (data: PrivateData) => {
-        setPrivateData((prev) => ({ ...prev, ...data }));
+        setPrivateData(data ? { ...data } : null);
       });
 
       // Error messages

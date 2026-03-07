@@ -25,9 +25,13 @@ test.describe("Host Skip Regression — no softlocks", () => {
 
     await driveBrainBoardToFinalScores(page, controllerPages);
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
-    await expect(page.getByText("Rex", { exact: true })).toBeVisible();
-    await expect(page.getByText("Rio", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Rex"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Rio"]').first(),
+    ).toBeVisible();
 
     await closeAllControllers(controllers);
   });
@@ -41,9 +45,13 @@ test.describe("Host Skip Regression — no softlocks", () => {
 
     await forceToFinalScores(page, 300);
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
-    await expect(page.getByText("Lux", { exact: true })).toBeVisible();
-    await expect(page.getByText("Lea", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Lux"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Lea"]').first(),
+    ).toBeVisible();
 
     await closeAllControllers(controllers);
   });
@@ -58,10 +66,16 @@ test.describe("Host Skip Regression — no softlocks", () => {
 
     await driveSurveySmashToFinalScores(page, controllerPages);
 
-    await expect(page.getByRole("heading", { name: /final scores/i }).first()).toBeVisible();
-    await expect(page.getByText("Sam", { exact: true })).toBeVisible();
-    await expect(page.getByText("Sid", { exact: true })).toBeVisible();
-    await expect(page.getByText("Sue", { exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Sam"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Sid"]').first(),
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="final-score-row"][data-player-name="Sue"]').first(),
+    ).toBeVisible();
 
     await closeAllControllers(controllers);
   });

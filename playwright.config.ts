@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
-const E2E_RUNTIME = process.env.FLIMFLAM_E2E_RUNTIME ?? "development";
+const E2E_RUNTIME = process.env.FLIMFLAM_E2E_RUNTIME ?? "production";
 const E2E_SKIP_BUILD =
   process.env.FLIMFLAM_E2E_SKIP_BUILD ?? (E2E_RUNTIME === "production" ? "0" : "1");
 
@@ -89,13 +89,19 @@ const { appPort, colyseusPort } = resolvePortPair();
 if (!Number.isFinite(appPort) || !Number.isFinite(colyseusPort)) {
   throw new Error("Failed to resolve valid E2E ports for Playwright");
 }
+const E2E_RUN_ID = process.env.FLIMFLAM_E2E_RUN_ID ?? String(process.pid);
 const e2eAppPort = String(appPort);
 const e2eColyseusPort = String(colyseusPort);
 
 const e2eAppUrl = `http://127.0.0.1:${e2eAppPort}`;
 const e2eColyseusWsUrl = `ws://127.0.0.1:${e2eColyseusPort}`;
 const e2eColyseusHealthUrl = `http://127.0.0.1:${e2eColyseusPort}/health`;
-const e2eAppDistDir = ".next-e2e-host";
+const configuredDistDir = process.env.FLIMFLAM_E2E_HOST_DIST_DIR?.trim();
+const legacyDistDirName = `.next-e2e-host-${e2eAppPort}`;
+const e2eAppDistDir =
+  configuredDistDir && configuredDistDir.length > 0 && configuredDistDir !== legacyDistDirName
+    ? configuredDistDir
+    : `${legacyDistDirName}-${E2E_RUN_ID}`;
 
 const e2eArtifactsDir = path.join(process.cwd(), ".tmp", "playwright-artifacts");
 const e2eReportDir = path.join(process.cwd(), ".tmp", "playwright-report");
@@ -135,7 +141,7 @@ export default defineConfig({
     command: "node scripts/e2e-webserver.mjs",
     url: e2eAppUrl,
     timeout: 360_000,
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       ...process.env,
       FLIMFLAM_E2E: "1",
@@ -154,7 +160,8 @@ export default defineConfig({
       FLIMFLAM_E2E_SKIP_BUILD: E2E_SKIP_BUILD,
       FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
       FLIMFLAM_E2E_RECLAIM_PORTS: process.env.FLIMFLAM_E2E_RECLAIM_PORTS ?? "1",
-      FLIMFLAM_E2E_RECLAIM_RUNNERS: process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ?? "0",
+      FLIMFLAM_E2E_RECLAIM_RUNNERS:
+        process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ?? (process.platform === "win32" ? "force" : "0"),
       NEXT_TELEMETRY_DISABLED: "1",
     },
   },

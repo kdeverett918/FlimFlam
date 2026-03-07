@@ -1,3 +1,26 @@
+export interface RuntimePublicConfig {
+  colyseusUrl?: string;
+  hostUrl?: string;
+}
+
+declare global {
+  interface Window {
+    __FLIMFLAM_RUNTIME_CONFIG__?: Partial<RuntimePublicConfig> | undefined;
+  }
+}
+
+export function readRuntimePublicConfig(): RuntimePublicConfig {
+  if (typeof window === "undefined") return {};
+
+  const config = window.__FLIMFLAM_RUNTIME_CONFIG__;
+  if (!config || typeof config !== "object") return {};
+
+  return {
+    colyseusUrl: typeof config.colyseusUrl === "string" ? config.colyseusUrl : undefined,
+    hostUrl: typeof config.hostUrl === "string" ? config.hostUrl : undefined,
+  };
+}
+
 export function resolveColyseusWsUrlFromEnv(opts: {
   envUrl?: string;
   nodeEnv?: string;
@@ -22,7 +45,11 @@ export function resolveColyseusWsUrlFromEnv(opts: {
 }
 
 export function resolveNextPublicColyseusWsUrl(): string {
-  const url = typeof window !== "undefined" ? process.env.NEXT_PUBLIC_COLYSEUS_URL : undefined;
+  const runtimeConfig = readRuntimePublicConfig();
+  const url =
+    typeof window !== "undefined"
+      ? (runtimeConfig.colyseusUrl ?? process.env.NEXT_PUBLIC_COLYSEUS_URL)
+      : undefined;
   const hostname = typeof window !== "undefined" ? window.location.hostname : undefined;
 
   return resolveColyseusWsUrlFromEnv({
@@ -41,6 +68,20 @@ export function wsUrlToHttpUrl(wsUrl: string): string {
 
 export function resolveNextPublicColyseusHttpUrl(): string {
   return wsUrlToHttpUrl(resolveNextPublicColyseusWsUrl());
+}
+
+export function resolveNextPublicHostUrl(): string {
+  const runtimeConfig = readRuntimePublicConfig();
+
+  if (runtimeConfig.hostUrl) return runtimeConfig.hostUrl;
+
+  if (typeof window !== "undefined") {
+    if (process.env.NEXT_PUBLIC_HOST_URL) return process.env.NEXT_PUBLIC_HOST_URL;
+    if (window.location?.origin) return window.location.origin;
+  }
+
+  if (process.env.NEXT_PUBLIC_HOST_URL) return process.env.NEXT_PUBLIC_HOST_URL;
+  return process.env.NODE_ENV === "production" ? "https://flimflam.gg" : "http://localhost:3000";
 }
 
 export type ResolveRoomIdResult =

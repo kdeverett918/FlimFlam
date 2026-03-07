@@ -29,41 +29,14 @@ export function BrainBoardChat({
   players,
   mySessionId,
   onSendMessage,
-  timerEndsAt,
-  serverTimeOffset,
+  timerEndsAt: _timerEndsAt,
+  serverTimeOffset: _serverTimeOffset,
 }: BrainBoardChatProps) {
+  const safeScrollMarginBottom = "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 1rem)";
   const [inputText, setInputText] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(() => {
-    const remaining = Math.max(0, Math.ceil((timerEndsAt - Date.now() + serverTimeOffset) / 1000));
-    return remaining;
-  });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevMessageCountRef = useRef(messages.length);
-
-  // ---------- Timer countdown ----------
-  useEffect(() => {
-    const tick = () => {
-      const remaining = Math.max(
-        0,
-        Math.ceil((timerEndsAt - Date.now() + serverTimeOffset) / 1000),
-      );
-      setSecondsLeft(remaining);
-    };
-    tick();
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [timerEndsAt, serverTimeOffset]);
-
-  // ---------- Timer progress (0..1) ----------
-  // We compute a rough total duration so we can show a shrinking bar.
-  // If the timer already started, we estimate total from the first known snapshot.
-  const timerTotalRef = useRef<number | null>(null);
-  if (timerTotalRef.current === null && secondsLeft > 0) {
-    timerTotalRef.current = secondsLeft;
-  }
-  const timerTotal = timerTotalRef.current ?? 60;
-  const timerProgress = timerTotal > 0 ? Math.min(1, secondsLeft / timerTotal) : 0;
 
   // ---------- Auto-scroll on new messages ----------
   useEffect(() => {
@@ -130,8 +103,6 @@ export function BrainBoardChat({
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined;
   const showTypingIndicator = lastMessage !== undefined && !lastMessage.isAI;
 
-  const isUrgent = secondsLeft > 0 && secondsLeft <= 10;
-
   return (
     <div className="flex h-full flex-col">
       {/* ── Header ── */}
@@ -146,31 +117,6 @@ export function BrainBoardChat({
         <p className="mt-0.5 text-center font-body text-xs text-text-muted">
           Tell the AI what you want to play!
         </p>
-      </div>
-
-      {/* ── Timer Progress Bar ── */}
-      <div className="shrink-0 px-4 pb-2">
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-          <motion.div
-            className={`absolute inset-y-0 left-0 rounded-full ${
-              isUrgent
-                ? "bg-gradient-to-r from-red-500 to-orange-400"
-                : "bg-gradient-to-r from-accent-brainboard to-accent-brainboard/60"
-            }`}
-            initial={false}
-            animate={{ width: `${timerProgress * 100}%` }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          />
-        </div>
-        {secondsLeft > 0 && (
-          <p
-            className={`mt-1 text-center font-mono text-xs font-medium ${
-              isUrgent ? "animate-timer-urgency" : "text-text-muted"
-            }`}
-          >
-            {secondsLeft}s remaining
-          </p>
-        )}
       </div>
 
       {/* ── Chat Messages ── */}
@@ -320,7 +266,12 @@ export function BrainBoardChat({
       </div>
 
       {/* ── Input Area ── */}
-      <div className="shrink-0 border-t border-white/10 px-3 pb-16 pt-2.5">
+      <div
+        className="shrink-0 border-t border-white/10 px-3 pt-2.5"
+        style={{
+          paddingBottom: "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 0.5rem)",
+        }}
+      >
         <div className="flex items-center gap-2">
           <input
             ref={inputRef}
@@ -332,6 +283,7 @@ export function BrainBoardChat({
             placeholder="Suggest a topic..."
             maxLength={200}
             className="glass-input h-12 flex-1 rounded-full px-4 font-body text-sm text-text-primary placeholder:text-text-dim transition-all focus:border-accent-brainboard/50 focus:shadow-[0_0_12px_oklch(0.68_0.22_265_/_0.2)]"
+            style={{ scrollMarginBottom: safeScrollMarginBottom }}
           />
           <button
             type="button"
@@ -341,6 +293,7 @@ export function BrainBoardChat({
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-brainboard transition-all active:scale-90 disabled:opacity-35 disabled:active:scale-100"
             style={{
               boxShadow: inputText.trim() ? "0 0 16px oklch(0.68 0.22 265 / 0.35)" : "none",
+              scrollMarginBottom: safeScrollMarginBottom,
             }}
           >
             <Send className="h-5 w-5 text-white" strokeWidth={2.5} />

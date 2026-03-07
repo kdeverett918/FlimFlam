@@ -37,7 +37,7 @@ export function ClueGrid({ categories, answeredClues, onSelect, readOnly }: Clue
   );
 
   return (
-    <div className="flex w-full flex-col gap-2 px-2">
+    <div data-testid="brain-board-grid" className="flex w-full flex-col gap-2 px-2">
       <p className="text-center font-body text-lg font-medium text-text-primary">Pick a clue</p>
 
       {/* Responsive grid: 3 columns on small phones, full columns on wider screens */}

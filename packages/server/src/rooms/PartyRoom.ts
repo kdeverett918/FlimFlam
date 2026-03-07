@@ -65,7 +65,7 @@ export class PartyRoom extends Room<RoomState> {
 
     const requireHost = (client: Client): boolean => {
       if (client.sessionId !== this.state.hostSessionId) {
-        this.send(client, "error", { message: "Only the host can do that" });
+        client.send("error", { message: "Only the host can do that" });
         return false;
       }
       return true;
@@ -88,19 +88,19 @@ export class PartyRoom extends Room<RoomState> {
     const handleSelectGame = (client: Client, data: { gameId?: string }) => {
       if (!requireHost(client)) return;
       if (this.state.lobbyPhase !== "waiting" && this.state.lobbyPhase !== "between-games") {
-        this.send(client, "error", { message: "Cannot change game during play" });
+        client.send("error", { message: "Cannot change game during play" });
         return;
       }
 
       const gameId = (data.gameId ?? "").trim();
       if (!gameId) {
-        this.send(client, "error", { message: "No game selected" });
+        client.send("error", { message: "No game selected" });
         return;
       }
 
       const plugin = GameRegistry.getGame(gameId);
       if (!plugin) {
-        this.send(client, "error", { message: `Unknown game: ${gameId}` });
+        client.send("error", { message: `Unknown game: ${gameId}` });
         return;
       }
 
@@ -120,7 +120,7 @@ export class PartyRoom extends Room<RoomState> {
       const valid: Complexity[] = ["kids", "standard", "advanced"];
       const complexity = data.complexity;
       if (typeof complexity !== "string" || !valid.includes(complexity as Complexity)) {
-        this.send(client, "error", { message: "Invalid complexity" });
+        client.send("error", { message: "Invalid complexity" });
         return;
       }
 
@@ -138,7 +138,7 @@ export class PartyRoom extends Room<RoomState> {
     const handleSetPlayerInput = (client: Client, data: { enabled?: unknown }) => {
       if (!requireHost(client)) return;
       if (this.state.selectedGameId !== "hot-take") {
-        this.send(client, "error", { message: "Player Input is only available for Hot Take" });
+        client.send("error", { message: "Player Input is only available for Hot Take" });
         return;
       }
 
@@ -149,7 +149,7 @@ export class PartyRoom extends Room<RoomState> {
       } else if (typeof data.enabled === "boolean") {
         this.state.hotTakePlayerInputEnabled = data.enabled;
       } else {
-        this.send(client, "error", { message: "Invalid player input toggle value" });
+        client.send("error", { message: "Invalid player input toggle value" });
         return;
       }
 
@@ -165,7 +165,7 @@ export class PartyRoom extends Room<RoomState> {
     const handleStartGame = (client: Client, data: { gameId?: string }) => {
       if (!requireHost(client)) return;
       if (this.state.lobbyPhase === "in-game") {
-        this.send(client, "error", { message: "Game already in progress" });
+        client.send("error", { message: "Game already in progress" });
         return;
       }
 
@@ -176,12 +176,12 @@ export class PartyRoom extends Room<RoomState> {
       syncHotTakePlayerInputMode();
 
       if (!this.state.selectedGameId) {
-        this.send(client, "error", { message: "No game selected" });
+        client.send("error", { message: "No game selected" });
         return;
       }
 
       if (!GameRegistry.getGame(this.state.selectedGameId)) {
-        this.send(client, "error", { message: `Unknown game: ${this.state.selectedGameId}` });
+        client.send("error", { message: `Unknown game: ${this.state.selectedGameId}` });
         return;
       }
       const removed = this._removeDisconnectedPlayers();
@@ -196,7 +196,7 @@ export class PartyRoom extends Room<RoomState> {
       }
 
       if (this._getConnectedPlayerCount() < MIN_PLAYERS) {
-        this.send(client, "error", { message: `Need at least ${MIN_PLAYERS} players` });
+        client.send("error", { message: `Need at least ${MIN_PLAYERS} players` });
         return;
       }
 
@@ -218,11 +218,11 @@ export class PartyRoom extends Room<RoomState> {
     const handleRestartGame = (client: Client) => {
       if (!requireHost(client)) return;
       if (this.state.lobbyPhase !== "in-game") {
-        this.send(client, "error", { message: "Can only restart during a game" });
+        client.send("error", { message: "Can only restart during a game" });
         return;
       }
       if (this.state.gamePhase !== "final-scores") {
-        this.send(client, "error", { message: "Can only restart from final scores" });
+        client.send("error", { message: "Can only restart from final scores" });
         return;
       }
       const removed = this._removeDisconnectedPlayers();
@@ -236,7 +236,7 @@ export class PartyRoom extends Room<RoomState> {
         });
       }
       if (this._getConnectedPlayerCount() < MIN_PLAYERS) {
-        this.send(client, "error", { message: `Need at least ${MIN_PLAYERS} players` });
+        client.send("error", { message: `Need at least ${MIN_PLAYERS} players` });
         return;
       }
       this._startGame();
@@ -266,12 +266,12 @@ export class PartyRoom extends Room<RoomState> {
       if (!requireHost(client)) return;
       const targetId = data?.targetSessionId;
       if (typeof targetId !== "string" || !targetId) {
-        this.send(client, "error", { message: "Invalid target session ID" });
+        client.send("error", { message: "Invalid target session ID" });
         return;
       }
       const targetPlayer = this.state.players.get(targetId);
       if (!targetPlayer || !targetPlayer.connected) {
-        this.send(client, "error", { message: "Target player not found or disconnected" });
+        client.send("error", { message: "Target player not found or disconnected" });
         return;
       }
 
@@ -286,10 +286,10 @@ export class PartyRoom extends Room<RoomState> {
       this.state.hostSessionId = targetId;
     };
 
-    const handlePlayerReady = (client: Client) => {
+    const handlePlayerReady = (client: Client, data?: { ready?: unknown }) => {
       const player = this.state.players.get(client.sessionId);
       if (player) {
-        player.ready = true;
+        player.ready = typeof data?.ready === "boolean" ? data.ready : true;
       }
 
       // Allow the active game plugin to react to readiness (e.g., skip role reveal when all ready).
@@ -317,7 +317,7 @@ export class PartyRoom extends Room<RoomState> {
     this.onMessage("host:transfer", (client, data) => handleHostTransfer(client, data));
 
     // Player messages (preferred)
-    this.onMessage("player:ready", (client) => handlePlayerReady(client));
+    this.onMessage("player:ready", (client, data) => handlePlayerReady(client, data));
     this.onMessage("player:reaction", (client, data) => handlePlayerReaction(client, data));
 
     // Backward-compatible aliases (older clients/spec drafts)
@@ -400,10 +400,10 @@ export class PartyRoom extends Room<RoomState> {
     this._resetIdleTimeout();
 
     // Send server clock for client-side timer sync.
-    this.send(client, "server-time", { serverTime: Date.now() });
+    client.send("server-time", { serverTime: Date.now() });
 
     if (this.state.players.size >= MAX_PLAYERS) {
-      this.send(client, "error", { message: "Room is full" });
+      client.send("error", { message: "Room is full" });
       client.leave(1000);
       return;
     }
@@ -489,7 +489,7 @@ export class PartyRoom extends Room<RoomState> {
           player.connected = true;
         }
         // Re-sync clock after reconnection.
-        this.send(client, "server-time", { serverTime: Date.now() });
+        client.send("server-time", { serverTime: Date.now() });
         return;
       }
     } catch {

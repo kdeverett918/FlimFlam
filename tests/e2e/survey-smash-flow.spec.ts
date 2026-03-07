@@ -45,7 +45,7 @@ test.describe("Survey Smash Flow", () => {
     await expect(page.getByText("VS")).toBeVisible({ timeout: 15_000 });
 
     // Exactly 2 controllers should get textbox for face-off; 1 should be waiting
-    const faceOffPlayers = await findFaceOffPlayers(controllerPages, 2);
+    const faceOffPlayers = await findFaceOffPlayers([page, ...controllerPages], 2);
     expect(faceOffPlayers.length).toBe(2);
 
     // The remaining controller should NOT have a textbox
@@ -76,7 +76,7 @@ test.describe("Survey Smash Flow", () => {
     await expect(page.getByText("VS")).toBeVisible({ timeout: 15_000 });
 
     // Both face-off players submit answers
-    const faceOffPlayers = await findFaceOffPlayers(controllerPages, 2);
+    const faceOffPlayers = await findFaceOffPlayers([page, ...controllerPages], 2);
     await submitTextAnswer(faceOffPlayers[0] as import("@playwright/test").Page, "pizza");
     await submitTextAnswer(faceOffPlayers[1] as import("@playwright/test").Page, "tacos");
 

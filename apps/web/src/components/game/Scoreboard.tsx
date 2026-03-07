@@ -94,10 +94,13 @@ export function Scoreboard({ scores, previousScores }: ScoreboardProps) {
               transition={{ type: "spring", stiffness: 200, damping: 25, delay: revIdx * 0.08 }}
             >
               <GlassPanel
+                data-testid="final-score-row"
                 glow={entry.rank <= 3}
                 glowColor={podium?.glow}
                 rounded="2xl"
                 className="flex items-center gap-6 px-8 py-5"
+                data-player-name={entry.name}
+                data-player-rank={entry.rank}
               >
                 {/* Rank */}
                 <div className="flex w-[60px] items-center justify-center">

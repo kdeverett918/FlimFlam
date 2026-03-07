@@ -19,7 +19,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { GameBoard } from "@/components/game/GameBoard";
 import { PlayerStatus } from "@/components/game/PlayerStatus";
-import { Timer } from "@/components/game/Timer";
 
 // Controls
 import { BrainBoardChat } from "@/components/controls/BrainBoardChat";
@@ -125,6 +124,11 @@ interface BrainBoardGameState {
   serverTimeOffset?: number;
   timerEndsAt?: number;
   submissions?: Record<string, { name: string; submitted: boolean; categories?: string[] }>;
+  clueResult?: ClueResultData | null;
+  allInReveal?: FinalRevealData | null;
+  personalizationStatus?: "pending" | "ai" | "curated";
+  personalizationMessage?: string | null;
+  personalizationTopics?: string[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -294,6 +298,11 @@ export function BrainBoardGame({
 
   // ─── Derived data from gameEvents (controller-side) ────────────
   const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
+  const fallbackState = useMemo(() => {
+    if (typeof gs.phase !== "string") return null;
+    return gs as unknown as BrainBoardGameState;
+  }, [gs]);
+  const boardState = gameState ?? fallbackState;
   const boardCategories = useMemo(() => {
     if (Array.isArray(gs.board)) {
       return (gs.board as Array<{ name?: string }>)
@@ -302,17 +311,55 @@ export function BrainBoardGame({
     }
     return [];
   }, [gs.board]);
+  const topicPreview = useMemo(() => {
+    const source = Array.isArray(boardState?.personalizationTopics)
+      ? boardState.personalizationTopics
+      : Array.isArray(gs.personalizationTopics)
+        ? (gs.personalizationTopics as unknown[])
+        : [];
+    return source
+      .filter((topic): topic is string => typeof topic === "string" && topic.trim().length > 0)
+      .map((topic) => topic.trim())
+      .slice(0, 8);
+  }, [boardState?.personalizationTopics, gs.personalizationTopics]);
 
   const bbStandings = useMemo(() => {
-    return Array.isArray(gs.standings) ? (gs.standings as Standing[]) : [];
-  }, [gs.standings]);
+    const source = boardState?.standings ?? gs.standings;
+    return Array.isArray(source) ? (source as Standing[]) : [];
+  }, [boardState?.standings, gs.standings]);
 
-  const currentRound = typeof gs.currentRound === "number" ? gs.currentRound : 1;
-  const doubleDownValues = gs.doubleDownValues === true;
-  const answeredCount = typeof gs.answeredCount === "number" ? gs.answeredCount : 0;
-  const totalPlayerCount = typeof gs.totalPlayerCount === "number" ? gs.totalPlayerCount : 0;
+  const currentRound =
+    typeof boardState?.currentRound === "number"
+      ? boardState.currentRound
+      : typeof gs.currentRound === "number"
+        ? gs.currentRound
+        : 1;
+  const resolvedPhase =
+    typeof boardState?.phase === "string"
+      ? boardState.phase
+      : typeof gs.phase === "string"
+        ? gs.phase
+        : phase;
+  const doubleDownValues = boardState?.doubleDownValues === true || gs.doubleDownValues === true;
+  const answeredCount =
+    typeof boardState?.answeredCount === "number"
+      ? boardState.answeredCount
+      : typeof gs.answeredCount === "number"
+        ? gs.answeredCount
+        : 0;
+  const totalPlayerCount =
+    typeof boardState?.totalPlayerCount === "number"
+      ? boardState.totalPlayerCount
+      : typeof gs.totalPlayerCount === "number"
+        ? gs.totalPlayerCount
+        : 0;
 
-  const selectorSessionId = typeof gs.selectorSessionId === "string" ? gs.selectorSessionId : null;
+  const selectorSessionId =
+    typeof boardState?.selectorSessionId === "string"
+      ? boardState.selectorSessionId
+      : typeof gs.selectorSessionId === "string"
+        ? gs.selectorSessionId
+        : null;
   const selectorName = selectorSessionId
     ? (players.find((p) => p.sessionId === selectorSessionId)?.name ?? null)
     : null;
@@ -322,11 +369,11 @@ export function BrainBoardGame({
   // ─── Render helpers ─────────────────────────────────────────────
 
   function renderBoard(): React.ReactNode {
-    // Use host gameState if available (from room messages), else fallback to gameEvents
-    const state = gameState;
+    const state = boardState;
+    const activePhase = resolvedPhase;
 
     // ── Category Submit (Quick Pick) ──
-    if (phase === "category-submit") {
+    if (activePhase === "category-submit") {
       const submissions =
         state?.submissions ?? (gs.submissions as BrainBoardGameState["submissions"]) ?? {};
       const submittedCount = Object.values(submissions).filter((s) => s.submitted).length;
@@ -388,13 +435,12 @@ export function BrainBoardGame({
               </GlassPanel>
             ))}
           </motion.div>
-          {timerEndTime && <Timer endTime={timerEndTime} />}
         </div>
       );
     }
 
     // ── Topic Chat ──
-    if (phase === "topic-chat") {
+    if (activePhase === "topic-chat") {
       const chatMessages =
         state?.chatMessages ??
         (Array.isArray(gs.chatMessages)
@@ -450,13 +496,32 @@ export function BrainBoardGame({
               </motion.div>
             ))}
           </motion.div>
-          {timerEndTime && <Timer endTime={timerEndTime} />}
+          {topicPreview.length > 0 && (
+            <GlassPanel className="w-full max-w-3xl px-6 py-4">
+              <p className="font-display text-sm font-bold uppercase tracking-wider text-accent-brainboard">
+                We Heard
+              </p>
+              <div data-testid="brainboard-topic-chips" className="mt-3 flex flex-wrap gap-2">
+                {topicPreview.map((topic) => (
+                  <span
+                    key={topic}
+                    className="rounded-full border border-accent-brainboard/35 bg-accent-brainboard/15 px-3 py-1 font-body text-[clamp(13px,1.5vw,18px)] text-accent-brainboard"
+                  >
+                    {topic}
+                  </span>
+                ))}
+              </div>
+              <p className="mt-3 font-body text-[clamp(13px,1.5vw,18px)] text-text-muted">
+                These topics will shape your board when chat ends.
+              </p>
+            </GlassPanel>
+          )}
         </div>
       );
     }
 
     // ── Generating Board ──
-    if (phase === "generating-board") {
+    if (activePhase === "generating-board") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <motion.div
@@ -480,6 +545,23 @@ export function BrainBoardGame({
           >
             AI is crafting custom trivia from your topics...
           </motion.p>
+          {topicPreview.length > 0 && (
+            <GlassPanel className="w-full max-w-3xl px-6 py-4">
+              <p className="font-display text-sm font-bold uppercase tracking-wider text-accent-brainboard">
+                Building From
+              </p>
+              <div data-testid="brainboard-topic-chips" className="mt-3 flex flex-wrap gap-2">
+                {topicPreview.map((topic) => (
+                  <span
+                    key={topic}
+                    className="rounded-full border border-accent-brainboard/35 bg-accent-brainboard/15 px-3 py-1 font-body text-[clamp(13px,1.5vw,18px)] text-accent-brainboard"
+                  >
+                    {topic}
+                  </span>
+                ))}
+              </div>
+            </GlassPanel>
+          )}
         </div>
       );
     }
@@ -496,7 +578,9 @@ export function BrainBoardGame({
     }
 
     // ── Category Reveal ──
-    if (phase === "category-reveal") {
+    if (activePhase === "category-reveal") {
+      const personalizationMessage = state.personalizationMessage ?? null;
+      const personalizationStatus = state.personalizationStatus ?? null;
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <motion.h1
@@ -526,12 +610,40 @@ export function BrainBoardGame({
               </motion.div>
             ))}
           </div>
+          {personalizationMessage && personalizationStatus && (
+            <GlassPanel
+              glow={personalizationStatus === "ai"}
+              glowColor={
+                personalizationStatus === "ai"
+                  ? "oklch(0.68 0.22 265 / 0.25)"
+                  : "oklch(0.78 0.16 95 / 0.22)"
+              }
+              className="max-w-4xl px-6 py-4 text-center"
+            >
+              <span
+                data-testid="brainboard-personalization-badge"
+                className={`inline-flex rounded-full border px-3 py-1 font-display text-xs font-bold uppercase tracking-wider ${
+                  personalizationStatus === "curated"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-accent-brainboard/35 bg-accent-brainboard/10 text-accent-brainboard"
+                }`}
+              >
+                {personalizationStatus === "curated" ? "Curated" : "AI Personalized"}
+              </span>
+              <p
+                data-testid="brainboard-personalization-message"
+                className={`font-body text-[clamp(14px,1.7vw,20px)] ${personalizationStatus === "curated" ? "text-warning" : "text-text-primary"}`}
+              >
+                {personalizationMessage}
+              </p>
+            </GlassPanel>
+          )}
         </div>
       );
     }
 
     // ── Clue Select (Board) ──
-    if (phase === "clue-select") {
+    if (activePhase === "clue-select") {
       const revealedSet = new Set(state.revealedClues);
       const selName = getPlayerName(players, state.selectorSessionId);
       const selColor = getPlayerColor(players, state.selectorSessionId);
@@ -604,6 +716,9 @@ export function BrainBoardGame({
                           }
                         : { delay: idx * ANIMATION_STAGGERS.tight, type: "spring", stiffness: 180 }
                     }
+                    data-testid="leaderboard-row"
+                    data-player-id={s.sessionId}
+                    data-score={String(s.score)}
                     className="flex items-center gap-2 rounded-xl border border-white/12 bg-white/6 px-3 py-2"
                   >
                     <span className="font-mono text-sm text-text-muted">#{idx + 1}</span>
@@ -625,7 +740,7 @@ export function BrainBoardGame({
     }
 
     // ── Answering ──
-    if (phase === "answering") {
+    if (activePhase === "answering") {
       const answered = state.answeredCount ?? 0;
       const total = state.totalPlayerCount ?? 0;
       const nonHostPlayers = players.filter((p) => !p.isHost);
@@ -660,7 +775,7 @@ export function BrainBoardGame({
             Everyone is answering...
           </motion.h2>
           {submissionTarget > 0 && (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2" data-testid="submission-progress">
               <div className="h-3 w-64 overflow-hidden rounded-full bg-white/[0.12]">
                 <motion.div
                   className="h-full rounded-full bg-accent-brainboard"
@@ -674,13 +789,12 @@ export function BrainBoardGame({
               </span>
             </div>
           )}
-          {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
         </div>
       );
     }
 
     // ── Round Transition ──
-    if (phase === "round-transition") {
+    if (activePhase === "round-transition") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <motion.h1
@@ -708,7 +822,7 @@ export function BrainBoardGame({
     }
 
     // ── Power Play Wager ──
-    if (phase === "power-play-wager") {
+    if (activePhase === "power-play-wager") {
       const selName = getPlayerName(players, state.selectorSessionId);
       const selColor = getPlayerColor(players, state.selectorSessionId);
       return (
@@ -735,13 +849,12 @@ export function BrainBoardGame({
           <span className="font-body text-[clamp(24px,3vw,36px)] text-text-muted">
             is wagering...
           </span>
-          {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
         </div>
       );
     }
 
     // ── Power Play Answer ──
-    if (phase === "power-play-answer") {
+    if (activePhase === "power-play-answer") {
       const selName = getPlayerName(players, state.selectorSessionId);
       const selColor = getPlayerColor(players, state.selectorSessionId);
       return (
@@ -773,13 +886,12 @@ export function BrainBoardGame({
           <span className="font-body text-[clamp(20px,2.5vw,28px)] text-text-muted">
             is answering...
           </span>
-          {timerEndTime && <Timer endTime={timerEndTime} size={100} />}
         </div>
       );
     }
 
     // ── Clue Result ──
-    if (phase === "clue-result" && clueResult) {
+    if (activePhase === "clue-result" && clueResult) {
       const correctCountFromResults = clueResult.results.filter((r) => r.correct).length;
       const correctCount =
         typeof clueResult.correctCount === "number"
@@ -880,7 +992,7 @@ export function BrainBoardGame({
     }
 
     // ── All-In Category ──
-    if (phase === "all-in-category") {
+    if (activePhase === "all-in-category") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <motion.h1
@@ -911,7 +1023,7 @@ export function BrainBoardGame({
     }
 
     // ── All-In Wager ──
-    if (phase === "all-in-wager") {
+    if (activePhase === "all-in-wager") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <h1
@@ -932,13 +1044,12 @@ export function BrainBoardGame({
           >
             Players are wagering...
           </motion.span>
-          {timerEndTime && <Timer endTime={timerEndTime} size={120} />}
         </div>
       );
     }
 
     // ── All-In Answer ──
-    if (phase === "all-in-answer") {
+    if (activePhase === "all-in-answer") {
       return (
         <div className="flex flex-col items-center justify-center gap-8 p-8">
           <h1
@@ -965,13 +1076,12 @@ export function BrainBoardGame({
           >
             Players are answering...
           </motion.span>
-          {timerEndTime && <Timer endTime={timerEndTime} size={120} />}
         </div>
       );
     }
 
     // ── All-In Reveal ──
-    if (phase === "all-in-reveal" && finalReveal) {
+    if (activePhase === "all-in-reveal" && finalReveal) {
       const sortedResults = [...finalReveal.results].sort((a, b) => {
         const aScore = state.standings.find((s) => s.sessionId === a.sessionId)?.score ?? 0;
         const bScore = state.standings.find((s) => s.sessionId === b.sessionId)?.score ?? 0;
@@ -1038,7 +1148,7 @@ export function BrainBoardGame({
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (activePhase === "final-scores") {
       const scores = buildScores(players);
       const awards = generateAwards(
         players
@@ -1065,14 +1175,16 @@ export function BrainBoardGame({
     // ── Fallback ──
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="font-display text-[48px] text-text-muted">Brain Board: {phase}</p>
+        <p className="font-display text-[48px] text-text-muted">Brain Board: {activePhase}</p>
       </div>
     );
   }
 
   function renderControls(): React.ReactNode {
+    const activePhase = resolvedPhase;
+
     // ── Category Submit (Quick Pick) controls ──
-    if (phase === "category-submit") {
+    if (activePhase === "category-submit") {
       const submissions =
         gameState?.submissions ?? (gs.submissions as BrainBoardGameState["submissions"]) ?? {};
       const serverTimeOffset = typeof gs.serverTimeOffset === "number" ? gs.serverTimeOffset : 0;
@@ -1093,7 +1205,7 @@ export function BrainBoardGame({
     }
 
     // ── Topic Chat controls ──
-    if (phase === "topic-chat") {
+    if (activePhase === "topic-chat") {
       const chatMessages =
         gameState?.chatMessages ??
         (Array.isArray(gs.chatMessages)
@@ -1105,6 +1217,23 @@ export function BrainBoardGame({
 
       return (
         <div className="flex flex-col gap-2 pb-4 pt-2" style={{ minHeight: "240px" }}>
+          {topicPreview.length > 0 && (
+            <GlassPanel className="mx-2 mb-1 px-3 py-3">
+              <p className="font-display text-[11px] font-bold uppercase tracking-wider text-accent-brainboard">
+                We Heard
+              </p>
+              <div data-testid="brainboard-topic-chips" className="mt-2 flex flex-wrap gap-2">
+                {topicPreview.map((topic) => (
+                  <span
+                    key={topic}
+                    className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/10 px-2.5 py-1 font-body text-xs text-accent-brainboard"
+                  >
+                    {topic}
+                  </span>
+                ))}
+              </div>
+            </GlassPanel>
+          )}
           <BrainBoardChat
             messages={chatMessages ?? []}
             players={players}
@@ -1118,7 +1247,7 @@ export function BrainBoardGame({
     }
 
     // ── Generating Board ──
-    if (phase === "generating-board") {
+    if (activePhase === "generating-board") {
       return (
         <div className="flex flex-col items-center gap-4 px-4 py-6">
           <GlassPanel
@@ -1140,14 +1269,26 @@ export function BrainBoardGame({
     }
 
     // ── Category Reveal ──
-    if (phase === "category-reveal") {
+    if (activePhase === "category-reveal") {
       const revealCategories = Array.isArray(pd.categories)
         ? pd.categories.filter((c): c is string => typeof c === "string")
         : [];
-      if (pd.isSelector === true && revealCategories.length > 0) {
+      const visibleCategories = revealCategories.length > 0 ? revealCategories : boardCategories;
+      const personalizationMessage =
+        typeof boardState?.personalizationMessage === "string"
+          ? boardState.personalizationMessage
+          : typeof gs.personalizationMessage === "string"
+            ? (gs.personalizationMessage as string)
+            : null;
+      const personalizationStatus =
+        boardState?.personalizationStatus ??
+        (typeof gs.personalizationStatus === "string"
+          ? (gs.personalizationStatus as "pending" | "ai" | "curated")
+          : null);
+      if (pd.isSelector === true && visibleCategories.length > 0) {
         return (
           <CategoryReveal
-            categories={revealCategories}
+            categories={visibleCategories}
             isSelector={true}
             onConfirm={handleConfirmCategories}
             onReroll={handleRerollBoard}
@@ -1156,17 +1297,52 @@ export function BrainBoardGame({
       }
       return (
         <div className="flex flex-col items-center gap-4 px-4 py-6">
-          <GlassPanel className="flex w-full max-w-sm flex-col items-center gap-3 px-4 py-5">
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="flex w-full max-w-sm flex-col items-center gap-3 px-4 py-5"
+          >
             <p className="text-center font-display text-lg font-bold text-text-primary">
               Categories revealed. Selector is choosing...
             </p>
+            {visibleCategories.length > 0 && (
+              <div className="mt-1 flex flex-wrap justify-center gap-2">
+                {visibleCategories.map((category) => (
+                  <span
+                    key={category}
+                    className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/10 px-3 py-1 font-body text-xs text-accent-brainboard uppercase"
+                  >
+                    {category}
+                  </span>
+                ))}
+              </div>
+            )}
+            {personalizationMessage && personalizationStatus && (
+              <>
+                <span
+                  data-testid="brainboard-personalization-badge"
+                  className={`rounded-full border px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wider ${
+                    personalizationStatus === "curated"
+                      ? "border-warning/40 bg-warning/10 text-warning"
+                      : "border-accent-brainboard/30 bg-accent-brainboard/10 text-accent-brainboard"
+                  }`}
+                >
+                  {personalizationStatus === "curated" ? "Curated" : "AI Personalized"}
+                </span>
+                <p
+                  data-testid="brainboard-personalization-message"
+                  className={`mt-1 text-center font-body text-xs ${personalizationStatus === "curated" ? "text-warning" : "text-text-muted"}`}
+                >
+                  {personalizationMessage}
+                </p>
+              </>
+            )}
           </GlassPanel>
         </div>
       );
     }
 
     // ── Clue Select ──
-    if (phase === "clue-select") {
+    if (activePhase === "clue-select") {
       if (pd.isSelector) {
         const categories = Array.isArray(pd.categories)
           ? pd.categories.filter((c): c is string => typeof c === "string")
@@ -1193,9 +1369,11 @@ export function BrainBoardGame({
       return (
         <div className="flex flex-col gap-4 pb-4 pt-4">
           <div className="mx-4 flex justify-center">
-            <span className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-1.5 font-display text-xs font-bold text-accent-brainboard uppercase">
-              {selectorName ? `${selectorName}'s pick` : "Selector is picking..."}
-            </span>
+            <GlassPanel data-testid="controller-context-card" className="px-4 py-2">
+              <span className="rounded-full border border-accent-brainboard/30 bg-accent-brainboard/15 px-4 py-1.5 font-display text-xs font-bold text-accent-brainboard uppercase">
+                {selectorName ? `${selectorName}'s pick` : "Selector is picking..."}
+              </span>
+            </GlassPanel>
           </div>
           <ClueGrid
             categories={boardCategories}
@@ -1219,7 +1397,7 @@ export function BrainBoardGame({
     }
 
     // ── Answering ──
-    if (phase === "answering") {
+    if (activePhase === "answering") {
       if (pd.hasAnswered) {
         const clueQ = typeof gs.currentClueQuestion === "string" ? gs.currentClueQuestion : "";
         return (
@@ -1278,7 +1456,7 @@ export function BrainBoardGame({
     }
 
     // ── Power Play Wager ──
-    if (phase === "power-play-wager") {
+    if (activePhase === "power-play-wager") {
       if (pd.isPowerPlayPlayer) {
         const maxWager = typeof pd.maxWager === "number" ? pd.maxWager : 1000;
         return (
@@ -1310,11 +1488,11 @@ export function BrainBoardGame({
           </div>
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── Power Play Answer ──
-    if (phase === "power-play-answer") {
+    if (activePhase === "power-play-answer") {
       if (pd.isPowerPlayPlayer) {
         const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
         return (
@@ -1347,11 +1525,11 @@ export function BrainBoardGame({
           </div>
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── Clue Result ──
-    if (phase === "clue-result") {
+    if (activePhase === "clue-result") {
       const clueResultEvent = (gameEvents?.["clue-result"] ?? null) as {
         results?: ClueResultEntry[];
         correctAnswer?: string;
@@ -1359,26 +1537,32 @@ export function BrainBoardGame({
         value?: number;
         isPowerPlay?: boolean;
       } | null;
-      if (clueResultEvent?.results && clueResultEvent.correctAnswer) {
-        return (
-          <BrainBoardClueResult
-            clueResult={{
+      const resolvedClueResult =
+        clueResult ??
+        boardState?.clueResult ??
+        (clueResultEvent?.results && clueResultEvent.correctAnswer
+          ? {
               results: clueResultEvent.results,
               correctAnswer: clueResultEvent.correctAnswer,
               question: clueResultEvent.question ?? "",
               value: clueResultEvent.value ?? 0,
               isPowerPlay: clueResultEvent.isPowerPlay ?? false,
-            }}
+            }
+          : null);
+      if (resolvedClueResult) {
+        return (
+          <BrainBoardClueResult
+            clueResult={resolvedClueResult}
             players={players}
             mySessionId={mySessionId}
           />
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── Round Transition ──
-    if (phase === "round-transition") {
+    if (activePhase === "round-transition") {
       return (
         <div className="flex flex-col items-center gap-6 px-4 pb-4 pt-8">
           <GlassPanel
@@ -1413,7 +1597,7 @@ export function BrainBoardGame({
     }
 
     // ── All-In Category ──
-    if (phase === "all-in-category") {
+    if (activePhase === "all-in-category") {
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-8">
           <GlassPanel
@@ -1436,7 +1620,7 @@ export function BrainBoardGame({
     }
 
     // ── All-In Wager ──
-    if (phase === "all-in-wager") {
+    if (activePhase === "all-in-wager") {
       if (pd.canWagerFinal) {
         const playerScore = typeof pd.score === "number" ? pd.score : 0;
         const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
@@ -1467,11 +1651,11 @@ export function BrainBoardGame({
           </div>
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── All-In Answer ──
-    if (phase === "all-in-answer") {
+    if (activePhase === "all-in-answer") {
       if (pd.canAnswerFinal) {
         const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
         const allInQ = typeof gs.allInQuestion === "string" ? gs.allInQuestion : "";
@@ -1504,11 +1688,11 @@ export function BrainBoardGame({
           </div>
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── All-In Reveal ──
-    if (phase === "all-in-reveal") {
+    if (activePhase === "all-in-reveal") {
       const allInRevealEvent = (gameEvents?.["all-in-reveal"] ?? null) as {
         results?: Array<{
           sessionId: string;
@@ -1520,17 +1704,27 @@ export function BrainBoardGame({
         correctAnswer?: string;
         question?: string;
       } | null;
-      if (allInRevealEvent?.results && allInRevealEvent.correctAnswer) {
+      const resolvedAllInReveal =
+        finalReveal ??
+        boardState?.allInReveal ??
+        (allInRevealEvent?.results && allInRevealEvent.correctAnswer
+          ? {
+              results: allInRevealEvent.results,
+              correctAnswer: allInRevealEvent.correctAnswer,
+              question: allInRevealEvent.question ?? "",
+            }
+          : null);
+      if (resolvedAllInReveal) {
         return (
           <BrainBoardClueResult
             clueResult={{
-              results: allInRevealEvent.results.map((r) => ({
+              results: resolvedAllInReveal.results.map((r) => ({
                 ...r,
                 judgedBy: undefined,
                 judgeExplanation: undefined,
               })),
-              correctAnswer: allInRevealEvent.correctAnswer,
-              question: allInRevealEvent.question ?? "",
+              correctAnswer: resolvedAllInReveal.correctAnswer,
+              question: resolvedAllInReveal.question ?? "",
               value: 0,
               isPowerPlay: false,
             }}
@@ -1539,11 +1733,11 @@ export function BrainBoardGame({
           />
         );
       }
-      return <WaitingScreen phase={phase} gameId="brain-board" />;
+      return <WaitingScreen phase={activePhase} gameId="brain-board" />;
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (activePhase === "final-scores") {
       return (
         <div className="flex flex-col gap-4 pb-4 pt-2">
           {bbStandings.length > 0 && (
@@ -1560,46 +1754,50 @@ export function BrainBoardGame({
     }
 
     // ── Default ──
-    return <WaitingScreen phase={phase} gameId="brain-board" />;
+    return <WaitingScreen phase={activePhase} gameId="brain-board" />;
   }
 
   // ─── Layout ──────────────────────────────────────────────────────
 
   // For final-scores, render full-screen (no split)
-  if (phase === "final-scores") {
+  if (resolvedPhase === "final-scores") {
     return (
-      <div className="flex min-h-dvh flex-col">
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        data-testid="brain-board-host-state"
+        data-phase={resolvedPhase}
+        data-round={currentRound}
+      >
         {renderBoard()}
-        <div className="border-t border-white/10 bg-bg-deep/80 backdrop-blur-sm p-4">
-          {renderControls()}
-        </div>
       </div>
     );
   }
 
   return (
-    <GameBoard
-      board={renderBoard()}
-      controls={
-        <>
-          <PlayerStatus
-            turnPlayerName={selectorName}
-            isMyTurn={isMyTurn}
-            message={
-              phase === "answering"
-                ? pd.hasAnswered
-                  ? "Answer locked in!"
-                  : "Answer now!"
-                : phase === "category-submit"
-                  ? "Submit your category ideas"
-                  : phase === "topic-chat"
-                    ? "Chat with AI about topics"
-                    : undefined
-            }
-          />
-          {renderControls()}
-        </>
-      }
-    />
+    <div data-testid="brain-board-host-state" data-phase={resolvedPhase} data-round={currentRound}>
+      <GameBoard
+        board={renderBoard()}
+        controls={
+          <>
+            <PlayerStatus
+              turnPlayerName={selectorName}
+              isMyTurn={isMyTurn}
+              message={
+                resolvedPhase === "answering"
+                  ? pd.hasAnswered
+                    ? "Answer locked in!"
+                    : "Answer now!"
+                  : resolvedPhase === "category-submit"
+                    ? "Submit your category ideas"
+                    : resolvedPhase === "topic-chat"
+                      ? "Chat with AI about topics"
+                      : undefined
+              }
+            />
+            {renderControls()}
+          </>
+        }
+      />
+    </div>
   );
 }

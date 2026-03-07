@@ -8,17 +8,17 @@ import {
   AnimatedCounter,
   ConfettiBurst,
   GlassPanel,
+  emitAudioEvent,
   emitMotionEvent,
   sounds,
   useReducedMotion,
 } from "@flimflam/ui";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { GameBoard } from "@/components/game/GameBoard";
 import { PlayerStatus } from "@/components/game/PlayerStatus";
-import { Timer } from "@/components/game/Timer";
 
 // Controls
 import { CategoryVoteCards } from "@/components/controls/CategoryVoteCards";
@@ -102,6 +102,7 @@ interface RoundResultData {
   answer: string;
   category: string;
   roundCashEarned: number;
+  solveBonusAwarded?: number;
   standings: WheelStanding[];
 }
 
@@ -111,6 +112,9 @@ interface BonusRevealData {
   bonusPrize: number;
   bonusPlayerId: string | null;
 }
+
+const BONUS_REVEAL_ACTIVE_MS =
+  process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" || process.env.FLIMFLAM_E2E === "1" ? 2_500 : 5_200;
 
 interface CategoryVoteTally {
   voteCounts: Record<string, number>;
@@ -202,7 +206,9 @@ function HostPuzzleBoard({
                 return (
                   <motion.div
                     key={cellKey}
-                    className={`flex items-center justify-center rounded-md border-2 ${isBlank ? "border-accent-luckyletters/30 bg-white/10" : isHighlighted ? "border-accent-luckyletters bg-accent-luckyletters/30" : "border-accent-luckyletters/50 bg-bg-elevated"}`}
+                    data-testid="lucky-letter-tile"
+                    data-reveal-style={reducedMotion ? "fade" : "flip"}
+                    className={`relative flex items-center justify-center overflow-hidden rounded-md border-2 ${isBlank ? "border-accent-luckyletters/30 bg-white/10" : isHighlighted ? "border-accent-luckyletters bg-accent-luckyletters/30" : "border-accent-luckyletters/50 bg-bg-elevated"}`}
                     style={{ width: "clamp(36px, 5vw, 64px)", height: "clamp(44px, 6vw, 76px)" }}
                     animate={
                       isHighlighted
@@ -211,17 +217,58 @@ function HostPuzzleBoard({
                               opacity: [1, 0.82, 1],
                               transition: { duration: ANIMATION_DURATIONS.reveal },
                             }
-                          : { scale: [1, 1.15, 1], transition: { duration: 0.5 } }
+                          : {
+                              scale: [1, 1.18, 1],
+                              rotateX: [0, -8, 0],
+                              boxShadow: [
+                                "0 0 0 rgba(245, 158, 11, 0)",
+                                "0 0 30px rgba(245, 158, 11, 0.55)",
+                                "0 0 14px rgba(245, 158, 11, 0.18)",
+                              ],
+                              transition: {
+                                duration: 0.72,
+                                ease: ANIMATION_EASINGS.crispOut,
+                                delay: (cell.pos % 6) * 0.04,
+                              },
+                            }
                         : undefined
                     }
                   >
+                    {isHighlighted && !reducedMotion && (
+                      <motion.div
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.6),rgba(255,255,255,0))]"
+                        initial={{ opacity: 0, scale: 0.4 }}
+                        animate={{
+                          opacity: [0, 0.9, 0],
+                          scale: [0.45, 1.15, 1.45],
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          ease: ANIMATION_EASINGS.crispOut,
+                          delay: (cell.pos % 6) * 0.04,
+                        }}
+                      />
+                    )}
                     {!isBlank && (
                       <AnimatePresence mode="wait" initial={false}>
                         <motion.span
                           key={`${cellKey}-${ch}`}
-                          initial={reducedMotion ? { opacity: 0 } : { rotateX: -90, opacity: 0 }}
-                          animate={reducedMotion ? { opacity: 1 } : { rotateX: 0, opacity: 1 }}
-                          exit={reducedMotion ? { opacity: 0 } : { rotateX: 90, opacity: 0 }}
+                          initial={
+                            reducedMotion
+                              ? { opacity: 0 }
+                              : { rotateX: -110, opacity: 0, scale: 0.8, y: 8 }
+                          }
+                          animate={
+                            reducedMotion
+                              ? { opacity: 1 }
+                              : { rotateX: 0, opacity: 1, scale: 1, y: 0 }
+                          }
+                          exit={
+                            reducedMotion
+                              ? { opacity: 0 }
+                              : { rotateX: 110, opacity: 0, scale: 0.92, y: -6 }
+                          }
                           transition={{
                             duration: reducedMotion
                               ? ANIMATION_DURATIONS.standard
@@ -229,6 +276,8 @@ function HostPuzzleBoard({
                             ease: reducedMotion
                               ? ANIMATION_EASINGS.smoothInOut
                               : ANIMATION_EASINGS.crispOut,
+                            delay:
+                              !reducedMotion && isHighlighted ? (cell.pos % 6) * 0.04 + 0.04 : 0,
                           }}
                           className="font-display font-bold text-text-primary"
                           style={{
@@ -320,7 +369,11 @@ function HostWheelSpinner({
   const segAngle = 360 / segments.length;
   const wheelSize = 420;
   return (
-    <div className="relative" style={{ width: wheelSize, height: wheelSize }}>
+    <div
+      className="relative"
+      style={{ width: wheelSize, height: wheelSize }}
+      data-testid="lucky-wheel"
+    >
       <div
         className="absolute -top-4 left-1/2 z-10 -translate-x-1/2"
         style={{
@@ -363,7 +416,7 @@ function HostWheelSpinner({
             const textY = 100 + 62 * Math.sin(midAngle);
             const textRot = (i + 0.5) * segAngle;
             return (
-              <g key={`seg-${seg.label}-${seg.color}`}>
+              <g key={`seg-${seg.label}-${seg.color}`} data-testid="lucky-wheel-segment">
                 <path
                   d={`M100,100 L${x1},${y1} A98,98 0 0,1 ${x2},${y2} Z`}
                   fill={seg.color}
@@ -396,6 +449,27 @@ function HostWheelSpinner({
           <circle cx="100" cy="100" r="4" fill="oklch(0.82 0.18 85)" />
         </svg>
       </motion.div>
+      {landed && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: ANIMATION_EASINGS.crispOut }}
+          className="pointer-events-none absolute left-1/2 top-full mt-4 -translate-x-1/2"
+        >
+          <GlassPanel
+            glow
+            glowColor={landed.type === "cash" ? "oklch(0.82 0.18 85 / 0.25)" : undefined}
+            className="flex min-w-[200px] flex-col items-center gap-1 px-5 py-3"
+          >
+            <span className="font-body text-xs uppercase tracking-[0.35em] text-text-muted">
+              {spinning ? "Prize In Play" : "Landed On"}
+            </span>
+            <span className="font-display text-2xl font-black text-accent-luckyletters">
+              {landed.label}
+            </span>
+          </GlassPanel>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -431,9 +505,15 @@ export function LuckyLettersGame({
   const [isSpinning, setIsSpinning] = useState(false);
   const [roundResult, setRoundResult] = useState<RoundResultData | null>(null);
   const [bonusReveal, setBonusReveal] = useState<BonusRevealData | null>(null);
+  const [bonusRevealActive, setBonusRevealActive] = useState(false);
   const [highlightLetters, setHighlightLetters] = useState<Set<string>>(new Set());
   const [categoryVoteTally, setCategoryVoteTally] = useState<CategoryVoteTally | null>(null);
+  const [idleTimeoutNotice, setIdleTimeoutNotice] = useState<{
+    message: string;
+    ts: number;
+  } | null>(null);
   const [_lastSubmittedText, setLastSubmittedText] = useState<string | null>(null);
+  const bonusRevealTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMessage = useCallback((data: Record<string, unknown>) => {
     const type = data.type as string | undefined;
@@ -457,7 +537,26 @@ export function LuckyLettersGame({
       setTimeout(() => {
         setIsSpinning(false);
         emitMotionEvent("lucky.wheel.spin.stop", { angle: spin.angle });
+        const segType = spin.segment?.type;
+        if (segType === "cash") emitAudioEvent("audio.lucky.prize.cash", { segment: spin.segment });
+        else if (segType === "bust")
+          emitAudioEvent("audio.lucky.prize.bust", { segment: spin.segment });
+        else if (segType === "pass")
+          emitAudioEvent("audio.lucky.prize.pass", { segment: spin.segment });
+        else if (segType === "wild")
+          emitAudioEvent("audio.lucky.prize.wild", { segment: spin.segment });
       }, 3500);
+    } else if (type === "idle-timeout") {
+      const timedPhase = typeof data.phase === "string" ? data.phase : "";
+      const message =
+        timedPhase === "category-vote"
+          ? "Time's up. Locking in categories."
+          : timedPhase === "spinning"
+            ? "Time's up. Auto-spinning to keep the game moving."
+            : "Time's up. Passing the turn.";
+      setIdleTimeoutNotice({ message, ts: Date.now() });
+      setTimeout(() => setIdleTimeoutNotice(null), 4500);
+      sounds.tick();
     } else if (type === "round-result") {
       const rr = data as unknown as RoundResultData;
       setRoundResult(rr);
@@ -484,6 +583,15 @@ export function LuckyLettersGame({
     const unsub = room.onMessage("game-data", handleMessage);
     return () => unsub();
   }, [room, handleMessage]);
+
+  useEffect(
+    () => () => {
+      if (bonusRevealTimeoutRef.current) {
+        clearTimeout(bonusRevealTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   // ─── Controller handlers ────────────────────────────────────────
   const handleSpin = useCallback(() => sendMessage("player:spin"), [sendMessage]);
@@ -537,6 +645,13 @@ export function LuckyLettersGame({
   const controllerBonusPickConfirmed = gameEvents?.["bonus-pick-confirmed"] as
     | { letter: string; pickedSoFar: string[] }
     | undefined;
+  const lastSpinResultFromState =
+    gs.lastSpinResult &&
+    typeof gs.lastSpinResult === "object" &&
+    "segment" in gs.lastSpinResult &&
+    gs.lastSpinResult.segment
+      ? ((gs.lastSpinResult as { segment: SpinSegment }).segment ?? null)
+      : null;
 
   const puzzleDisplay = typeof gs.puzzleDisplay === "string" ? gs.puzzleDisplay : "";
   const category = typeof gs.category === "string" ? gs.category : "";
@@ -561,12 +676,79 @@ export function LuckyLettersGame({
   const roundCash = typeof pd.roundCash === "number" ? pd.roundCash : 0;
   const turnPlayerName =
     players.find((p) => p.sessionId === currentTurnSessionId)?.name ?? "Player";
+  const resolvedBonusReveal = bonusReveal ?? controllerBonusReveal ?? null;
+  const shouldShowBonusReveal =
+    Boolean(resolvedBonusReveal) && (phase === "bonus-reveal" || bonusRevealActive);
+  useEffect(() => {
+    if (!resolvedBonusReveal) return;
+
+    setBonusRevealActive(true);
+    if (bonusRevealTimeoutRef.current) {
+      clearTimeout(bonusRevealTimeoutRef.current);
+    }
+    bonusRevealTimeoutRef.current = setTimeout(() => {
+      setBonusRevealActive(false);
+      bonusRevealTimeoutRef.current = null;
+    }, BONUS_REVEAL_ACTIVE_MS);
+  }, [resolvedBonusReveal]);
   const totalLetters = puzzleDisplay
     ? puzzleDisplay.split("").filter((ch) => /[A-Z_]/.test(ch)).length
     : 0;
   const revealedCount = puzzleDisplay
     ? puzzleDisplay.split("").filter((ch) => /[A-Z]/.test(ch)).length
     : 0;
+  const sharedSpinResult = spinResult ?? controllerSpinResult ?? null;
+  const visibleSpinSegment = sharedSpinResult?.segment ?? lastSpinResultFromState ?? null;
+  const fallbackGameState = useMemo<WheelGameState | null>(() => {
+    if (!gs || Object.keys(gs).length === 0) return null;
+
+    return {
+      phase: typeof gs.phase === "string" ? gs.phase : phase,
+      round: typeof gs.round === "number" ? gs.round : round,
+      totalRounds: typeof gs.totalRounds === "number" ? gs.totalRounds : totalRounds,
+      category,
+      hint,
+      puzzleDisplay,
+      currentTurnSessionId,
+      standings,
+      consonantsRemaining: Array.isArray(gs.consonantsRemaining)
+        ? (gs.consonantsRemaining as string[])
+        : [],
+      vowelsRemaining: Array.isArray(gs.vowelsRemaining) ? (gs.vowelsRemaining as string[]) : [],
+      wildActive: gs.wildActive === true,
+      lastSpinResult: visibleSpinSegment ? { segment: visibleSpinSegment } : null,
+      bonusPlayerSessionId,
+      bonusSolved: gs.bonusSolved === true,
+      revealedLetters: Array.isArray(gs.revealedLetters) ? (gs.revealedLetters as string[]) : [],
+      availableCategories: Array.isArray(gs.availableCategories)
+        ? (gs.availableCategories as string[])
+        : undefined,
+      selectedCategories: Array.isArray(gs.selectedCategories)
+        ? (gs.selectedCategories as string[])
+        : undefined,
+    };
+  }, [
+    bonusPlayerSessionId,
+    category,
+    currentTurnSessionId,
+    gs,
+    hint,
+    phase,
+    puzzleDisplay,
+    round,
+    standings,
+    totalRounds,
+    visibleSpinSegment,
+  ]);
+  const resolvedGameState = gameState ?? fallbackGameState;
+  const resolvedPhase =
+    typeof resolvedGameState?.phase === "string" ? resolvedGameState.phase : phase;
+  const resolvedRound =
+    typeof resolvedGameState?.round === "number" ? resolvedGameState.round : round;
+  const resolvedTotalRounds =
+    typeof resolvedGameState?.totalRounds === "number"
+      ? resolvedGameState.totalRounds
+      : totalRounds;
 
   // ─── Standings bar (board) ──────────────────────────────────────
   const standingsBar = gameState ? (
@@ -608,6 +790,7 @@ export function LuckyLettersGame({
       puzzleDisplay={puzzleDisplay}
       category={category}
       hint={hint}
+      highlightLetters={[...highlightLetters]}
       revealedCount={revealedCount}
       totalLetters={totalLetters}
     />
@@ -615,7 +798,7 @@ export function LuckyLettersGame({
 
   // ─── BOARD renderer ─────────────────────────────────────────────
   function renderBoard(): React.ReactNode {
-    const state = gameState;
+    const state = gameState ?? fallbackGameState;
 
     if (!state) {
       return (
@@ -737,9 +920,11 @@ export function LuckyLettersGame({
               spinning={isSpinning}
               angle={spinResult?.angle ?? 0}
               landed={
-                !isSpinning && lastSpin
-                  ? { type: lastSpin.segment.type, label: lastSpin.segment.label }
-                  : null
+                spinResult?.segment
+                  ? { type: spinResult.segment.type, label: spinResult.segment.label }
+                  : !isSpinning && lastSpin
+                    ? { type: lastSpin.segment.type, label: lastSpin.segment.label }
+                    : null
               }
             />
             <div className="flex flex-col items-center gap-3">
@@ -749,6 +934,7 @@ export function LuckyLettersGame({
               </span>
               {lastSpin && !isSpinning && (
                 <span
+                  data-testid="lucky-prize-label"
                   className={`font-display text-[clamp(24px,3vw,36px)] font-bold ${lastSpin.segment.type === "bust" ? "text-accent-6" : lastSpin.segment.type === "pass" ? "text-warning" : lastSpin.segment.type === "wild" ? "text-success" : "text-accent-luckyletters"}`}
                 >
                   {lastSpin.segment.label}
@@ -882,13 +1068,76 @@ export function LuckyLettersGame({
               </span>
             </motion.div>
           )}
+          {(roundResult.solveBonusAwarded ?? 0) > 0 && (
+            <span data-testid="lucky-solve-bonus" className="font-body text-base text-emerald-400">
+              Solve bonus +${(roundResult.solveBonusAwarded ?? 0).toLocaleString()}
+            </span>
+          )}
           {!winnerName && (
-            <span className="font-display text-[clamp(28px,3.5vw,40px)] text-text-muted">
-              No one solved it!
+            <span
+              data-testid="lucky-timeout-banner"
+              className="font-display text-[clamp(28px,3.5vw,40px)] text-text-muted"
+            >
+              Time&apos;s up. No one solved it!
             </span>
           )}
           <ConfettiBurst trigger={!!winnerName} preset="correct" />
           {standingsBar}
+        </div>
+      );
+    }
+
+    // ── Bonus Reveal ──
+    if (shouldShowBonusReveal && resolvedBonusReveal) {
+      const bonusName = getPlayerName(players, resolvedBonusReveal.bonusPlayerId);
+      const bonusColor = getPlayerColor(players, resolvedBonusReveal.bonusPlayerId);
+      return (
+        <div className="flex flex-col items-center justify-center gap-8 p-8">
+          <h1
+            className="font-display text-[clamp(40px,5.5vw,64px)] font-black text-accent-luckyletters"
+            style={{ textShadow: "0 0 24px oklch(0.78 0.2 85 / 0.4)" }}
+          >
+            BONUS ROUND
+          </h1>
+          <GlassPanel
+            glow
+            glowColor={
+              resolvedBonusReveal.solved
+                ? "oklch(0.68 0.18 150 / 0.4)"
+                : "oklch(0.68 0.25 20 / 0.3)"
+            }
+            className="px-12 py-8"
+          >
+            <span className="font-display text-[clamp(32px,4.5vw,56px)] font-bold text-text-primary">
+              {resolvedBonusReveal.answer}
+            </span>
+          </GlassPanel>
+          <div className="flex items-center gap-4">
+            <PlayerAvatar name={bonusName} color={bonusColor} size={64} />
+            <span className="font-display text-[clamp(28px,3.5vw,40px)] font-bold text-text-primary">
+              {bonusName}
+            </span>
+          </div>
+          {resolvedBonusReveal.solved ? (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 150 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="font-display text-[clamp(36px,4.5vw,56px)] font-black text-success">
+                SOLVED IT!
+              </span>
+              <span className="font-mono text-[clamp(28px,3.5vw,44px)] font-bold text-accent-luckyletters">
+                +${resolvedBonusReveal.bonusPrize.toLocaleString()}
+              </span>
+            </motion.div>
+          ) : (
+            <span className="font-display text-[clamp(32px,4vw,48px)] text-accent-6 font-bold">
+              Not this time!
+            </span>
+          )}
+          <ConfettiBurst trigger={resolvedBonusReveal.solved} preset="win" />
         </div>
       );
     }
@@ -919,66 +1168,12 @@ export function LuckyLettersGame({
               {bonusName}
             </span>
           </div>
-          {timerEndTime && <Timer endTime={timerEndTime} size={120} />}
-        </div>
-      );
-    }
-
-    // ── Bonus Reveal ──
-    if (phase === "bonus-reveal" && bonusReveal) {
-      const bonusName = getPlayerName(players, bonusReveal.bonusPlayerId);
-      const bonusColor = getPlayerColor(players, bonusReveal.bonusPlayerId);
-      return (
-        <div className="flex flex-col items-center justify-center gap-8 p-8">
-          <h1
-            className="font-display text-[clamp(40px,5.5vw,64px)] font-black text-accent-luckyletters"
-            style={{ textShadow: "0 0 24px oklch(0.78 0.2 85 / 0.4)" }}
-          >
-            BONUS ROUND
-          </h1>
-          <GlassPanel
-            glow
-            glowColor={
-              bonusReveal.solved ? "oklch(0.68 0.18 150 / 0.4)" : "oklch(0.68 0.25 20 / 0.3)"
-            }
-            className="px-12 py-8"
-          >
-            <span className="font-display text-[clamp(32px,4.5vw,56px)] font-bold text-text-primary">
-              {bonusReveal.answer}
-            </span>
-          </GlassPanel>
-          <div className="flex items-center gap-4">
-            <PlayerAvatar name={bonusName} color={bonusColor} size={64} />
-            <span className="font-display text-[clamp(28px,3.5vw,40px)] font-bold text-text-primary">
-              {bonusName}
-            </span>
-          </div>
-          {bonusReveal.solved ? (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 150 }}
-              className="flex flex-col items-center gap-2"
-            >
-              <span className="font-display text-[clamp(36px,4.5vw,56px)] font-black text-success">
-                SOLVED IT!
-              </span>
-              <span className="font-mono text-[clamp(28px,3.5vw,44px)] font-bold text-accent-luckyletters">
-                +${bonusReveal.bonusPrize.toLocaleString()}
-              </span>
-            </motion.div>
-          ) : (
-            <span className="font-display text-[clamp(32px,4vw,48px)] text-accent-6 font-bold">
-              Not this time!
-            </span>
-          )}
-          <ConfettiBurst trigger={bonusReveal.solved} preset="win" />
         </div>
       );
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (phase === "final-scores" && !shouldShowBonusReveal) {
       const scores = buildScores(players);
       const awards = generateAwards(
         players
@@ -1011,6 +1206,9 @@ export function LuckyLettersGame({
 
   // ─── CONTROLS renderer ──────────────────────────────────────────
   function renderControls(): React.ReactNode {
+    const safeScrollMarginBottom =
+      "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 1rem)";
+
     // ── Category Vote ──
     if (phase === "category-vote") {
       const availableCategories = Array.isArray(gs.availableCategories)
@@ -1077,7 +1275,12 @@ export function LuckyLettersGame({
     if (phase === "spinning") {
       if (isMyTurn) {
         return (
-          <div className="flex flex-col gap-3 pb-4">
+          <div
+            className="flex flex-col gap-4 px-4 pt-2"
+            style={{
+              paddingBottom: "calc(var(--hud-safe-bottom, env(safe-area-inset-bottom)) + 0.75rem)",
+            }}
+          >
             {mobilePuzzle}
             {roundCash > 0 && (
               <div className="flex justify-center">
@@ -1086,9 +1289,9 @@ export function LuckyLettersGame({
                 </span>
               </div>
             )}
-            {controllerSpinResult && (
+            {visibleSpinSegment && (
               <MobileSpinResult
-                segment={controllerSpinResult.segment}
+                segment={visibleSpinSegment}
                 currentTurnName="You"
                 isMyTurn={true}
                 roundCashAtRisk={roundCash}
@@ -1096,14 +1299,17 @@ export function LuckyLettersGame({
             )}
             <MobileWheel
               onSpin={handleSpin}
-              spinResult={controllerSpinResult ? { angle: controllerSpinResult.angle } : null}
+              spinResult={sharedSpinResult ? { angle: sharedSpinResult.angle } : null}
+              landedSegment={visibleSpinSegment}
             />
-            <div className="flex items-center justify-center gap-3 px-4">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               {canBuyVowel && (
                 <button
                   type="button"
                   onClick={handleChooseBuyVowel}
+                  data-testid="lucky-buy-vowel-action"
                   className="min-h-[48px] rounded-xl border border-accent-luckyletters/40 bg-accent-luckyletters/15 px-5 py-2 font-display text-sm font-bold text-accent-luckyletters uppercase tracking-wider transition-all active:scale-95"
+                  style={{ scrollMarginBottom: safeScrollMarginBottom }}
                 >
                   Buy a Vowel ($250)
                 </button>
@@ -1111,7 +1317,9 @@ export function LuckyLettersGame({
               <button
                 type="button"
                 onClick={handleChooseSolve}
+                data-testid="lucky-solve-action"
                 className="min-h-[48px] rounded-xl border border-primary/40 bg-primary/15 px-5 py-2 font-display text-sm font-bold text-primary uppercase tracking-wider transition-all active:scale-95"
+                style={{ scrollMarginBottom: safeScrollMarginBottom }}
               >
                 Solve
               </button>
@@ -1122,12 +1330,23 @@ export function LuckyLettersGame({
       return (
         <div className="flex flex-col gap-4 pb-4 pt-4">
           {mobilePuzzle}
-          <p className="text-center font-body text-sm text-text-muted">
-            {turnPlayerName}&apos;s turn
-          </p>
-          {controllerSpinResult && (
+          <MobileWheel
+            onSpin={() => {}}
+            spinResult={sharedSpinResult ? { angle: sharedSpinResult.angle } : null}
+            landedSegment={visibleSpinSegment}
+            disabled
+          />
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="mx-4 flex flex-col items-center gap-2 px-4 py-3"
+          >
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName}&apos;s turn
+            </p>
+          </GlassPanel>
+          {visibleSpinSegment && (
             <MobileSpinResult
-              segment={controllerSpinResult.segment}
+              segment={visibleSpinSegment}
               currentTurnName={turnPlayerName}
               isMyTurn={false}
             />
@@ -1149,9 +1368,14 @@ export function LuckyLettersGame({
       return (
         <div className="flex flex-col gap-4 pb-4 pt-4">
           {mobilePuzzle}
-          <p className="text-center font-body text-sm text-text-muted">
-            {turnPlayerName} is picking a consonant...
-          </p>
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="mx-4 flex flex-col items-center gap-2 px-4 py-3"
+          >
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is picking a consonant...
+            </p>
+          </GlassPanel>
         </div>
       );
     }
@@ -1174,9 +1398,14 @@ export function LuckyLettersGame({
       return (
         <div className="flex flex-col gap-4 pb-4 pt-4">
           {mobilePuzzle}
-          <p className="text-center font-body text-sm text-text-muted">
-            {turnPlayerName} is buying a vowel...
-          </p>
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="mx-4 flex flex-col items-center gap-2 px-4 py-3"
+          >
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is buying a vowel...
+            </p>
+          </GlassPanel>
         </div>
       );
     }
@@ -1199,9 +1428,20 @@ export function LuckyLettersGame({
       return (
         <div className="flex flex-col gap-4 pb-4 pt-4">
           {mobilePuzzle}
-          <p className="text-center font-body text-sm text-text-muted">
-            {turnPlayerName} is solving...
-          </p>
+          <MobileWheel
+            onSpin={() => {}}
+            spinResult={sharedSpinResult ? { angle: sharedSpinResult.angle } : null}
+            landedSegment={visibleSpinSegment}
+            disabled
+          />
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="mx-4 flex flex-col items-center gap-2 px-4 py-3"
+          >
+            <p className="text-center font-body text-sm text-text-muted">
+              {turnPlayerName} is solving...
+            </p>
+          </GlassPanel>
         </div>
       );
     }
@@ -1252,9 +1492,57 @@ export function LuckyLettersGame({
                 : ""}
             </p>
           )}
+          {(controllerRoundResult?.solveBonusAwarded ?? 0) > 0 && (
+            <p
+              data-testid="lucky-solve-bonus"
+              className="text-center font-body text-sm text-emerald-400"
+            >
+              Solve bonus +${(controllerRoundResult?.solveBonusAwarded ?? 0).toLocaleString()}
+            </p>
+          )}
+          {!winnerName && (
+            <p
+              data-testid="lucky-timeout-banner"
+              className="text-center font-body text-sm text-text-muted"
+            >
+              Time&apos;s up. No solve this round.
+            </p>
+          )}
           {rrStandings.length > 0 && (
             <MobileStandings standings={rrStandings} mySessionId={mySessionId} players={players} />
           )}
+        </div>
+      );
+    }
+
+    // ── Bonus Reveal ──
+    if (shouldShowBonusReveal && resolvedBonusReveal) {
+      const brSolved = resolvedBonusReveal.solved ?? false;
+      const brAnswer = resolvedBonusReveal.answer ?? "";
+      const brPrize = resolvedBonusReveal.bonusPrize ?? 0;
+      const brPlayerName = resolvedBonusReveal.bonusPlayerId
+        ? (players.find((p) => p.sessionId === resolvedBonusReveal.bonusPlayerId)?.name ?? "Player")
+        : "Player";
+      return (
+        <div className="flex flex-col gap-4 pb-4 pt-4">
+          {brSolved && <ConfettiBurst trigger={true} preset="celebration" />}
+          <GlassPanel className="mx-4 flex flex-col items-center gap-3 px-6 py-5">
+            <p
+              className={`font-display text-2xl font-black uppercase ${brSolved ? "text-emerald-400" : "text-red-400"}`}
+            >
+              {brSolved ? "Solved!" : "Not Solved"}
+            </p>
+            {brAnswer && (
+              <p className="text-center font-display text-base font-bold text-text-primary">
+                {brAnswer}
+              </p>
+            )}
+            {brSolved && brPrize > 0 && (
+              <p className="font-mono text-lg font-bold text-emerald-400">
+                {brPlayerName} wins ${brPrize.toLocaleString()}!
+              </p>
+            )}
+          </GlassPanel>
         </div>
       );
     }
@@ -1313,48 +1601,20 @@ export function LuckyLettersGame({
             Bonus Round!
           </p>
           {mobilePuzzle}
-          <p className="text-center font-body text-sm text-text-muted">
-            {bonusName} is playing for $25,000!
-          </p>
-        </div>
-      );
-    }
-
-    // ── Bonus Reveal ──
-    if (phase === "bonus-reveal") {
-      const brSolved = controllerBonusReveal?.solved ?? false;
-      const brAnswer = controllerBonusReveal?.answer ?? "";
-      const brPrize = controllerBonusReveal?.bonusPrize ?? 0;
-      const brPlayerName = controllerBonusReveal?.bonusPlayerId
-        ? (players.find((p) => p.sessionId === controllerBonusReveal.bonusPlayerId)?.name ??
-          "Player")
-        : "Player";
-      return (
-        <div className="flex flex-col gap-4 pb-4 pt-4">
-          {brSolved && <ConfettiBurst trigger={true} preset="celebration" />}
-          <GlassPanel className="mx-4 flex flex-col items-center gap-3 px-6 py-5">
-            <p
-              className={`font-display text-2xl font-black uppercase ${brSolved ? "text-emerald-400" : "text-red-400"}`}
-            >
-              {brSolved ? "Solved!" : "Not Solved"}
+          <GlassPanel
+            data-testid="controller-context-card"
+            className="mx-4 flex flex-col items-center gap-2 px-4 py-3"
+          >
+            <p className="text-center font-body text-sm text-text-muted">
+              {bonusName} is playing for $25,000!
             </p>
-            {brAnswer && (
-              <p className="text-center font-display text-base font-bold text-text-primary">
-                {brAnswer}
-              </p>
-            )}
-            {brSolved && brPrize > 0 && (
-              <p className="font-mono text-lg font-bold text-emerald-400">
-                {brPlayerName} wins ${brPrize.toLocaleString()}!
-              </p>
-            )}
           </GlassPanel>
         </div>
       );
     }
 
     // ── Final Scores ──
-    if (phase === "final-scores") {
+    if (phase === "final-scores" && !shouldShowBonusReveal) {
       return (
         <div className="flex flex-col items-center gap-4 px-4 pb-4 pt-4">
           <p className="text-center font-body text-sm text-text-muted">
@@ -1374,36 +1634,70 @@ export function LuckyLettersGame({
   }
 
   // ─── Layout ──────────────────────────────────────────────────────
-  if (phase === "final-scores") {
+  if (resolvedPhase === "final-scores" && !shouldShowBonusReveal) {
     return (
-      <div className="flex min-h-dvh flex-col">
+      <div
+        className="flex min-h-0 flex-1 flex-col"
+        data-testid="lucky-host-state"
+        data-phase={resolvedPhase}
+        data-round={resolvedRound}
+        data-total-rounds={resolvedTotalRounds}
+      >
         {renderBoard()}
-        <div className="border-t border-white/10 bg-bg-deep/80 backdrop-blur-sm p-4">
-          {renderControls()}
-        </div>
       </div>
     );
   }
 
   return (
-    <GameBoard
-      board={renderBoard()}
-      controls={
-        <>
-          <PlayerStatus
-            turnPlayerName={isMyTurn ? null : turnPlayerName}
-            isMyTurn={isMyTurn}
-            message={
-              isMyTurn
-                ? "Your turn!"
-                : phase === "category-vote"
-                  ? "Vote for categories"
-                  : undefined
-            }
-          />
-          {renderControls()}
-        </>
-      }
-    />
+    <div
+      data-testid="lucky-host-state"
+      data-phase={resolvedPhase}
+      data-round={resolvedRound}
+      data-total-rounds={resolvedTotalRounds}
+    >
+      <GameBoard
+        board={renderBoard()}
+        controls={
+          <>
+            <PlayerStatus
+              turnPlayerName={isMyTurn ? null : turnPlayerName}
+              isMyTurn={isMyTurn}
+              message={
+                isMyTurn
+                  ? "Your turn!"
+                  : phase === "category-vote"
+                    ? "Vote for categories"
+                    : undefined
+              }
+            />
+            {renderControls()}
+          </>
+        }
+        overlay={
+          idleTimeoutNotice ? (
+            <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-4">
+              <motion.div
+                data-testid="lucky-timeout-banner"
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: ANIMATION_EASINGS.smoothInOut }}
+                className="w-full max-w-md"
+              >
+                <GlassPanel
+                  glow
+                  glowColor="oklch(0.78 0.2 85 / 0.16)"
+                  className="px-4 py-3 text-center"
+                >
+                  <p className="font-display text-sm font-bold text-text-primary">
+                    {idleTimeoutNotice.message}
+                  </p>
+                </GlassPanel>
+              </motion.div>
+            </div>
+          ) : null
+        }
+      />
+    </div>
   );
 }

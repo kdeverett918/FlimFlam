@@ -11,7 +11,7 @@ test.describe("Lucky Letters Full Gameplay", () => {
     });
 
     // Host shows ROUND 1 heading
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
 
     await closeAllControllers(controllers);
   });

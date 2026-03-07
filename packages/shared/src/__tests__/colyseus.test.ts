@@ -1,7 +1,9 @@
 import {
+  readRuntimePublicConfig,
   resolveColyseusWsUrlFromEnv,
   resolveNextPublicColyseusHttpUrl,
   resolveNextPublicColyseusWsUrl,
+  resolveNextPublicHostUrl,
   resolveRoomIdByCode,
   wsUrlToHttpUrl,
 } from "../utils/colyseus";
@@ -67,6 +69,28 @@ describe("shared/utils/colyseus", () => {
 
     expect(resolveNextPublicColyseusWsUrl()).toBe("wss://prod.example.com");
     expect(resolveNextPublicColyseusHttpUrl()).toBe("https://prod.example.com");
+  });
+
+  it("prefers runtime public config over build-time env in browser context", () => {
+    process.env.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_COLYSEUS_URL = "wss://stale.example.com";
+    process.env.NEXT_PUBLIC_HOST_URL = "https://stale-host.example.com";
+
+    vi.stubGlobal("window", {
+      location: { hostname: "127.0.0.1", origin: "http://127.0.0.1:5310" },
+      __FLIMFLAM_RUNTIME_CONFIG__: {
+        colyseusUrl: "ws://127.0.0.1:5567",
+        hostUrl: "http://127.0.0.1:5310",
+      },
+    });
+
+    expect(readRuntimePublicConfig()).toEqual({
+      colyseusUrl: "ws://127.0.0.1:5567",
+      hostUrl: "http://127.0.0.1:5310",
+    });
+    expect(resolveNextPublicColyseusWsUrl()).toBe("ws://127.0.0.1:5567");
+    expect(resolveNextPublicColyseusHttpUrl()).toBe("http://127.0.0.1:5567");
+    expect(resolveNextPublicHostUrl()).toBe("http://127.0.0.1:5310");
   });
 
   it("maps resolveRoomIdByCode responses to typed errors", async () => {

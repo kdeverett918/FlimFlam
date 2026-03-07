@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveNextPublicHostUrl } from "@flimflam/shared";
 import { GlassPanel } from "@flimflam/ui";
 import { Check, Copy, Share2 } from "lucide-react";
 import { motion } from "motion/react";
@@ -14,12 +15,7 @@ export function SharePanel({ roomCode }: SharePanelProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [copied, setCopied] = useState(false);
 
-  const baseUrl =
-    typeof window !== "undefined" && process.env.NEXT_PUBLIC_HOST_URL
-      ? process.env.NEXT_PUBLIC_HOST_URL
-      : process.env.NODE_ENV === "production"
-        ? "https://flimflam.gg"
-        : "http://localhost:3000";
+  const baseUrl = resolveNextPublicHostUrl();
 
   const joinUrl = `${baseUrl}/room/${roomCode}`;
 

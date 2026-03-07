@@ -50,7 +50,10 @@ export function SpinResult({
       <GlassPanel
         className={`flex flex-col items-center gap-2 border ${style.border} ${style.bg} px-6 py-4`}
       >
-        <span className={`font-display text-2xl font-black uppercase tracking-wider ${style.text}`}>
+        <span
+          data-testid="lucky-prize-label"
+          className={`font-display text-2xl font-black uppercase tracking-wider ${style.text}`}
+        >
           {segment.label}
         </span>
         <p className="font-body text-sm text-text-muted">

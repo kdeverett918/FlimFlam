@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { closeAllControllers, startGame } from "./e2e-helpers";
+import { closeAllControllers, skipToPhase, startGame } from "./e2e-helpers";
 
 test.describe("Reactions During Active Gameplay", () => {
   test("reaction bar is visible during Brain Board gameplay", async ({ page, browser }) => {
@@ -60,7 +60,7 @@ test.describe("Reactions During Active Gameplay", () => {
     });
 
     const skipButton = page.getByRole("button", { name: /^skip$/i });
-    await expect(page.getByText("ROUND 1")).toBeVisible({ timeout: 30_000 });
+    await skipToPhase(page, /choose your categories/i);
     await skipButton.click();
 
     // Both controllers should have reaction buttons
