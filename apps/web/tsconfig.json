@@ -12,36 +12,48 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
     "noEmit": true,
-    "lib": ["dom", "dom.iterable", "esnext"]
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ]
   },
   "include": [
     "**/*.ts",
+    "**/*.ts",
+    "**/*.tsx",
     "**/*.tsx",
     ".next-e2e-host*/types/**/*.ts",
-    ".next-e2e-host-5310-signoff/types/**/*.ts",
-    ".next-e2e-host-5410-48160/types/**/*.ts",
-    ".next-e2e-host-5470-89708/types/**/*.ts",
-    ".next-e2e-host-5510-36660/types/**/*.ts",
-    ".next-e2e-host-5510-55940/types/**/*.ts",
-    ".next-e2e-host-5550-140372/types/**/*.ts",
-    ".next-e2e-host-5550-66652/types/**/*.ts",
-    ".next-e2e-host-5550-95272/types/**/*.ts",
-    ".next-e2e-host-5570-104788/types/**/*.ts",
-    ".next-e2e-host-5570-118948/types/**/*.ts",
-    ".next-e2e-host-5610-57780/types/**/*.ts",
-    ".next-e2e-host-5630-114076/types/**/*.ts",
-    ".next-e2e-host-5650-101232/types/**/*.ts",
-    ".next-e2e-host-5670-73608/types/**/*.ts",
-    ".next-e2e-host-5730-116976/types/**/*.ts",
-    ".next-e2e-host-5750-133392/types/**/*.ts",
-    ".next-e2e-host-5830-113356/types/**/*.ts",
-    ".next-e2e-host-5930-31216/types/**/*.ts",
+    ".next-e2e-host*/types/**/*.ts",
+    ".next-e2e-host-5310-118860/types/**/*.ts",
+    ".next-e2e-host-5390-5244/types/**/*.ts",
+    ".next-e2e-host-5390-63384/types/**/*.ts",
+    ".next-e2e-host-5390-89344/types/**/*.ts",
+    ".next-e2e-host-5470-112028/types/**/*.ts",
+    ".next-e2e-host-5470-46028/types/**/*.ts",
+    ".next-e2e-host-5470-62048/types/**/*.ts",
+    ".next-e2e-host-5470-62048/types/**/*.ts",
+    ".next-e2e-host-5550-116132/types/**/*.ts",
+    ".next-e2e-host-5550-138352/types/**/*.ts",
+    ".next-e2e-host-5550-56732/types/**/*.ts",
+    ".next-e2e-host-5550-56732/types/**/*.ts",
+    ".next-e2e-host-5550-57172/types/**/*.ts",
+    ".next-e2e-host-5550-57172/types/**/*.ts",
+    ".next-e2e-host-5550-64972/types/**/*.ts",
+    ".next-e2e-host-5630-51996/types/**/*.ts",
+    ".next-e2e-host-5630-90116/types/**/*.ts",
+    ".next/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    ".next-e2e-host-5850-96652/types/**/*.ts"
+    "next-env.d.ts",
+    ".next-e2e-host-5630-76676/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

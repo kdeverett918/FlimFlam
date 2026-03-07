@@ -6,6 +6,7 @@ import path from "node:path";
 
 const requireFromHere = createRequire(import.meta.url);
 const nextCliPath = requireFromHere.resolve("next/dist/bin/next");
+const tsxCliPath = path.join(path.dirname(requireFromHere.resolve("tsx/package.json")), "dist", "cli.mjs");
 
 const isWin = process.platform === "win32";
 const PNPM_BIN = "pnpm";
@@ -16,6 +17,7 @@ if (process.env.FORCE_COLOR && process.env.NO_COLOR) {
 
 const repoRoot = process.cwd();
 const webCwd = path.join(repoRoot, "apps", "web");
+const serverCwd = path.join(repoRoot, "packages", "server");
 
 const appPort = process.env.FLIMFLAM_E2E_HOST_PORT ?? "5310";
 const serverPort = process.env.PORT ?? process.env.FLIMFLAM_E2E_COLYSEUS_PORT ?? "5567";
@@ -707,12 +709,24 @@ function startServerIfNeeded() {
     managedServicePorts.add(serverPortNumber);
   }
 
-  spawnPnpmService(
+  launchManagedChild(
     "server",
-    ["--filter", "@flimflam/server", "start:e2e"],
-    {
-      PORT: String(serverPort),
-    },
+    () =>
+      spawn(process.execPath, [tsxCliPath, "src/index.ts"], {
+        cwd: serverCwd,
+        stdio: ["ignore", "inherit", "inherit"],
+        env: {
+          ...process.env,
+          FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
+          NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
+          FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
+          FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
+          FLIMFLAM_E2E_RUNTIME: runtimeMode,
+          PORT: String(serverPort),
+        },
+        shell: false,
+      }),
+    useProductionRuntime ? 0 : 3,
     {
       daemonizedPort: serverPortNumber,
     },
@@ -721,8 +735,23 @@ function startServerIfNeeded() {
 
 function startApp() {
   const command = useProductionRuntime ? "start" : "dev";
-  console.log(`[e2e-webserver] launching web app via next ${command} on ${appPort}`);
-  spawnNextService("web", webCwd, command, appPort, appDistDir);
+  console.log(`[e2e-webserver] launching web app via pnpm ${command} on ${appPort}`);
+  const appPortNumber = Number.parseInt(String(appPort), 10);
+  spawnPnpmService(
+    "web",
+    ["--filter", "@flimflam/web", command, "--hostname", "127.0.0.1", "--port", String(appPort)],
+    {
+      FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
+      NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
+      FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
+      FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
+      FLIMFLAM_E2E_RUNTIME: runtimeMode,
+      FLIMFLAM_NEXT_DIST_DIR: appDistDir,
+    },
+    {
+      daemonizedPort: Number.isFinite(appPortNumber) ? appPortNumber : null,
+    },
+  );
 }
 
 process.on("SIGINT", () => shutdown(0));

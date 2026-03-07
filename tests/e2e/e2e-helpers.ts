@@ -12,6 +12,11 @@ type SurveySmashHostState = {
   phase: string | null;
   round: number | null;
   totalRounds: number | null;
+  strikes: number | null;
+  currentGuesserIndex: number | null;
+  faceOffSubmissions: number | null;
+  revealedAnswerCount: number | null;
+  lightningQuestionIndex: number | null;
 };
 
 type BrainBoardHostState = {
@@ -27,10 +32,15 @@ type LuckyLettersHostState = {
 
 async function readSurveySmashHostState(hostPage: Page): Promise<SurveySmashHostState> {
   const stateRoot = hostPage.locator('[data-testid="survey-smash-host-state"]').first();
-  const [phase, round, totalRounds] = await Promise.all([
+  const [phase, round, totalRounds, strikes, currentGuesserIndex, faceOffSubmissions, revealedAnswerCount, lightningQuestionIndex] = await Promise.all([
     stateRoot.getAttribute("data-phase").catch(() => null),
     stateRoot.getAttribute("data-round").catch(() => null),
     stateRoot.getAttribute("data-total-rounds").catch(() => null),
+    stateRoot.getAttribute("data-strikes").catch(() => null),
+    stateRoot.getAttribute("data-current-guesser-index").catch(() => null),
+    stateRoot.getAttribute("data-faceoff-submissions").catch(() => null),
+    stateRoot.getAttribute("data-revealed-answer-count").catch(() => null),
+    stateRoot.getAttribute("data-lightning-question-index").catch(() => null),
   ]);
 
   const parseNumberAttr = (value: string | null): number | null => {
@@ -43,6 +53,11 @@ async function readSurveySmashHostState(hostPage: Page): Promise<SurveySmashHost
     phase,
     round: parseNumberAttr(round),
     totalRounds: parseNumberAttr(totalRounds),
+    strikes: parseNumberAttr(strikes),
+    currentGuesserIndex: parseNumberAttr(currentGuesserIndex),
+    faceOffSubmissions: parseNumberAttr(faceOffSubmissions),
+    revealedAnswerCount: parseNumberAttr(revealedAnswerCount),
+    lightningQuestionIndex: parseNumberAttr(lightningQuestionIndex),
   };
 }
 
@@ -113,7 +128,12 @@ async function advanceSurveySmashWithSkip(
         return (
           nextState.phase !== previousState.phase ||
           nextState.round !== previousState.round ||
-          nextState.totalRounds !== previousState.totalRounds
+          nextState.totalRounds !== previousState.totalRounds ||
+          nextState.strikes !== previousState.strikes ||
+          nextState.currentGuesserIndex !== previousState.currentGuesserIndex ||
+          nextState.faceOffSubmissions !== previousState.faceOffSubmissions ||
+          nextState.revealedAnswerCount !== previousState.revealedAnswerCount ||
+          nextState.lightningQuestionIndex !== previousState.lightningQuestionIndex
         );
       },
       { timeout: 5_000 },
@@ -298,7 +318,8 @@ export async function driveSurveySmashToStealChance(
   hostPage: Page,
   controllerPages: Page[],
   timeoutMs = 90_000,
-): Promise<void> {
+  options: { allowPastStealWindow?: boolean } = {},
+): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
   const actorPages = [hostPage, ...controllerPages];
@@ -306,6 +327,16 @@ export async function driveSurveySmashToStealChance(
 
   while (Date.now() < deadline) {
     const state = await readSurveySmashHostState(hostPage);
+    const advancedPastStealWindow =
+      missCounter >= 3 &&
+      (state.phase === "answer-reveal" ||
+        state.phase === "round-result" ||
+        state.phase === "final-scores");
+
+    if (options.allowPastStealWindow && advancedPastStealWindow) {
+      return false;
+    }
+
     if (state.phase === "steal-chance") {
       await expect
         .poll(
@@ -337,7 +368,7 @@ export async function driveSurveySmashToStealChance(
           { timeout: 10_000 },
         )
         .toBe(true);
-      return;
+      return true;
     }
 
     if (state.phase === "guessing") {
@@ -447,7 +478,12 @@ export async function submitTextAnswer(controllerPage: Page, answer: string): Pr
 
   for (const selector of scopedInputContainers) {
     const candidate = appRoot.locator(selector).first();
-    if (await candidate.isVisible().catch(() => false)) {
+    if (!(await candidate.isVisible().catch(() => false))) {
+      continue;
+    }
+
+    const candidateTextbox = candidate.getByRole("textbox").first();
+    if (await candidateTextbox.isVisible().catch(() => false)) {
       inputScope = candidate;
       break;
     }
@@ -460,14 +496,14 @@ export async function submitTextAnswer(controllerPage: Page, answer: string): Pr
         node.scrollTop = node.scrollHeight;
       })
       .catch(() => {});
-    await textbox.scrollIntoViewIfNeeded().catch(() => {});
+    await textbox.scrollIntoViewIfNeeded({ timeout: 1_500 }).catch(() => {});
   }
-  await expect(textbox).toBeVisible({ timeout: 20_000 });
-  await textbox.click().catch(() => {});
-  await textbox.fill("").catch(() => {});
+  await expect(textbox).toBeVisible({ timeout: 5_000 });
+  await textbox.click({ timeout: 2_000 }).catch(() => {});
+  await textbox.fill("", { timeout: 2_000 }).catch(() => {});
   await textbox.pressSequentially(answer, { delay: 20 }).catch(async () => {
-    await textbox.type(answer, { delay: 20 }).catch(async () => {
-      await textbox.fill(answer);
+    await textbox.type(answer, { delay: 20, timeout: 2_000 }).catch(async () => {
+      await textbox.fill(answer, { timeout: 2_000 });
     });
   });
   await textbox
@@ -490,7 +526,7 @@ export async function submitTextAnswer(controllerPage: Page, answer: string): Pr
     .toBe(answer)
     .catch(() => {});
   const submitButton = inputScope.getByRole("button", { name: /^submit$/i }).first();
-  await submitButton.scrollIntoViewIfNeeded().catch(() => {});
+  await submitButton.scrollIntoViewIfNeeded({ timeout: 1_500 }).catch(() => {});
   await expect(submitButton).toBeVisible({ timeout: 10_000 });
   await expect
     .poll(async () => submitButton.isEnabled().catch(() => false), {
@@ -534,48 +570,64 @@ export async function submitTextAnswer(controllerPage: Page, answer: string): Pr
  */
 export async function submitQuickGuess(controllerPage: Page, answer: string): Promise<void> {
   const appRoot = controllerPage.locator("main");
+  const controlState = controllerPage.locator('[data-testid="survey-smash-control-state"]').first();
   const lightningScope = appRoot.locator('[data-testid="survey-smash-lightning-input"]').first();
-  const inputScope = (await lightningScope.isVisible().catch(() => false))
-    ? lightningScope
-    : appRoot;
+  await expect(lightningScope).toBeVisible({ timeout: 1_500 });
+  const inputScope = lightningScope;
   const progressChip = appRoot.getByText(/^\d+\/\d+$/).first();
   const previousProgress = (await progressChip.textContent().catch(() => null))?.trim() ?? null;
+  const previousQuestionIndex = await controlState
+    .getAttribute("data-lightning-question-index")
+    .catch(() => null);
+  const lightningQuestionCount = await controlState
+    .getAttribute("data-lightning-question-count")
+    .catch(() => null);
+  const previousQuestionIndexNumber =
+    previousQuestionIndex !== null ? Number.parseInt(previousQuestionIndex, 10) : Number.NaN;
+  const lightningQuestionCountNumber =
+    lightningQuestionCount !== null ? Number.parseInt(lightningQuestionCount, 10) : Number.NaN;
+  const isLastLightningQuestion =
+    Number.isFinite(previousQuestionIndexNumber) &&
+    Number.isFinite(lightningQuestionCountNumber) &&
+    previousQuestionIndexNumber >= lightningQuestionCountNumber - 1;
   const textbox = inputScope.getByRole("textbox").first();
-  if (!(await textbox.isVisible().catch(() => false))) {
-    await appRoot
-      .evaluate((node) => {
-        node.scrollTop = node.scrollHeight;
-      })
-      .catch(() => {});
-    await textbox.scrollIntoViewIfNeeded().catch(() => {});
+  await textbox.scrollIntoViewIfNeeded({ timeout: 1_000 }).catch(() => {});
+  await expect(textbox).toBeVisible({ timeout: 1_500 });
+  await textbox.click({ timeout: 2_000 }).catch(() => {});
+  await textbox.fill("", { timeout: 2_000 }).catch(() => {});
+  let filled = false;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    filled = await textbox
+      .fill(answer, { timeout: 1_500 })
+      .then(() => true)
+      .catch(() => false);
+    if (filled) {
+      break;
+    }
+    await controllerPage.waitForTimeout(150).catch(() => {});
   }
-  await expect(textbox).toBeVisible({ timeout: 10_000 });
-  await textbox.click().catch(() => {});
-  await textbox.fill("").catch(() => {});
-  await textbox.type(answer, { delay: 20 }).catch(async () => {
-    await textbox.fill(answer);
-  });
+  if (!filled) {
+    throw new Error(`Failed to fill Survey Smash lightning answer: ${answer}`);
+  }
   await expect
     .poll(async () => textbox.inputValue().catch(() => null), {
-      timeout: 3_000,
+      timeout: 5_000,
     })
     .toBe(answer)
     .catch(() => {});
   const guessButton = inputScope.getByRole("button", { name: /^guess$/i }).first();
-  await guessButton.scrollIntoViewIfNeeded().catch(() => {});
-  await textbox.press("Enter").catch(() => {});
+  await guessButton.scrollIntoViewIfNeeded({ timeout: 1_500 }).catch(() => {});
+  await expect(guessButton).toBeVisible({ timeout: 5_000 });
+  await expect
+    .poll(async () => guessButton.isEnabled().catch(() => false), {
+      timeout: 3_000,
+    })
+    .toBe(true)
+    .catch(() => {});
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     try {
-      const valueAfterEnter = await textbox.inputValue().catch(() => null);
-      if (valueAfterEnter === "") {
-        break;
-      }
-      await expect(guessButton).toBeVisible({ timeout: 1_000 });
-      const enabled = await guessButton.isEnabled().catch(() => false);
-      if (enabled) {
-        await guessButton.click({ timeout: 1_500 });
-      }
+      await guessButton.click({ timeout: 1_500 });
       break;
     } catch (error) {
       const textboxStillVisible = await textbox.isVisible().catch(() => false);
@@ -593,6 +645,23 @@ export async function submitQuickGuess(controllerPage: Page, answer: string): Pr
   await expect
     .poll(
       async () => {
+        const phase = await controlState.getAttribute("data-phase").catch(() => null);
+        if (isLastLightningQuestion) {
+          return phase === "lightning-round-reveal";
+        }
+        if (phase !== "lightning-round") {
+          return true;
+        }
+        const nextQuestionIndex = await controlState
+          .getAttribute("data-lightning-question-index")
+          .catch(() => null);
+        if (
+          previousQuestionIndex !== null &&
+          nextQuestionIndex !== null &&
+          nextQuestionIndex !== previousQuestionIndex
+        ) {
+          return true;
+        }
         const progress = (await progressChip.textContent().catch(() => null))?.trim() ?? null;
         if (previousProgress && progress && progress !== previousProgress) {
           return true;
@@ -602,14 +671,152 @@ export async function submitQuickGuess(controllerPage: Page, answer: string): Pr
           return true;
         }
         const inputValue = await textbox.inputValue().catch(() => null);
-        return inputValue === "";
+        if (inputValue !== "") {
+          return false;
+        }
+        return await inputScope.getByText(/sent/i).first().isVisible().catch(() => false);
       },
       { timeout: 5_000 },
     )
-    .toBe(true)
-    .catch(() => {});
+    .toBe(true);
 
-  await controllerPage.waitForTimeout(150);
+  await controllerPage.waitForTimeout(400);
+}
+
+export async function submitSurveySmashLightningGuess(
+  pages: Page[],
+  answer: string,
+  timeoutMs = 30_000,
+): Promise<Page> {
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown = null;
+
+  while (Date.now() < deadline) {
+    try {
+      const actor = await findSurveySmashLightningActor(pages, Math.min(5_000, timeoutMs));
+      await submitQuickGuess(actor, answer);
+      return actor;
+    } catch (error) {
+      lastError = error;
+      await pages[0]?.waitForTimeout(150).catch(() => {});
+    }
+  }
+
+  throw (lastError as Error | null) ?? new Error("Timed out submitting Survey Smash lightning guess");
+}
+
+export async function answerSurveySmashLightningQuestion(
+  hostPage: Page,
+  controllerPages: Page[],
+  answer: string,
+  timeoutMs = 180_000,
+): Promise<Page> {
+  const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
+  const deadline = Date.now() + timeoutMs;
+  const actorPages = [hostPage, ...controllerPages];
+  const lightningResults = hostPage.getByText(/lightning round results/i).first();
+  let missCounter = 0;
+  let lastError: unknown = null;
+  let lightningPhaseDiagnostics: string[] | null = null;
+
+  while (Date.now() < deadline) {
+    const actor = await findVisibleSurveySmashLightningActor(actorPages);
+    if (actor) {
+      await actor.bringToFront().catch(() => {});
+    }
+    if (actor && (await waitForSurveySmashLightningInput(actor, 1_500))) {
+      try {
+        await submitQuickGuess(actor, answer);
+        return actor;
+      } catch (error) {
+        lastError = error;
+        await hostPage.waitForTimeout(120).catch(() => {});
+        continue;
+      }
+    }
+
+    const hostState = await readSurveySmashHostState(hostPage);
+    const hasLightningResults = await lightningResults.isVisible().catch(() => false);
+    if (hasLightningResults || hostState.phase === "lightning-round-reveal") {
+      const diagnostics = await describeSurveySmashLightningPages(actorPages);
+      throw new Error(
+        `Survey Smash advanced to lightning results before the test submitted a lightning answer. live=${lightningPhaseDiagnostics?.join(" | ") ?? "n/a"} final=${diagnostics.join(" | ")}`,
+      );
+    }
+    if (hostState.phase === "final-scores") {
+      const diagnostics = await describeSurveySmashLightningPages(actorPages);
+      throw new Error(
+        `Survey Smash advanced to final scores before the test submitted a lightning answer. live=${lightningPhaseDiagnostics?.join(" | ") ?? "n/a"} final=${diagnostics.join(" | ")}`,
+      );
+    }
+
+    if (hostState.phase === "lightning-round") {
+      if (lightningPhaseDiagnostics === null) {
+        lightningPhaseDiagnostics = await describeSurveySmashLightningPages(actorPages);
+      }
+      await hostPage.waitForTimeout(150).catch(() => {});
+      continue;
+    }
+
+    const isFinalRoundBoundary =
+      hostState.phase === "round-result" &&
+      hostState.round !== null &&
+      hostState.totalRounds !== null &&
+      hostState.round >= hostState.totalRounds;
+    if (isFinalRoundBoundary) {
+      await hostPage.waitForTimeout(250).catch(() => {});
+      continue;
+    }
+
+    switch (hostState.phase) {
+      case "face-off": {
+        const submitted = await submitSurveySmashInput(actorPages, "e2e-faceoff");
+        if (submitted) {
+          await hostPage.waitForTimeout(200).catch(() => {});
+          continue;
+        }
+        break;
+      }
+      case "guessing": {
+        const guesser = await findStrictSurveySmashGuesser(actorPages, 2_000).catch(() => null);
+        if (guesser) {
+          await submitTextAnswer(guesser, `wrong-lightning-${missCounter++}`).catch(() => {});
+          await hostPage.waitForTimeout(250).catch(() => {});
+          continue;
+        }
+        break;
+      }
+      case "steal-chance": {
+        const submitted = await submitSurveySmashInput(actorPages, "e2e-steal");
+        if (submitted) {
+          await hostPage.waitForTimeout(200).catch(() => {});
+          continue;
+        }
+        break;
+      }
+      default:
+        break;
+    }
+
+    const safeSkipPhases = new Set([
+      "question-reveal",
+      "strike",
+      "answer-reveal",
+      "round-result",
+      "lightning-round-reveal",
+    ]);
+    const advanced = safeSkipPhases.has(hostState.phase ?? "")
+      ? await advanceSurveySmashWithSkip(hostPage, skipButton, hostState).catch(() => false)
+      : false;
+    if (!advanced) {
+      await hostPage.waitForTimeout(150).catch(() => {});
+    }
+  }
+
+  throw (
+    (lastError as Error | null) ??
+    new Error("Timed out driving and submitting a Survey Smash lightning answer")
+  );
 }
 
 /**
@@ -654,7 +861,12 @@ export async function findActiveGuesser(actorPages: Page[], timeoutMs = 15_000):
       if (page.isClosed()) continue;
       const appRoot = page.locator("main");
       const guesserSurface = appRoot.locator('[data-testid="survey-smash-guesser-input"]').first();
-      if (await guesserSurface.isVisible().catch(() => false)) {
+      if (!(await guesserSurface.isVisible().catch(() => false))) {
+        continue;
+      }
+
+      const textbox = guesserSurface.getByRole("textbox").first();
+      if (await textbox.isVisible().catch(() => false)) {
         return page;
       }
 
@@ -666,8 +878,8 @@ export async function findActiveGuesser(actorPages: Page[], timeoutMs = 15_000):
         continue;
       }
 
-      const textbox = appRoot.getByRole("textbox").first();
-      if (!(await textbox.isVisible().catch(() => false))) continue;
+      const fallbackTextbox = appRoot.getByRole("textbox").first();
+      if (!(await fallbackTextbox.isVisible().catch(() => false))) continue;
 
       const submitButton = appRoot.getByRole("button", { name: /^submit$/i }).first();
       const guessButton = appRoot.getByRole("button", { name: /^guess$/i }).first();
@@ -702,7 +914,11 @@ export async function findStrictSurveySmashGuesser(
       const guesserSurface = page
         .locator('main [data-testid="survey-smash-guesser-input"]')
         .first();
-      if (await guesserSurface.isVisible().catch(() => false)) {
+      if (!(await guesserSurface.isVisible().catch(() => false))) {
+        continue;
+      }
+      const textbox = guesserSurface.getByRole("textbox").first();
+      if (await textbox.isVisible().catch(() => false)) {
         return page;
       }
     }
@@ -821,6 +1037,47 @@ async function gotoWithHostRetry(
   throw lastError instanceof Error
     ? lastError
     : new Error(`[e2e] failed navigation after ${attempts} attempts: ${targetUrl}`);
+}
+
+async function reloadWithHostRetry(
+  page: Page,
+  opts?: { waitUntil?: "load" | "domcontentloaded"; attempts?: number },
+): Promise<void> {
+  const attempts = opts?.attempts ?? 4;
+  const waitUntil = opts?.waitUntil ?? "domcontentloaded";
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      await page.reload({ waitUntil });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!TRANSIENT_NAVIGATION_ERROR.test(String(error))) {
+        throw error;
+      }
+
+      await waitForHostHealthy(page);
+      const currentUrl = page.url();
+      if (currentUrl) {
+        try {
+          await gotoWithHostRetry(page, currentUrl, { waitUntil, attempts: 1 });
+          return;
+        } catch (gotoError) {
+          lastError = gotoError;
+          if (!TRANSIENT_NAVIGATION_ERROR.test(String(gotoError))) {
+            throw gotoError;
+          }
+        }
+      }
+
+      await page.waitForTimeout(200 * attempt);
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(`[e2e] failed reload after ${attempts} attempts: ${page.url()}`);
 }
 
 async function readRoomCodeInputs(codeInputs: Locator[]): Promise<string> {
@@ -1006,7 +1263,14 @@ export async function createRoom(page: Page): Promise<{ code: string }> {
 
       if (Date.now() - lastNudgeAt > 6_000 && /\/room\/new(?:[/?#]|$)/.test(page.url())) {
         // Re-trigger room creation effect if app got stuck on /room/new.
-        await page.reload({ waitUntil: "domcontentloaded" });
+        try {
+          await reloadWithHostRetry(page, { waitUntil: "domcontentloaded", attempts: 4 });
+        } catch (error) {
+          if (!TRANSIENT_NAVIGATION_ERROR.test(String(error))) {
+            throw error;
+          }
+          await waitForHostHealthy(page);
+        }
         lastNudgeAt = Date.now();
       }
 
@@ -1507,10 +1771,20 @@ export async function findSurveySmashLightningActor(
   while (Date.now() < deadline) {
     const actor = await findVisibleSurveySmashLightningActor(pages);
     if (actor) {
+      await actor.bringToFront().catch(() => {});
+    }
+    if (actor && (await waitForSurveySmashLightningInput(actor, 2_500))) {
       return actor;
     }
     await pages[0]?.waitForTimeout(150);
   }
+  const diagnostics = await describeSurveySmashLightningPages(pages);
+  throw new Error(
+    `Timed out waiting for the active Survey Smash lightning actor. ${diagnostics.join(" | ")}`,
+  );
+}
+
+async function describeSurveySmashLightningPages(pages: Page[]): Promise<string[]> {
   const diagnostics = await Promise.all(
     pages.map(async (page, index) => {
       if (!page || page.isClosed()) {
@@ -1519,11 +1793,15 @@ export async function findSurveySmashLightningActor(
       const main = page.locator("main");
       const controlState = page.locator('[data-testid="survey-smash-control-state"]').first();
       const hostState = page.locator('[data-testid="survey-smash-host-state"]').first();
-      const [phaseAttr, mySessionAttr, isHostAttr, isLightningAttr] = await Promise.all([
+      const [phaseAttr, mySessionAttr, isHostAttr, isLightningAttr, lastPrivateActionAttr, roomPhaseAttr, eventPhaseAttr, gameStatePhaseAttr] = await Promise.all([
         controlState.getAttribute("data-phase").catch(() => null),
         controlState.getAttribute("data-my-session-id").catch(() => null),
         controlState.getAttribute("data-is-host").catch(() => null),
         controlState.getAttribute("data-is-lightning-player").catch(() => null),
+        controlState.getAttribute("data-last-private-action").catch(() => null),
+        controlState.getAttribute("data-room-phase").catch(() => null),
+        controlState.getAttribute("data-event-phase").catch(() => null),
+        controlState.getAttribute("data-game-state-phase").catch(() => null),
       ]);
       const lightningPlayerAttr = await hostState
         .getAttribute("data-lightning-player-id")
@@ -1561,28 +1839,53 @@ export async function findSurveySmashLightningActor(
         .replace(/\s+/g, " ")
         .trim()
         .slice(0, 160);
-      return `page${index + 1}: phase=${phaseAttr ?? "?"} session=${mySessionAttr ?? "?"} host=${isHostAttr ?? "?"} lightning=${isLightningAttr ?? "?"} lightningPlayer=${lightningPlayerAttr ?? "?"} textbox=${hasTextbox} guess=${hasGuessButton} index=${hasIndexChip} context=${hasContextCard} final=${hasFinalScores} text="${textSnippet}"`;
+      return `page${index + 1}: phase=${phaseAttr ?? "?"} roomPhase=${roomPhaseAttr ?? "?"} eventPhase=${eventPhaseAttr ?? "?"} gameStatePhase=${gameStatePhaseAttr ?? "?"} lastAction=${lastPrivateActionAttr ?? "?"} session=${mySessionAttr ?? "?"} host=${isHostAttr ?? "?"} lightning=${isLightningAttr ?? "?"} lightningPlayer=${lightningPlayerAttr ?? "?"} textbox=${hasTextbox} guess=${hasGuessButton} index=${hasIndexChip} context=${hasContextCard} final=${hasFinalScores} text="${textSnippet}"`;
     }),
   );
-  throw new Error(
-    `Timed out waiting for the active Survey Smash lightning actor. ${diagnostics.join(" | ")}`,
-  );
+  return diagnostics;
+}
+
+async function waitForSurveySmashLightningInput(page: Page, timeoutMs = 5_000): Promise<boolean> {
+  const lightningInput = page.locator('main [data-testid="survey-smash-lightning-input"]').first();
+  const textbox = lightningInput.getByRole("textbox").first();
+  const guessButton = lightningInput.getByRole("button", { name: /^guess$/i }).first();
+  return await expect
+    .poll(
+      async () => {
+        const surfaceVisible = await lightningInput.isVisible().catch(() => false);
+        if (!surfaceVisible) return false;
+        const [textboxVisible, guessButtonVisible] = await Promise.all([
+          textbox.isVisible().catch(() => false),
+          guessButton.isVisible().catch(() => false),
+        ]);
+        return textboxVisible && guessButtonVisible;
+      },
+      {
+      timeout: timeoutMs,
+      },
+    )
+    .toBe(true)
+    .then(() => true)
+    .catch(() => false);
 }
 
 async function findVisibleSurveySmashLightningActor(pages: Page[]): Promise<Page | null> {
+  let matchedLightningPlayerPage: Page | null = null;
+
   for (const page of pages) {
     if (!page || page.isClosed()) continue;
+    await page.bringToFront().catch(() => {});
+    await page.waitForTimeout(250).catch(() => {});
 
     const main = page.locator("main");
     const controlState = page.locator('[data-testid="survey-smash-control-state"]').first();
-    const [phase, isLightningPlayer] = await Promise.all([
+    const hostState = page.locator('[data-testid="survey-smash-host-state"]').first();
+    const [phase, isLightningPlayer, mySessionId, lightningPlayerId] = await Promise.all([
       controlState.getAttribute("data-phase").catch(() => null),
       controlState.getAttribute("data-is-lightning-player").catch(() => null),
+      controlState.getAttribute("data-my-session-id").catch(() => null),
+      hostState.getAttribute("data-lightning-player-id").catch(() => null),
     ]);
-    if (phase === "lightning-round" && isLightningPlayer === "true") {
-      return page;
-    }
-
     const lightningScope = main.locator('[data-testid="survey-smash-lightning-input"]').first();
     const inputScope = (await lightningScope.isVisible().catch(() => false))
       ? lightningScope
@@ -1594,9 +1897,18 @@ async function findVisibleSurveySmashLightningActor(pages: Page[]): Promise<Page
     if (hasTextbox && hasGuessButton) {
       return page;
     }
+
+    const matchesExpectedLightningPlayer =
+      phase === "lightning-round" &&
+      lightningPlayerId !== null &&
+      mySessionId !== null &&
+      lightningPlayerId === mySessionId;
+    if (matchesExpectedLightningPlayer || isLightningPlayer === "true") {
+      matchedLightningPlayerPage = page;
+    }
   }
 
-  return null;
+  return matchedLightningPlayerPage;
 }
 
 export async function findBrainBoardSelectorController(
@@ -1853,7 +2165,6 @@ export async function driveBrainBoardToFinalScores(
     }
 
     if (hostState.phase !== lastPhase) {
-      console.log(`[driveBrainBoardToFinalScores] phase=${hostState.phase ?? "unknown"}`);
       lastPhase = hostState.phase;
     }
 
@@ -1863,9 +2174,6 @@ export async function driveBrainBoardToFinalScores(
     }
 
     if (repeatedPhaseLoops >= 16 && (await skipButton.isVisible().catch(() => false))) {
-      console.log(
-        `[driveBrainBoardToFinalScores] force-skip phase=${hostState.phase ?? "unknown"} round=${hostState.round ?? "?"}`,
-      );
       await skipButton.click().catch(() => {});
       await hostPage.waitForTimeout(200);
       continue;
@@ -2006,8 +2314,15 @@ export async function driveSurveySmashToFinalScores(
       hostState.phase === "final-scores" ||
       (await finalScoresRoot.isVisible().catch(() => false)) ||
       (await finalScoresHeading.isVisible().catch(() => false))
-    ) {
+      ) {
       return;
+    }
+
+    const advanced = canSkipSurveySmashPhase(hostState.phase)
+      ? await advanceSurveySmashWithSkip(hostPage, skipButton, hostState).catch(() => false)
+      : false;
+    if (advanced) {
+      continue;
     }
 
     const submitted = canSubmitSurveySmashPhase(hostState.phase)
@@ -2018,23 +2333,10 @@ export async function driveSurveySmashToFinalScores(
       continue;
     }
 
-    const isFinalRoundBoundary =
-      hostState.phase === "round-result" &&
-      hostState.round !== null &&
-      hostState.totalRounds !== null &&
-      hostState.round >= hostState.totalRounds;
-    if (isFinalRoundBoundary) {
-      await hostPage.waitForTimeout(250).catch(() => {});
-      continue;
-    }
-
-    if (canSkipSurveySmashPhase(hostState.phase)) {
-      await advanceSurveySmashWithSkip(hostPage, skipButton, hostState).catch(() => false);
-    }
     await hostPage.waitForTimeout(250).catch(() => {});
   }
 
-  await expect(finalScoresRoot.or(finalScoresHeading)).toBeVisible({ timeout: 10_000 });
+  throw new Error("Timed out driving Survey Smash to final scores");
 }
 
 export async function driveSurveySmashToRoundResult(
@@ -2192,14 +2494,18 @@ export async function driveSurveySmashToLightningQuestion(
   while (Date.now() < deadline) {
     const actor = await findVisibleSurveySmashLightningActor(actorPages);
     if (actor) {
+      await actor.bringToFront().catch(() => {});
+    }
+    if (actor && (await waitForSurveySmashLightningInput(actor, 2_500))) {
       return actor;
     }
 
     const hostState = await readSurveySmashHostState(hostPage);
     const hasLightningResults = await lightningResults.isVisible().catch(() => false);
     if (hasLightningResults) {
+      const diagnostics = await describeSurveySmashLightningPages(actorPages);
       throw new Error(
-        "Survey Smash advanced to lightning results before the test observed the active lightning actor",
+        `Survey Smash advanced to lightning results before the test observed the active lightning actor. ${diagnostics.join(" | ")}`,
       );
     }
 
@@ -2278,7 +2584,9 @@ async function submitSurveySmashInput(actorPages: Page[], seed: string): Promise
 
     for (const selector of scopedInputContainers) {
       const candidate = appRoot.locator(selector).first();
-      if (await candidate.isVisible().catch(() => false)) {
+      if (!(await candidate.isVisible().catch(() => false))) continue;
+      const candidateTextbox = candidate.getByRole("textbox").first();
+      if (await candidateTextbox.isVisible().catch(() => false)) {
         inputScope = candidate;
         break;
       }

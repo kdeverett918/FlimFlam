@@ -76,7 +76,6 @@ const MACRO_TRANSITION_PHASES: Record<string, Set<string>> = {
   "survey-smash": new Set([
     "question-reveal",
     "answer-reveal",
-    "lightning-round",
     "lightning-round-reveal",
     "final-scores",
   ]),

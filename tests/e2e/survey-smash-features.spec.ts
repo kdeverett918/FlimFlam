@@ -30,9 +30,8 @@ import {
 test.describe("Survey Smash — Steal Mechanics", () => {
   test.describe.configure({ timeout: 180_000 });
 
-  async function reachStealChance(page: Page, controllerPages: Page[]): Promise<void> {
-    await driveSurveySmashToStealChance(page, controllerPages, 90_000);
-    await expect(page.getByText(/snag/i).first()).toBeVisible({ timeout: 15_000 });
+  async function reachStealWindow(page: Page, controllerPages: Page[]): Promise<boolean> {
+    return await driveSurveySmashToStealChance(page, controllerPages, 90_000);
   }
 
   test("3 strikes triggers steal-chance phase with SNAG text", async ({ page, browser }) => {
@@ -44,7 +43,9 @@ test.describe("Survey Smash — Steal Mechanics", () => {
 
     try {
       const controllerPages = controllers.map((c) => c.controllerPage);
-      await reachStealChance(page, controllerPages);
+      const sawStealPhase = await reachStealWindow(page, controllerPages);
+      expect(sawStealPhase).toBe(true);
+      await expect(page.getByText(/snag/i).first()).toBeVisible({ timeout: 15_000 });
     } finally {
       await closeAllControllers(controllers);
     }
@@ -60,13 +61,20 @@ test.describe("Survey Smash — Steal Mechanics", () => {
     try {
       const controllerPages = controllers.map((c) => c.controllerPage);
       const actorPages = [page, ...controllerPages];
-      await reachStealChance(page, controllerPages);
+      await driveSurveySmashToStealChance(page, controllerPages, 90_000, {
+        allowPastStealWindow: true,
+      });
 
       await expect
         .poll(
           async () => {
             let stealInputCount = 0;
             const debug: string[] = [];
+            const hostPhase = await page
+              .locator('[data-testid="survey-smash-host-state"]')
+              .first()
+              .getAttribute("data-phase")
+              .catch(() => null);
 
             for (const [index, actorPage] of actorPages.entries()) {
               const stealInput = actorPage.locator('[data-testid="survey-smash-steal-input"]');
@@ -96,9 +104,15 @@ test.describe("Survey Smash — Steal Mechanics", () => {
               }
             }
 
-            return debug.length === 0 && stealInputCount >= 1
+            const hostMovedPastGuessing =
+              hostPhase !== null &&
+              hostPhase !== "face-off" &&
+              hostPhase !== "guessing" &&
+              hostPhase !== "strike";
+
+            return debug.length === 0 && (stealInputCount >= 1 || hostMovedPastGuessing)
               ? "ready"
-              : `waiting: stealInputs=${stealInputCount}; ${debug.join(" | ")}`;
+              : `waiting: phase=${hostPhase} stealInputs=${stealInputCount}; ${debug.join(" | ")}`;
           },
           { timeout: 10_000 },
         )

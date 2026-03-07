@@ -39,7 +39,7 @@ const LIGHTNING_REVEAL_DELAY_MS = 8_000;
 const SURVEY_SMASH_E2E_OPENING_MIN_MS = 3_000;
 const SURVEY_SMASH_E2E_INTERACTION_MIN_MS = 4_000;
 const SURVEY_SMASH_E2E_REVEAL_MIN_MS = 1_500;
-const SURVEY_SMASH_E2E_LIGHTNING_INTERACTION_MIN_MS = 8_000;
+const SURVEY_SMASH_E2E_LIGHTNING_INTERACTION_MIN_MS = 15_000;
 const SURVEY_SMASH_E2E_LIGHTNING_REVEAL_MIN_MS = 2_500;
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -688,7 +688,11 @@ class SurveySmashPlugin extends BaseGamePlugin {
     const scale = rawScale ? Number(rawScale) : 1;
     const safeScale = Number.isFinite(scale) && scale > 0 ? Math.min(Math.max(scale, 0.01), 10) : 1;
     const scaledDelay = Math.max(250, Math.round(delayMs * safeScale));
-    if (process.env.FLIMFLAM_E2E === "1") {
+    const shouldApplyE2eFloor =
+      process.env.FLIMFLAM_E2E === "1" ||
+      process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" ||
+      (rawScale !== undefined && safeScale < 1);
+    if (shouldApplyE2eFloor) {
       return Math.max(scaledDelay, minE2eMs);
     }
     return scaledDelay;

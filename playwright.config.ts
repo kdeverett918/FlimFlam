@@ -6,6 +6,9 @@ import { defineConfig, devices } from "@playwright/test";
 const E2E_RUNTIME = process.env.FLIMFLAM_E2E_RUNTIME ?? "production";
 const E2E_SKIP_BUILD =
   process.env.FLIMFLAM_E2E_SKIP_BUILD ?? (E2E_RUNTIME === "production" ? "0" : "1");
+const E2E_MANUAL_SERVER =
+  process.env.FLIMFLAM_E2E_MANUAL_SERVER === "1" ||
+  process.env.FLIMFLAM_E2E_MANUAL_SERVER === "true";
 
 function parseAddressPort(address: string): number | null {
   const match = address.match(/[:.](\d+)\]?$/);
@@ -137,34 +140,37 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
-  webServer: {
-    command: "node scripts/e2e-webserver.mjs",
-    url: e2eAppUrl,
-    timeout: 360_000,
-    reuseExistingServer: !process.env.CI,
-    env: {
-      ...process.env,
-      FLIMFLAM_E2E: "1",
-      NEXT_PUBLIC_FLIMFLAM_E2E: "1",
-      PORT: e2eColyseusPort,
-      FLIMFLAM_E2E_COLYSEUS_PORT: e2eColyseusPort,
-      NEXT_PUBLIC_COLYSEUS_URL: e2eColyseusWsUrl,
-      NEXT_PUBLIC_HOST_URL: e2eAppUrl,
-      FLIMFLAM_E2E_COLYSEUS_HEALTH_URL: e2eColyseusHealthUrl,
-      FLIMFLAM_E2E_HOST_PORT: e2eAppPort,
-      FLIMFLAM_E2E_HOST_URL: e2eAppUrl,
-      FLIMFLAM_E2E_HOST_DIST_DIR: e2eAppDistDir,
-      FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
-      FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
-      FLIMFLAM_E2E_RUNTIME: E2E_RUNTIME,
-      FLIMFLAM_E2E_SKIP_BUILD: E2E_SKIP_BUILD,
-      FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
-      FLIMFLAM_E2E_RECLAIM_PORTS: process.env.FLIMFLAM_E2E_RECLAIM_PORTS ?? "1",
-      FLIMFLAM_E2E_RECLAIM_RUNNERS:
-        process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ?? (process.platform === "win32" ? "force" : "0"),
-      NEXT_TELEMETRY_DISABLED: "1",
-    },
-  },
+  webServer: E2E_MANUAL_SERVER
+    ? undefined
+    : {
+        command: "node scripts/e2e-webserver.mjs",
+        url: e2eAppUrl,
+        timeout: 360_000,
+        reuseExistingServer: !process.env.CI,
+        env: {
+          ...process.env,
+          FLIMFLAM_E2E: "1",
+          NEXT_PUBLIC_FLIMFLAM_E2E: "1",
+          PORT: e2eColyseusPort,
+          FLIMFLAM_E2E_COLYSEUS_PORT: e2eColyseusPort,
+          NEXT_PUBLIC_COLYSEUS_URL: e2eColyseusWsUrl,
+          NEXT_PUBLIC_HOST_URL: e2eAppUrl,
+          FLIMFLAM_E2E_COLYSEUS_HEALTH_URL: e2eColyseusHealthUrl,
+          FLIMFLAM_E2E_HOST_PORT: e2eAppPort,
+          FLIMFLAM_E2E_HOST_URL: e2eAppUrl,
+          FLIMFLAM_E2E_HOST_DIST_DIR: e2eAppDistDir,
+          FLIMFLAM_TIMER_SCALE: process.env.FLIMFLAM_TIMER_SCALE ?? "0.12",
+          FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
+          FLIMFLAM_E2E_RUNTIME: E2E_RUNTIME,
+          FLIMFLAM_E2E_SKIP_BUILD: E2E_SKIP_BUILD,
+          FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
+          FLIMFLAM_E2E_RECLAIM_PORTS: process.env.FLIMFLAM_E2E_RECLAIM_PORTS ?? "1",
+          FLIMFLAM_E2E_RECLAIM_RUNNERS:
+            process.env.FLIMFLAM_E2E_RECLAIM_RUNNERS ??
+            (process.platform === "win32" ? "force" : "0"),
+          NEXT_TELEMETRY_DISABLED: "1",
+        },
+      },
   projects: [
     {
       name: "chromium",
