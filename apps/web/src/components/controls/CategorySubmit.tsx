@@ -16,7 +16,7 @@ interface CategorySubmitProps {
 }
 
 export function CategorySubmit({
-  players,
+  players: _players,
   mySessionId,
   onSubmitCategories,
   timerEndsAt,
@@ -53,6 +53,12 @@ export function CategorySubmit({
   const timerTotal = timerTotalRef.current ?? 30;
   const timerProgress = timerTotal > 0 ? Math.min(1, secondsLeft / timerTotal) : 0;
   const isUrgent = secondsLeft > 0 && secondsLeft <= 10;
+  const timerColor =
+    timerProgress > 0.5
+      ? "oklch(0.72 0.16 195)" // cyan
+      : timerProgress > 0.2
+        ? "oklch(0.82 0.18 85)" // amber
+        : "oklch(0.65 0.25 25)"; // red
 
   // Check if we already submitted (from reconnect)
   useEffect(() => {
@@ -89,13 +95,13 @@ export function CategorySubmit({
 
         {/* Timer */}
         <div className="shrink-0 px-4 pb-2">
-          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
             <motion.div
-              className={`absolute inset-y-0 left-0 rounded-full ${
-                isUrgent
-                  ? "bg-gradient-to-r from-red-500 to-orange-400"
-                  : "bg-gradient-to-r from-accent-brainboard to-accent-brainboard/60"
-              }`}
+              className="absolute inset-y-0 left-0 rounded-full"
+              style={{
+                backgroundColor: timerColor,
+                boxShadow: `0 0 8px ${timerColor}88`,
+              }}
               initial={false}
               animate={{ width: `${timerProgress * 100}%` }}
               transition={{ duration: 0.3, ease: "easeOut" }}
@@ -103,9 +109,10 @@ export function CategorySubmit({
           </div>
           {secondsLeft > 0 && (
             <p
-              className={`mt-1 text-center font-mono text-xs font-medium ${
-                isUrgent ? "animate-timer-urgency" : "text-text-muted"
+              className={`mt-1 text-center font-display text-xs font-semibold ${
+                isUrgent ? "animate-timer-pulse" : "text-white/40"
               }`}
+              style={isUrgent ? { color: timerColor } : undefined}
             >
               {secondsLeft}s remaining
             </p>
@@ -174,13 +181,13 @@ export function CategorySubmit({
 
       {/* Timer Progress Bar */}
       <div className="shrink-0 px-4 pb-2">
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
           <motion.div
-            className={`absolute inset-y-0 left-0 rounded-full ${
-              isUrgent
-                ? "bg-gradient-to-r from-red-500 to-orange-400"
-                : "bg-gradient-to-r from-accent-brainboard to-accent-brainboard/60"
-            }`}
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              backgroundColor: timerColor,
+              boxShadow: `0 0 8px ${timerColor}88`,
+            }}
             initial={false}
             animate={{ width: `${timerProgress * 100}%` }}
             transition={{ duration: 0.3, ease: "easeOut" }}
@@ -188,9 +195,10 @@ export function CategorySubmit({
         </div>
         {secondsLeft > 0 && (
           <p
-            className={`mt-1 text-center font-mono text-xs font-medium ${
-              isUrgent ? "animate-timer-urgency" : "text-text-muted"
+            className={`mt-1 text-center font-display text-xs font-semibold ${
+              isUrgent ? "animate-timer-pulse" : "text-white/40"
             }`}
+            style={isUrgent ? { color: timerColor } : undefined}
           >
             {secondsLeft}s remaining
           </p>

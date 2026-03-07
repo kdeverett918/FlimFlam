@@ -32,26 +32,23 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - fraction);
 
-  // Color based on remaining fraction
+  // Color transitions: cyan -> amber -> red (matching TimerBar)
   let strokeColor: string;
-  let textColor: string;
   let shouldPulse = false;
-  let glowIntensity = 8;
 
   if (fraction > 0.5) {
-    strokeColor = "oklch(0.70 0.15 210)";
-    textColor = "text-accent-5";
-  } else if (fraction > 0.25) {
-    strokeColor = "oklch(0.75 0.18 85)";
-    textColor = "text-accent-3";
+    strokeColor = "oklch(0.72 0.16 195)"; // cyan
+  } else if (fraction > 0.2) {
+    strokeColor = "oklch(0.82 0.18 85)"; // amber
   } else {
-    strokeColor = "oklch(0.68 0.25 20)";
-    textColor = "text-accent-6";
+    strokeColor = "oklch(0.65 0.25 25)"; // red
     if (remaining < 10000) {
       shouldPulse = true;
-      glowIntensity = 16;
     }
   }
+
+  const isUrgent = shouldPulse;
+  const strokeW = Math.max(4, size * 0.06);
 
   return (
     <div
@@ -66,8 +63,8 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="oklch(0.16 0.03 245)"
-          strokeWidth={8}
+          stroke="oklch(1 0 0 / 0.08)"
+          strokeWidth={strokeW}
         />
         {/* Progress arc */}
         <circle
@@ -76,19 +73,21 @@ export function Timer({ endTime, totalDurationMs, size = 140 }: TimerProps) {
           r={radius}
           fill="none"
           stroke={strokeColor}
-          strokeWidth={8}
+          strokeWidth={strokeW}
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={strokeDashoffset}
           style={{
-            transition: "stroke-dashoffset 0.1s linear, stroke 0.5s ease",
-            filter: `drop-shadow(0 0 ${glowIntensity}px ${strokeColor})`,
+            transition: "stroke-dashoffset 0.15s ease-out, stroke 1s ease",
+            filter: isUrgent
+              ? `drop-shadow(0 0 8px ${strokeColor})`
+              : `drop-shadow(0 0 4px ${strokeColor}80)`,
           }}
         />
       </svg>
       <span
-        className={`absolute font-mono font-bold ${textColor}`}
-        style={{ fontSize: size * 0.34 }}
+        className={`absolute font-display font-bold ${isUrgent ? "animate-timer-pulse" : ""}`}
+        style={{ fontSize: size * 0.32, color: strokeColor }}
       >
         {seconds}
       </span>
