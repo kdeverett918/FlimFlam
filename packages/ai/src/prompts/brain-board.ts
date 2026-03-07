@@ -69,8 +69,14 @@ QUALITY RULES:
 - Every answer must be SHORT (1-4 words), unambiguous, and factually correct
 - Questions should be phrased as clues/prompts, NOT as questions with "?" (Jeopardy-style)
 - Within each category, questions MUST progress from easiest (first) to hardest (last)
-- Use at least 3-4 of the players' submitted category ideas (adapt their wording into creative, fun category names). Add 2-3 surprise/wildcard categories they didn't suggest.
-- Category names should be creative and fun (e.g., "Rhymes with Orange" instead of "Vocabulary")
+- Treat the submitted topics as HARD CONSTRAINTS, not loose inspiration.
+- Every category must stay directly anchored to the submitted topics. Do NOT add unrelated wildcard categories.
+- If a submitted topic is a specific title, franchise, game, show, person, team, or proper noun, keep the category and every clue inside that EXACT topic. Do NOT broaden to the parent genre, medium, publisher, or shared universe unless the players explicitly asked for that broader scope.
+- If there are only 1-2 submitted topics, build narrower subcategories within those same topics instead of inventing new topics.
+- Category names should stay visibly tied to the submitted wording. Specific topics should usually repeat the exact phrase in the category name.
+- Example: if the topic is "Marvel Rivals", good categories include "Marvel Rivals Heroes" or "Marvel Rivals Maps". Bad categories include "Video Game Culture" or "Marvel Universe".
+- Fun wording is welcome, but topical precision matters more than cleverness.
+- Every clue must test knowledge of the exact anchored topic for that category, not adjacent general knowledge.
 - Never include offensive, political, or divisive content
 - Each answer must have exactly ONE correct response (no ambiguity)
 - ${difficultyGuide}
@@ -92,13 +98,13 @@ OUTPUT FORMAT: Return ONLY valid JSON matching this exact structure, no markdown
 }`,
     user: `Players: ${playerNames.join(", ")}
 
-Topics the group is interested in: ${topics.join(", ")}
+Submitted topics to preserve closely: ${topics.join(", ")}
 
 Chat context from pre-game discussion:
 ${chatContext}
 
 ${avoidCategories?.length ? `CRITICAL: Do NOT reuse or closely paraphrase these categories from previous rounds: ${avoidCategories.join(", ")}. Use completely different topics and different questions/answers.` : ""}
 
-Generate the board now. Output ONLY the JSON.`,
+Generate the board now. Keep the category names visibly tied to the submitted topics above. Output ONLY the JSON.`,
   };
 }

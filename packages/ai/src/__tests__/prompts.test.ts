@@ -103,7 +103,10 @@ describe("ai/prompts", () => {
 
     expect(withAvoid.system).toContain("age-appropriate for ages 8+");
     expect(withAvoid.user).toContain("CRITICAL: Do NOT reuse");
+    expect(withAvoid.system).toContain("HARD CONSTRAINTS");
+    expect(withAvoid.system).toContain('topic is "Marvel Rivals"');
     expect(withoutAvoid.system).toContain("accessible but not trivial");
+    expect(withoutAvoid.user).toContain("Submitted topics to preserve closely");
     expect(withoutAvoid.user).not.toContain("CRITICAL: Do NOT reuse");
   });
 
