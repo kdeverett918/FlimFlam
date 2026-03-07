@@ -1,9 +1,17 @@
-import { AIApiError, buildModelCandidates, isModelUnavailableError } from "../client";
+import {
+  AIApiError,
+  buildModelCandidates,
+  buildOpenRouterModelCandidates,
+  getAnthropicAuthConfig,
+  isModelUnavailableError,
+  resetAnthropicClientForTests,
+} from "../client";
 
 const ORIGINAL_ENV = { ...process.env };
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
+  resetAnthropicClientForTests();
 });
 
 describe("ai/client model fallback", () => {
@@ -33,5 +41,42 @@ describe("ai/client model fallback", () => {
 
     expect(isModelUnavailableError(unavailable)).toBe(true);
     expect(isModelUnavailableError(other)).toBe(false);
+  });
+
+  it("reads Anthropic auth directly from process.env", () => {
+    process.env.ANTHROPIC_API_KEY = "  sk-ant-test  ";
+    process.env.ANTHROPIC_AUTH_TOKEN = "  bearer-test  ";
+
+    expect(getAnthropicAuthConfig()).toEqual({
+      apiKey: "sk-ant-test",
+      authToken: "bearer-test",
+    });
+  });
+
+  it("omits empty Anthropic auth env values", () => {
+    process.env.ANTHROPIC_API_KEY = "   ";
+    process.env.ANTHROPIC_AUTH_TOKEN = "";
+
+    expect(getAnthropicAuthConfig()).toEqual({});
+  });
+
+  it("buildOpenRouterModelCandidates prioritizes explicit and configured models", () => {
+    process.env.FLIMFLAM_OPENROUTER_MODEL = "openai/gpt-5.4";
+
+    expect(buildOpenRouterModelCandidates("openai/gpt-5.4")).toEqual([
+      "openai/gpt-5.4",
+      "openai/gpt-5.2",
+      "openai/gpt-5-pro",
+    ]);
+  });
+
+  it("buildOpenRouterModelCandidates ignores Anthropic model ids", () => {
+    process.env.FLIMFLAM_OPENROUTER_MODEL = undefined;
+
+    expect(buildOpenRouterModelCandidates("claude-opus-4-6")).toEqual([
+      "openai/gpt-5.4",
+      "openai/gpt-5.2",
+      "openai/gpt-5-pro",
+    ]);
   });
 });
