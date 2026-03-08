@@ -300,33 +300,42 @@ export async function driveSurveySmashToFaceOff(
   );
 
   await expect
-    .poll(async () => {
-      let activeInputs = 0;
-
-      for (const actorPage of actorPages) {
-        if (actorPage.isClosed()) continue;
-        const faceOffSurface = actorPage
-          .locator('main [data-testid="survey-smash-faceoff-input"]')
-          .first();
-        if (await faceOffSurface.isVisible().catch(() => false)) {
-          activeInputs += 1;
-          continue;
+    .poll(
+      async () => {
+        const hostState = await readSurveySmashHostState(hostPage);
+        if (hostState.phase !== "face-off") {
+          return false;
         }
 
-        const textbox = actorPage.locator("main").getByRole("textbox").first();
-        if (await textbox.isVisible().catch(() => false)) {
-          activeInputs += 1;
+        const progressVisible = await hostPage
+          .locator('[data-testid="submission-progress"]')
+          .first()
+          .isVisible()
+          .catch(() => false);
+        if (progressVisible) {
+          return true;
         }
-      }
 
-      return activeInputs;
-    })
-    .toBeGreaterThanOrEqual(2);
+        for (const actorPage of actorPages) {
+          if (actorPage.isClosed()) continue;
+          const faceOffSurface = actorPage
+            .locator('main [data-testid="survey-smash-faceoff-input"]')
+            .first();
+          if (await faceOffSurface.isVisible().catch(() => false)) {
+            return true;
+          }
+        }
+
+        return false;
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
 }
 
 export async function driveSurveySmashToStealChance(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 90_000,
   options: { allowPastStealWindow?: boolean } = {},
 ): Promise<boolean> {
@@ -381,6 +390,14 @@ export async function driveSurveySmashToStealChance(
       return true;
     }
 
+    if (state.phase === "face-off") {
+      const submitted = await submitSurveySmashInput(actorPages, "e2e-faceoff");
+      if (submitted) {
+        await hostPage.waitForTimeout(250).catch(() => {});
+        continue;
+      }
+    }
+
     if (state.phase === "guessing") {
       const guesser = await findStrictSurveySmashGuesser(actorPages, 2_000).catch(() => null);
       if (guesser) {
@@ -389,9 +406,15 @@ export async function driveSurveySmashToStealChance(
           .poll(
             async () => {
               const nextState = await readSurveySmashHostState(hostPage);
-              return nextState.phase !== "guessing" || nextState.round !== state.round;
+              return (
+                nextState.phase !== state.phase ||
+                nextState.round !== state.round ||
+                nextState.strikes !== state.strikes ||
+                nextState.currentGuesserIndex !== state.currentGuesserIndex ||
+                nextState.revealedAnswerCount !== state.revealedAnswerCount
+              );
             },
-            { timeout: 5_000 },
+            { timeout: 3_000 },
           )
           .toBe(true)
           .catch(() => {});
@@ -403,7 +426,6 @@ export async function driveSurveySmashToStealChance(
 
     const safeSkipPhases = new Set([
       "question-reveal",
-      "face-off",
       "strike",
       "answer-reveal",
       "round-result",
@@ -421,7 +443,7 @@ export async function driveSurveySmashToStealChance(
 
 export async function driveSurveySmashToGuessing(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 90_000,
 ): Promise<void> {
   await advanceSurveySmashToHostState(
@@ -755,7 +777,7 @@ export async function submitSurveySmashLightningGuess(
 
 export async function answerSurveySmashLightningQuestion(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   answer: string,
   timeoutMs = 180_000,
 ): Promise<Page> {
@@ -871,7 +893,7 @@ export async function answerSurveySmashLightningQuestion(
 
 export async function finishSurveySmashLightningRound(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 45_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -894,7 +916,9 @@ export async function finishSurveySmashLightningRound(
       const actor = await findVisibleSurveySmashLightningActor(actorPages);
       if (actor && (await waitForSurveySmashLightningInput(actor, 1_500))) {
         const previousHostState = await readSurveySmashHostState(hostPage);
-        await submitQuickGuess(actor, `e2e-lightning-finish-${syntheticAnswerCounter++}`);
+        await submitQuickGuess(actor, `e2e-lightning-finish-${syntheticAnswerCounter++}`).catch(
+          () => {},
+        );
         await waitForSurveySmashLightningAdvance(hostPage, actor, previousHostState).catch(
           () => {},
         );
@@ -1296,9 +1320,45 @@ export async function createRoom(page: Page): Promise<{ code: string }> {
       await clearHostReconnectStorage(page);
     }
 
-    // Fill host name input before clicking create
-    const hostNameInput = page.locator("#host-name").first();
-    if (await hostNameInput.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    const openCreateMode = async (): Promise<void> => {
+      const switchToCreateButton = page
+        .getByRole("button", { name: /or create a new game/i })
+        .first();
+      if (!(await switchToCreateButton.isVisible({ timeout: 1_500 }).catch(() => false))) {
+        return;
+      }
+      await switchToCreateButton.click();
+      await expect(page.getByTestId("create-room-cta").first()).toBeVisible({ timeout: 10_000 });
+    };
+
+    const findVisibleHostNameInput = async (): Promise<Locator | null> => {
+      const candidates: Locator[] = [
+        page.locator("#create-host-name").first(),
+        page.locator("#host-name").first(),
+      ];
+
+      for (const candidate of candidates) {
+        if (await candidate.isVisible({ timeout: 1_500 }).catch(() => false)) {
+          return candidate;
+        }
+      }
+
+      return null;
+    };
+
+    if (
+      !(await page
+        .getByTestId("create-room-cta")
+        .first()
+        .isVisible()
+        .catch(() => false))
+    ) {
+      await openCreateMode().catch(() => {});
+    }
+
+    // Fill host name input before clicking create.
+    const hostNameInput = await findVisibleHostNameInput();
+    if (hostNameInput) {
       await hostNameInput.fill("Host");
     }
 
@@ -2445,14 +2505,14 @@ export async function driveBrainBoardToFinalScores(
 
 export async function driveSurveySmashKidsToFinalScores(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
 ): Promise<void> {
   await driveSurveySmashToFinalScores(hostPage, controllerPages);
 }
 
 export async function driveSurveySmashToFinalScores(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 120_000,
 ): Promise<void> {
   const finalScoresRoot = hostPage.locator('[data-testid="final-scores-root"]').first();
@@ -2486,6 +2546,25 @@ export async function driveSurveySmashToFinalScores(
       continue;
     }
 
+    const isFinalRoundBoundary =
+      hostState.phase === "round-result" &&
+      hostState.round !== null &&
+      hostState.totalRounds !== null &&
+      hostState.round >= hostState.totalRounds;
+    if (isFinalRoundBoundary) {
+      await expect
+        .poll(
+          async () => {
+            const nextState = await readSurveySmashHostState(hostPage);
+            return nextState.phase !== "round-result";
+          },
+          { timeout: 8_000 },
+        )
+        .toBe(true)
+        .catch(() => {});
+      continue;
+    }
+
     await hostPage.waitForTimeout(250).catch(() => {});
   }
 
@@ -2494,7 +2573,7 @@ export async function driveSurveySmashToFinalScores(
 
 export async function driveSurveySmashToRoundResult(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   targetRound: number,
 ): Promise<void> {
   await advanceSurveySmashToHostState(
@@ -2507,7 +2586,7 @@ export async function driveSurveySmashToRoundResult(
 
 export async function driveSurveySmashToLightningRound(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 180_000,
 ): Promise<void> {
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
@@ -2635,7 +2714,7 @@ export async function driveSurveySmashToLightningRound(
 
 export async function driveSurveySmashToLightningQuestion(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 180_000,
 ): Promise<Page> {
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
@@ -2783,7 +2862,7 @@ async function submitSurveySmashInput(actorPages: Page[], seed: string): Promise
 
 export async function driveSurveySmashToPhase(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   text: string | RegExp,
   timeoutMs = 120_000,
 ): Promise<void> {

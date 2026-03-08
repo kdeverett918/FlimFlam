@@ -28,7 +28,7 @@ test("host creates room and players join", async ({ page, browser }) => {
   await expect(page.getByText("Bob")).toBeVisible();
   await expect(page.getByText("Casey")).toBeVisible();
 
-  await expect(page.getByText(/\b3\s*\/\s*8\b/)).toBeVisible();
+  await expect(page.getByText(/\b4\s*\/\s*8\b/)).toBeVisible();
 
   await c1.context.close();
   await c2.context.close();

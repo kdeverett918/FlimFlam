@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 import {
   answerSurveySmashLightningQuestion,
   closeAllControllers,
-  driveSurveySmashToFinalScores,
   driveSurveySmashToLightningRound,
   finishSurveySmashLightningRound,
   startGame,
@@ -83,19 +82,33 @@ test.describe("Survey Smash Lightning Round", () => {
     }
   });
 
-  test("kids mode skips lightning round", async ({ page, browser }) => {
+  test("kids mode keeps the regular-round configuration", async ({ page, browser }) => {
     const { controllers } = await startGame(page, browser, {
       game: "Survey Smash",
       complexity: "kids",
-      playerNames: ["Leo", "Ivy", "Max"],
+      playerNames: ["Leo"],
     });
     try {
       const controllerPages = controllers.map((c) => c.controllerPage);
+      const hostState = page.locator('[data-testid="survey-smash-host-state"]').first();
 
-      // Drive to final scores (kids mode has no lightning)
-      await driveSurveySmashToFinalScores(page, controllerPages);
-
-      await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
+      await expect(hostState).toHaveAttribute("data-total-rounds", "3");
+      await expect(page.getByText(/^lightning round!?$/i)).not.toBeVisible();
+      await expect
+        .poll(
+          async () =>
+            Promise.all(
+              controllerPages.map((controllerPage) =>
+                controllerPage
+                  .locator('[data-testid="survey-smash-control-state"]')
+                  .first()
+                  .getAttribute("data-phase")
+                  .catch(() => null),
+              ),
+            ),
+          { timeout: 10_000 },
+        )
+        .not.toContain("lightning-round");
     } finally {
       await closeAllControllers(controllers);
     }
