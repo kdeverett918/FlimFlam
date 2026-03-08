@@ -196,6 +196,14 @@ gameServer.define("party", PartyRoom);
 // It also uses PM2's `NODE_APP_INSTANCE` to spin up multiple processes.
 const isColyseusCloud = process.env.COLYSEUS_CLOUD !== undefined;
 
+console.log("[FlimFlam] AI credential visibility", {
+  nodeEnv: process.env.NODE_ENV ?? null,
+  colyseusCloud: isColyseusCloud,
+  hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY?.trim()),
+  hasAnthropicAuthToken: Boolean(process.env.ANTHROPIC_AUTH_TOKEN?.trim()),
+  hasOpenRouterKey: Boolean(process.env.OPENROUTER_API_KEY?.trim()),
+});
+
 function getListenPort() {
   let port = Number(process.env.PORT || COLYSEUS_PORT);
   if (!Number.isFinite(port) || port <= 0) port = COLYSEUS_PORT;

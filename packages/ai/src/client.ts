@@ -401,5 +401,11 @@ export async function aiRequest<T>(
     }
   }
 
+  if (anthropicError) {
+    console.warn(
+      "[AI] OpenRouter fallback unavailable because OPENROUTER_API_KEY is missing from process.env.",
+    );
+  }
+
   throw anthropicError ?? new AIError("AI request failed after all retries");
 }
