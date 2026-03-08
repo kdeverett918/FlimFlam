@@ -7,7 +7,7 @@ import { TimerBar } from "@/components/game/TimerBar";
 
 export const HUD_TOP_DOCK_HEIGHT = 120;
 export const HUD_BOTTOM_DOCK_COLLAPSED_HEIGHT = 72;
-export const HUD_BOTTOM_DOCK_EXPANDED_HEIGHT = 146;
+export const HUD_BOTTOM_DOCK_EXPANDED_HEIGHT = 144;
 const STANDINGS_EXPANDED_PHASES = new Set([
   "clue-result",
   "round-result",
@@ -73,10 +73,12 @@ export function HudShell({
         className="pointer-events-none fixed inset-x-0 top-0 z-50"
         style={{ height: `calc(env(safe-area-inset-top) + ${HUD_TOP_DOCK_HEIGHT}px)` }}
       >
-        <div className="mx-auto flex h-full max-w-6xl flex-col gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
-          <TimerBar timerEndsAt={timerEndTime ?? 0} />
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex min-w-0 flex-1 justify-center md:justify-start">
+            <TimerBar timerEndsAt={timerEndTime ?? 0} />
+          </div>
           {showHostControls && (
-            <div className="flex justify-center sm:justify-end">
+            <div className="flex justify-center md:flex-none md:justify-end">
               <HostControls isHost={isHost} sendMessage={sendMessage} phase={phase} />
             </div>
           )}

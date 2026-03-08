@@ -125,6 +125,7 @@ export function LuckyLettersOrchestrator({
 
   // ─── BOARD renderer ─────────────────────────────────────────────
   function renderBoard(): React.ReactNode {
+    const activePhase = resolvedPhase;
     if (!resolvedGameState) {
       return (
         <div className="flex items-center justify-center p-8">
@@ -135,15 +136,15 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "category-vote") {
+    if (activePhase === "category-vote") {
       return <HostCategoryVote state={resolvedGameState} categoryVoteTally={categoryVoteTally} />;
     }
 
-    if (phase === "round-intro") {
+    if (activePhase === "round-intro") {
       return <HostRoundIntro state={resolvedGameState} />;
     }
 
-    if (phase === "spinning") {
+    if (activePhase === "spinning") {
       return (
         <HostSpinning
           state={resolvedGameState}
@@ -157,10 +158,14 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "guess-consonant" || phase === "buy-vowel" || phase === "solve-attempt") {
+    if (
+      activePhase === "guess-consonant" ||
+      activePhase === "buy-vowel" ||
+      activePhase === "solve-attempt"
+    ) {
       return (
         <HostGuessing
-          phase={phase}
+          phase={activePhase}
           state={resolvedGameState}
           players={players}
           reducedMotion={effectiveReducedMotion}
@@ -169,7 +174,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "letter-result" && letterResult) {
+    if (activePhase === "letter-result" && letterResult) {
       return (
         <HostLetterResult
           state={resolvedGameState}
@@ -181,7 +186,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "round-result" && roundResult) {
+    if (activePhase === "round-result" && roundResult) {
       return (
         <HostRoundResult
           state={resolvedGameState}
@@ -196,7 +201,7 @@ export function LuckyLettersOrchestrator({
       return <HostBonusReveal bonusReveal={resolvedBonusReveal} players={players} />;
     }
 
-    if (phase === "bonus-round") {
+    if (activePhase === "bonus-round") {
       return (
         <HostBonusRound
           state={resolvedGameState}
@@ -207,20 +212,22 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "final-scores" && !shouldShowBonusReveal) {
+    if (activePhase === "final-scores" && !shouldShowBonusReveal) {
       return <HostFinalScores players={players} room={room} />;
     }
 
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="font-display text-[48px] text-text-muted">Lucky Letters: {phase}</p>
+        <p className="font-display text-[48px] text-text-muted">Lucky Letters: {activePhase}</p>
       </div>
     );
   }
 
   // ─── CONTROLS renderer ──────────────────────────────────────────
   function renderControls(): React.ReactNode {
-    if (phase === "category-vote") {
+    const activePhase = resolvedPhase;
+
+    if (activePhase === "category-vote") {
       const availableCategories = Array.isArray(gs.availableCategories)
         ? (gs.availableCategories as string[])
         : [];
@@ -231,11 +238,11 @@ export function LuckyLettersOrchestrator({
       return <CtrlCategoryVote categories={cats} onVote={actions.handleCategoryVote} />;
     }
 
-    if (phase === "round-intro") {
+    if (activePhase === "round-intro") {
       return (
         <CtrlRoundIntro
-          round={round}
-          totalRounds={totalRounds}
+          round={resolvedRound}
+          totalRounds={resolvedTotalRounds}
           category={category}
           hint={hint}
           standings={standings}
@@ -246,7 +253,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "spinning") {
+    if (activePhase === "spinning") {
       return (
         <CtrlSpinning
           isMyTurn={isMyTurn}
@@ -263,10 +270,14 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "guess-consonant" || phase === "buy-vowel" || phase === "solve-attempt") {
+    if (
+      activePhase === "guess-consonant" ||
+      activePhase === "buy-vowel" ||
+      activePhase === "solve-attempt"
+    ) {
       return (
         <CtrlGuessing
-          phase={phase}
+          phase={activePhase}
           isMyTurn={isMyTurn}
           mobilePuzzle={mobilePuzzle}
           usedLetters={usedLetters}
@@ -282,7 +293,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "letter-result") {
+    if (activePhase === "letter-result") {
       return (
         <CtrlLetterResult
           mobilePuzzle={mobilePuzzle}
@@ -292,7 +303,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "round-result") {
+    if (activePhase === "round-result") {
       return (
         <CtrlRoundResult
           controllerRoundResult={controllerRoundResult}
@@ -307,7 +318,7 @@ export function LuckyLettersOrchestrator({
       return <CtrlBonusReveal bonusReveal={resolvedBonusReveal} players={players} />;
     }
 
-    if (phase === "bonus-round") {
+    if (activePhase === "bonus-round") {
       return (
         <CtrlBonusRound
           isBonusPlayer={isBonusPlayer}
@@ -322,7 +333,7 @@ export function LuckyLettersOrchestrator({
       );
     }
 
-    if (phase === "final-scores" && !shouldShowBonusReveal) {
+    if (activePhase === "final-scores" && !shouldShowBonusReveal) {
       return <CtrlFinalScores />;
     }
 
@@ -358,6 +369,7 @@ export function LuckyLettersOrchestrator({
       data-total-rounds={resolvedTotalRounds}
     >
       <GameBoard
+        wideRailOnWideScreens={_isHost}
         board={renderBoard()}
         controls={
           <>
@@ -367,7 +379,7 @@ export function LuckyLettersOrchestrator({
               message={
                 isMyTurn
                   ? "Your turn!"
-                  : phase === "category-vote"
+                  : resolvedPhase === "category-vote"
                     ? "Vote for categories"
                     : undefined
               }

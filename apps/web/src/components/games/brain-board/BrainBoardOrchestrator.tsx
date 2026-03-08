@@ -488,6 +488,7 @@ export function BrainBoardOrchestrator({
   return (
     <div data-testid="brain-board-host-state" data-phase={resolvedPhase} data-round={currentRound}>
       <GameBoard
+        wideRailOnWideScreens={isHost || resolvedPhase === "clue-select"}
         board={renderBoard()}
         controls={
           <>

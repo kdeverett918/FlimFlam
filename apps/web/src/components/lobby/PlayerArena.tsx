@@ -101,7 +101,7 @@ export function PlayerArena({ players, isHost, mySessionId, sendMessage }: Playe
                 initial={reducedMotion ? false : { opacity: 0, scale: 0.3, y: 40 }}
                 animate={{
                   opacity: 1,
-                  scale: isCelebrating && !reducedMotion ? [1, 1.05, 1] : 1,
+                  scale: isCelebrating && !reducedMotion ? 1.05 : 1,
                   y: 0,
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}

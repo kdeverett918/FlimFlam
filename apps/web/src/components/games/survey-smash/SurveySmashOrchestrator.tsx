@@ -510,6 +510,7 @@ export function SurveySmashOrchestrator({
 
   return (
     <GameBoard
+      wideRailOnWideScreens={isHost}
       board={boardWithState}
       controls={wrapControls(
         <>

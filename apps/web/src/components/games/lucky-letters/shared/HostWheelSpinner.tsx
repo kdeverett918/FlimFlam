@@ -328,7 +328,7 @@ export function HostWheelSpinner({
             const textRot = (i + 0.5) * segAngle;
             const isSpotlit = spotlightSegment === i && landed;
             return (
-              <g key={`seg-${seg.label}-${seg.color}`} data-testid="lucky-wheel-segment">
+              <g key={`seg-${i}-${seg.label}-${seg.color}`} data-testid="lucky-wheel-segment">
                 <path
                   d={`M100,100 L${x1},${y1} A98,98 0 0,1 ${x2},${y2} Z`}
                   fill={seg.color}

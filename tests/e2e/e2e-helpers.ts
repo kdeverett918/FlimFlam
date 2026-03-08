@@ -1586,6 +1586,9 @@ export async function joinPlayerForRoom(
       await joinButton.click();
       await expect(controllerPage).toHaveURL(/\/room\/[A-Z0-9]{4}(?:[/?#]|$)/, { timeout: 30_000 });
       await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 45_000 });
+      await expect(
+        hostPage.getByLabel(new RegExp(`^${escapeRegex(name)} connected$`, "i")).first(),
+      ).toBeVisible({ timeout: 45_000 });
       joined = true;
       break;
     } catch (error) {
@@ -1607,6 +1610,9 @@ export async function joinPlayerForRoom(
 
   // Avoid strict-mode collisions like "Eve" matching "everyone" in card copy.
   await expect(hostPage.getByText(name, { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(
+    hostPage.getByLabel(new RegExp(`^${escapeRegex(name)} connected$`, "i")).first(),
+  ).toBeVisible({ timeout: 30_000 });
   return { context, controllerPage };
 }
 
@@ -1824,6 +1830,37 @@ export async function driveLuckyLettersToPhase(
   }
 
   throw new Error(`Timed out before reaching Lucky Letters phase with text: ${String(pattern)}`);
+}
+
+export async function driveLuckyLettersToActionableTurn(
+  hostPage: Page,
+  controllerPages: Page[],
+  controllerNames: string[] = [],
+  maxSteps = 600,
+): Promise<LuckyLettersTurnActor> {
+  const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
+
+  for (let step = 0; step < maxSteps; step += 1) {
+    const turnActor = await findLuckyLettersTurnActor(
+      hostPage,
+      controllerPages,
+      controllerNames,
+      400,
+    ).catch(() => null);
+    if (turnActor) {
+      return turnActor;
+    }
+
+    if (await skipButton.isVisible().catch(() => false)) {
+      await skipButton.click().catch(() => {});
+      await hostPage.waitForTimeout(180);
+      continue;
+    }
+
+    await hostPage.waitForTimeout(180);
+  }
+
+  throw new Error("Timed out before reaching an actionable Lucky Letters turn");
 }
 
 async function detectLuckyLettersTurnMode(page: Page): Promise<LuckyLettersTurnMode | null> {

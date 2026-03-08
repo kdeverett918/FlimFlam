@@ -3,8 +3,8 @@ import { type Locator, type Page, expect, test } from "@playwright/test";
 import {
   closeAllControllers,
   driveBrainBoardToPhase,
+  driveLuckyLettersToActionableTurn,
   expectNoHorizontalOverflow,
-  findLuckyLettersTurnActor,
   startGame,
 } from "./e2e-helpers";
 
@@ -238,13 +238,22 @@ test.describe("HUD Safe Zones Contract", () => {
         await expectHeroSurfaceClearOfHud(page);
         await expectHeroSurfaceClearOfHud(firstController);
 
-        await expect(page.getByText(/round 1/i)).toBeVisible({ timeout: 30_000 });
+        await expect
+          .poll(
+            async () =>
+              (await page
+                .locator('[data-testid="lucky-host-state"]')
+                .first()
+                .getAttribute("data-phase")) ?? "",
+            { timeout: 30_000 },
+          )
+          .toBe("category-vote");
         await page.getByRole("button", { name: /^skip$/i }).click();
-
-        const { activePage, watchingPage } = await findLuckyLettersTurnActor(
+        const { activePage, watchingPage } = await driveLuckyLettersToActionableTurn(
           page,
           controllerPages,
           ["Ada", "Ben"],
+          240,
         );
         const spinButton = activePage.getByRole("button", { name: /spin the wheel/i }).first();
         await expect(spinButton).toBeVisible({ timeout: 15_000 });

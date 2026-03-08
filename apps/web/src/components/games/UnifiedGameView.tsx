@@ -4,9 +4,9 @@ import type { PlayerData } from "@flimflam/shared";
 import { GameThemeProvider } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 
-import { LuckyLettersGame } from "@/components/games/LuckyLettersGame";
-import { SurveySmashGame } from "@/components/games/SurveySmashGame";
 import { BrainBoardOrchestrator } from "@/components/games/brain-board";
+import { LuckyLettersOrchestrator } from "@/components/games/lucky-letters";
+import { SurveySmashOrchestrator } from "@/components/games/survey-smash";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -79,10 +79,10 @@ export function UnifiedGameView({
       gameContent = <BrainBoardOrchestrator {...commonProps} />;
       break;
     case "lucky-letters":
-      gameContent = <LuckyLettersGame {...commonProps} />;
+      gameContent = <LuckyLettersOrchestrator {...commonProps} />;
       break;
     case "survey-smash":
-      gameContent = <SurveySmashGame {...commonProps} />;
+      gameContent = <SurveySmashOrchestrator {...commonProps} />;
       break;
     default:
       gameContent = (

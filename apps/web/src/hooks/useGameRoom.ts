@@ -463,6 +463,19 @@ export function useGameRoom(): UseGameRoomReturn {
 
   const createRoom = useCallback(
     async (opts: { name: string; color: string }): Promise<string> => {
+      reconnectEpoch.current += 1;
+      reconnectInProgress.current = false;
+      previousPhaseRef.current = null;
+      roomRef.current = null;
+      connectedRef.current = false;
+      setRoom(null);
+      setState(null);
+      setPlayers(new Map());
+      setConnected(false);
+      setReconnecting(false);
+      setRoomCode(null);
+      storageRemove(RECONNECT_TOKEN_KEY);
+      storageRemove(ROOM_CODE_KEY);
       setError(null);
       setGameData(null);
       setPrivateData(null);
@@ -557,6 +570,19 @@ export function useGameRoom(): UseGameRoomReturn {
 
   const joinRoom = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
+      reconnectEpoch.current += 1;
+      reconnectInProgress.current = false;
+      previousPhaseRef.current = null;
+      roomRef.current = null;
+      connectedRef.current = false;
+      setRoom(null);
+      setState(null);
+      setPlayers(new Map());
+      setConnected(false);
+      setReconnecting(false);
+      setRoomCode(null);
+      storageRemove(RECONNECT_TOKEN_KEY);
+      storageRemove(ROOM_CODE_KEY);
       setError(null);
       setGameData(null);
       setPrivateData(null);
@@ -663,6 +689,23 @@ export function useGameRoom(): UseGameRoomReturn {
 
     const savedToken = storageGet(RECONNECT_TOKEN_KEY);
     const savedCode = storageGet(ROOM_CODE_KEY);
+
+    const currentUrl = new URL(window.location.href);
+    const isFreshCreateOrJoinFlow =
+      currentUrl.pathname === "/room/new" ||
+      (currentUrl.pathname.startsWith("/room/") &&
+        (currentUrl.searchParams.has("name") ||
+          currentUrl.searchParams.has("color") ||
+          currentUrl.searchParams.has("e2e_join") ||
+          currentUrl.searchParams.has("e2e_retry") ||
+          currentUrl.searchParams.has("e2e_force")));
+
+    if (isFreshCreateOrJoinFlow) {
+      storageRemove(RECONNECT_TOKEN_KEY);
+      storageRemove(ROOM_CODE_KEY);
+      setReady(true);
+      return;
+    }
 
     if (!savedToken) {
       setReady(true);

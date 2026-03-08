@@ -141,10 +141,10 @@ export function ScoreBadge({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 340, mass: 0.8 }}
-            className="pointer-events-auto absolute inset-x-0 bottom-14 z-[49] overflow-hidden"
+            className="pointer-events-auto absolute bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] left-1/2 z-[49] w-[min(calc(100vw-1rem),36rem)] -translate-x-1/2 overflow-hidden"
           >
             <div
-              className="border-t border-white/[0.12] px-3 pb-2 pt-3"
+              className="rounded-[24px] border border-white/[0.12] px-3 pb-2 pt-3"
               style={{
                 background:
                   "linear-gradient(to top, oklch(0.09 0.02 250 / 0.96), oklch(0.07 0.015 248 / 0.98))",
@@ -231,7 +231,7 @@ export function ScoreBadge({
       <button
         type="button"
         onClick={hasStandings && allowExpansion ? toggleExpanded : undefined}
-        className={`pointer-events-auto absolute inset-x-0 bottom-0 z-50 flex h-14 items-center justify-between border-t px-4 ${
+        className={`pointer-events-auto absolute bottom-0 left-1/2 z-50 flex h-14 w-[min(calc(100vw-1rem),36rem)] -translate-x-1/2 items-center justify-between rounded-[22px] border px-4 ${
           hasStandings && allowExpansion ? "cursor-pointer active:bg-white/[0.03]" : ""
         } animate-glass-breathe`}
         style={{
@@ -239,8 +239,9 @@ export function ScoreBadge({
             "linear-gradient(to right, oklch(0.09 0.02 250 / 0.92), oklch(0.11 0.025 248 / 0.92))",
           backdropFilter: "blur(16px) saturate(1.2)",
           WebkitBackdropFilter: "blur(16px) saturate(1.2)",
-          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingBottom: "max(env(safe-area-inset-bottom), 0px)",
           borderColor: "oklch(1 0 0 / 0.15)",
+          boxShadow: "0 20px 60px oklch(0 0 0 / 0.28)",
         }}
       >
         {/* Left section: avatar + score + delta */}

@@ -19,22 +19,24 @@ export function PlayerStatus({ turnPlayerName, isMyTurn, message }: PlayerStatus
   if (!displayMessage) return null;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex items-center justify-center px-4 py-2 ${
-        isMyTurn
-          ? "bg-accent-3/15 border-b border-accent-3/30"
-          : "bg-white/5 border-b border-white/10"
-      }`}
-    >
-      <span
-        className={`font-display text-sm font-bold uppercase tracking-wider ${
-          isMyTurn ? "text-accent-3" : "text-text-muted"
+    <div className="flex justify-center px-4 pt-4">
+      <motion.div
+        initial={{ opacity: 0, y: -10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className={`inline-flex items-center justify-center rounded-full border px-4 py-2 shadow-[0_12px_30px_oklch(0_0_0/0.2)] ${
+          isMyTurn
+            ? "border-accent-3/30 bg-accent-3/12"
+            : "border-white/10 bg-white/6"
         }`}
       >
-        {displayMessage}
-      </span>
-    </motion.div>
+        <span
+          className={`font-display text-sm font-bold uppercase tracking-[0.24em] ${
+            isMyTurn ? "text-accent-3" : "text-text-muted"
+          }`}
+        >
+          {displayMessage}
+        </span>
+      </motion.div>
+    </div>
   );
 }

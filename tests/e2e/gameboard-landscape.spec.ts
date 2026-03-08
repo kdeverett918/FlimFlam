@@ -3,9 +3,9 @@ import { expect, test } from "@playwright/test";
 import {
   closeAllControllers,
   driveBrainBoardToPhase,
+  driveLuckyLettersToActionableTurn,
   expectNoHorizontalOverflow,
   findBrainBoardSelector,
-  findLuckyLettersTurnActor,
   startGame,
 } from "./e2e-helpers";
 
@@ -49,6 +49,7 @@ test.describe("GameBoard Landscape Contract", () => {
       const selector = await findBrainBoardSelector(page, controllerPages, 20_000);
       const firstEnabledClue = selector.locator('button[aria-label*=" for "]:enabled').first();
       await expect(firstEnabledClue).toBeVisible({ timeout: 20_000 });
+      await firstEnabledClue.scrollIntoViewIfNeeded();
 
       const clueBox = await firstEnabledClue.boundingBox();
       expect(clueBox).not.toBeNull();
@@ -86,13 +87,21 @@ test.describe("GameBoard Landscape Contract", () => {
         expect(heroBox.height).toBeGreaterThan(100);
       }
 
-      await expect(page.getByText(/round 1/i)).toBeVisible({ timeout: 30_000 });
+      await expect
+        .poll(
+          async () =>
+            (await page.locator('[data-testid="lucky-host-state"]').first().getAttribute("data-phase")) ??
+            "",
+          { timeout: 30_000 },
+        )
+        .toBe("category-vote");
       await page.getByRole("button", { name: /^skip$/i }).click();
-
-      const { activePage, watchingPage } = await findLuckyLettersTurnActor(page, controllerPages, [
-        "Ada",
-        "Ben",
-      ]);
+      const { activePage, watchingPage } = await driveLuckyLettersToActionableTurn(
+        page,
+        controllerPages,
+        ["Ada", "Ben"],
+        240,
+      );
       const spinButton = activePage.getByRole("button", { name: /spin the wheel/i }).first();
       await expect(spinButton).toBeVisible({ timeout: 15_000 });
       await expect(spinButton).toBeEnabled({ timeout: 15_000 });

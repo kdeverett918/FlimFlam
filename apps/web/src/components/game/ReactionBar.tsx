@@ -40,7 +40,7 @@ export function ReactionBar({ sendMessage }: ReactionBarProps) {
   return (
     <div
       data-testid="hud-floating"
-      className="pointer-events-auto absolute left-1/2 top-2 z-40 flex -translate-x-1/2 items-center justify-center gap-1 rounded-full border border-white/10 px-2 py-2 shadow-[0_18px_45px_oklch(0_0_0/0.22)]"
+      className="pointer-events-auto absolute left-1/2 top-3 z-40 flex -translate-x-1/2 items-center justify-center gap-1 rounded-full border border-white/10 px-2 py-2 shadow-[0_18px_45px_oklch(0_0_0/0.22)] sm:left-4 sm:translate-x-0"
       style={{
         background:
           "linear-gradient(135deg, oklch(0.1 0.025 250 / 0.88), oklch(0.08 0.02 248 / 0.9))",
