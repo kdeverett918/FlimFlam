@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import net from "node:net";
 import { monitor } from "@colyseus/monitor";
+import { consumeAIProxyToken } from "@flimflam/ai";
 import {
   COLYSEUS_PORT,
   GAME_MANIFESTS,
@@ -97,6 +98,29 @@ app.get("/ready", (_req, res) => {
 // ─── Game Manifests Endpoint ─────────────────────────────────────────────
 app.get("/api/games", (_req, res) => {
   res.json(GAME_MANIFESTS);
+});
+
+app.post("/api/internal/ai-proxy/authorize", (req, res) => {
+  const body =
+    (req.body as
+      | {
+          roomId?: unknown;
+          token?: unknown;
+          requestHash?: unknown;
+        }
+      | undefined) ?? {};
+
+  const roomId = typeof body.roomId === "string" ? body.roomId : "";
+  const token = typeof body.token === "string" ? body.token : "";
+  const requestHash = typeof body.requestHash === "string" ? body.requestHash : "";
+
+  const result = consumeAIProxyToken({ roomId, token, requestHash });
+  if (!result.ok) {
+    res.status(result.status).json({ ok: false, error: result.error });
+    return;
+  }
+
+  res.json({ ok: true });
 });
 
 // ─── Room Resolve Endpoint ────────────────────────────────────────────────

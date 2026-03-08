@@ -1,6 +1,7 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
 import {
-  aiRequest,
+  AI_PROXY_SCHEMA_KEYS,
+  aiRequestWithRenderFallback,
   buildAnswerJudgePrompt,
   buildBrainBoardGenerationPrompt,
   buildBrainBoardTopicChatPrompt,
@@ -1625,12 +1626,19 @@ class BrainBoardPlugin extends BaseGamePlugin {
       const { system, user } = buildAnswerJudgePrompt(clueAnswer, correctQuestion, answer);
       const response = await this._runAiJudgeWithLimit(() =>
         enqueueAIRequest(room.roomId, () =>
-          aiRequest(system, user, AnswerJudgeSchema, {
-            model: BRAIN_BOARD_JUDGE_MODEL,
-            timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
-            retries: 0,
-            maxTokens: 180,
-          }),
+          aiRequestWithRenderFallback(
+            room.roomId,
+            AI_PROXY_SCHEMA_KEYS.answerJudge,
+            system,
+            user,
+            AnswerJudgeSchema,
+            {
+              model: BRAIN_BOARD_JUDGE_MODEL,
+              timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
+              retries: 0,
+              maxTokens: 180,
+            },
+          ),
         ),
       );
       const judged = {
@@ -1719,12 +1727,19 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequest(prompt.system, userPrompt, BrainBoardGeneratedBoardSchema, {
-          model: BRAIN_BOARD_GENERATION_MODEL,
-          maxTokens: 4096,
-          timeoutMs: 30000,
-          retries: 1,
-        }),
+        aiRequestWithRenderFallback(
+          room.roomId,
+          AI_PROXY_SCHEMA_KEYS.brainBoardGeneratedBoard,
+          prompt.system,
+          userPrompt,
+          BrainBoardGeneratedBoardSchema,
+          {
+            model: BRAIN_BOARD_GENERATION_MODEL,
+            maxTokens: 4096,
+            timeoutMs: 30000,
+            retries: 1,
+          },
+        ),
       );
 
       const aiBoard = this.mapGeneratedBoard(result.parsed);
@@ -2009,12 +2024,19 @@ class BrainBoardPlugin extends BaseGamePlugin {
       );
 
       const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequest(prompt.system, prompt.user, BrainBoardChatResponseSchema, {
-          model: BRAIN_BOARD_CHAT_MODEL,
-          maxTokens: 256,
-          timeoutMs: 15000,
-          retries: 1,
-        }),
+        aiRequestWithRenderFallback(
+          room.roomId,
+          AI_PROXY_SCHEMA_KEYS.brainBoardChat,
+          prompt.system,
+          prompt.user,
+          BrainBoardChatResponseSchema,
+          {
+            model: BRAIN_BOARD_CHAT_MODEL,
+            maxTokens: 256,
+            timeoutMs: 15000,
+            retries: 1,
+          },
+        ),
       );
 
       const cleanText = result.parsed.response.trim();

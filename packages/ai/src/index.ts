@@ -41,3 +41,19 @@ export {
 } from "./fallbacks";
 
 export { CostTracker, costTracker } from "./cost-tracker";
+
+export {
+  AI_PROXY_AUTHORIZE_ROUTE_PATH,
+  AI_PROXY_ROUTE_PATH,
+  AI_PROXY_SCHEMA_KEYS,
+  aiRequestWithRenderFallback,
+  buildAIProxyRequestHashInput,
+  clearAIProxyTokensForTests,
+  consumeAIProxyToken,
+  hashAIProxyRequestPayload,
+  issueAIProxyToken,
+  resolveAIProxyAuthorizeUrl,
+  resolveAIProxyBaseUrl,
+} from "./proxy";
+
+export type { AIProxyRequestPayload, AIProxySchemaKey } from "./proxy";

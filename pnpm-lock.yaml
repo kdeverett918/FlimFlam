@@ -48,6 +48,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@flimflam/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@flimflam/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -193,6 +196,9 @@ importers:
       '@colyseus/schema':
         specifier: ^2.0.35
         version: 2.0.37
+      '@flimflam/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@flimflam/brain-board':
         specifier: workspace:*
         version: link:../../games/brain-board

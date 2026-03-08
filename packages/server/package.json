@@ -19,6 +19,7 @@
   "dependencies": {
     "@colyseus/monitor": "^0.16.7",
     "@colyseus/schema": "^2.0.35",
+    "@flimflam/ai": "workspace:*",
     "@flimflam/brain-board": "workspace:*",
     "@flimflam/game-engine": "workspace:*",
     "@flimflam/lucky-letters": "workspace:*",
