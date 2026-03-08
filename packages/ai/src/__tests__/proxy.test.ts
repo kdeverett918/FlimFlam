@@ -8,7 +8,7 @@ vi.mock("../client", async () => {
   const actual = await vi.importActual<typeof import("../client")>("../client");
   return {
     ...actual,
-    aiRequest: aiRequestMock,
+    requestLocalAI: aiRequestMock,
   };
 });
 

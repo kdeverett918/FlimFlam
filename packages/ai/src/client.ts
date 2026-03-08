@@ -381,6 +381,20 @@ export async function aiRequest<T>(
   zodSchema: ZodSchema<T>,
   options?: AIRequestOptions,
 ): Promise<AIResponse<T>> {
+  return requestLocalAI(systemPrompt, userPrompt, zodSchema, options, {
+    warnOnMissingOpenRouter: true,
+  });
+}
+
+export async function requestLocalAI<T>(
+  systemPrompt: string,
+  userPrompt: string,
+  zodSchema: ZodSchema<T>,
+  options?: AIRequestOptions,
+  settings?: {
+    warnOnMissingOpenRouter?: boolean;
+  },
+): Promise<AIResponse<T>> {
   const aiDisabled = process.env.FLIMFLAM_DISABLE_AI;
   if (aiDisabled === "1" || aiDisabled === "true") {
     throw new AIError("AI disabled by FLIMFLAM_DISABLE_AI");
@@ -401,7 +415,7 @@ export async function aiRequest<T>(
     }
   }
 
-  if (anthropicError) {
+  if (anthropicError && settings?.warnOnMissingOpenRouter !== false) {
     console.warn(
       "[AI] OpenRouter fallback unavailable because OPENROUTER_API_KEY is missing from process.env.",
     );

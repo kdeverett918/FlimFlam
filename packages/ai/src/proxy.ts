@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { type AIRequestOptions, type AIResponse, wsUrlToHttpUrl } from "@flimflam/shared";
 import type { ZodSchema } from "zod";
-import { AIError, aiRequest } from "./client";
+import { AIError, requestLocalAI } from "./client";
 
 export const AI_PROXY_ROUTE_PATH = "/api/ai-proxy";
 export const AI_PROXY_AUTHORIZE_ROUTE_PATH = "/api/internal/ai-proxy/authorize";
@@ -294,7 +294,9 @@ export async function aiRequestWithRenderFallback<T>(
   let localError: Error | null = null;
 
   try {
-    return await aiRequest(systemPrompt, userPrompt, zodSchema, options);
+    return await requestLocalAI(systemPrompt, userPrompt, zodSchema, options, {
+      warnOnMissingOpenRouter: false,
+    });
   } catch (error) {
     localError = error instanceof Error ? error : new AIError(String(error));
   }
