@@ -794,7 +794,9 @@ test.describe("Lucky Letters Gameplay", () => {
       }
 
       if (turnActor.mode === "spinning") {
-        const spinBtn = turnActor.activePage.getByRole("button", { name: /spin the wheel/i }).first();
+        const spinBtn = turnActor.activePage
+          .getByRole("button", { name: /spin the wheel/i })
+          .first();
         const canSpin =
           (await spinBtn.isVisible().catch(() => false)) &&
           (await spinBtn.isEnabled().catch(() => false));

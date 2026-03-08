@@ -374,7 +374,11 @@ test.describe("Brain Board Comprehensive", () => {
       const findWatcher = async (): Promise<Page | null> => {
         for (const controllerPage of controllerPages) {
           const isWatcher =
-            (await controllerPage.getByText(/'s pick/i).first().isVisible().catch(() => false)) ||
+            (await controllerPage
+              .getByText(/'s pick/i)
+              .first()
+              .isVisible()
+              .catch(() => false)) ||
             (await controllerPage
               .locator('[data-testid="controller-context-card"]')
               .first()
@@ -545,11 +549,7 @@ test.describe("Brain Board Comprehensive", () => {
       await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
 
       // Submit wrong answers from every player so the round resolves deterministically
-      const wrongAnswers = [
-        "zzqxj-alpha-9173",
-        "zzqxj-beta-1827",
-        "zzqxj-host-4451",
-      ] as const;
+      const wrongAnswers = ["zzqxj-alpha-9173", "zzqxj-beta-1827", "zzqxj-host-4451"] as const;
       await submitTextAnswer(controllerPages[0] as Page, wrongAnswers[0]);
       await submitTextAnswer(controllerPages[1] as Page, wrongAnswers[1]);
       await submitTextAnswer(page, wrongAnswers[2]);

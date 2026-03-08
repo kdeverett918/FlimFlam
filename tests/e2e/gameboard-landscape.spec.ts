@@ -90,8 +90,10 @@ test.describe("GameBoard Landscape Contract", () => {
       await expect
         .poll(
           async () =>
-            (await page.locator('[data-testid="lucky-host-state"]').first().getAttribute("data-phase")) ??
-            "",
+            (await page
+              .locator('[data-testid="lucky-host-state"]')
+              .first()
+              .getAttribute("data-phase")) ?? "",
           { timeout: 30_000 },
         )
         .toBe("category-vote");

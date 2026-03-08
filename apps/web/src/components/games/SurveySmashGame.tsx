@@ -323,10 +323,12 @@ export function SurveySmashGame({
     freshestSharedPhase === "lightning-round-reveal" ||
     freshestSharedPhase === "final-scores"
       ? freshestSharedPhase
-      : roomPhase ?? freshestSharedPhase;
+      : (roomPhase ?? freshestSharedPhase);
   const baseCanonicalGameState = eventGameState ?? payloadGameState ?? gameState;
   const canonicalGameState =
-    baseCanonicalGameState && canonicalStatePhase && baseCanonicalGameState.phase !== canonicalStatePhase
+    baseCanonicalGameState &&
+    canonicalStatePhase &&
+    baseCanonicalGameState.phase !== canonicalStatePhase
       ? { ...baseCanonicalGameState, phase: canonicalStatePhase }
       : baseCanonicalGameState;
   const canonicalPhase = canonicalStatePhase ?? phase;

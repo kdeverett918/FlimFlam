@@ -24,9 +24,7 @@ export function PlayerStatus({ turnPlayerName, isMyTurn, message }: PlayerStatus
         initial={{ opacity: 0, y: -10, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className={`inline-flex items-center justify-center rounded-full border px-4 py-2 shadow-[0_12px_30px_oklch(0_0_0/0.2)] ${
-          isMyTurn
-            ? "border-accent-3/30 bg-accent-3/12"
-            : "border-white/10 bg-white/6"
+          isMyTurn ? "border-accent-3/30 bg-accent-3/12" : "border-white/10 bg-white/6"
         }`}
       >
         <span
