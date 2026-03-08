@@ -288,13 +288,10 @@ export function SurveySmashGame({
   const pd = privateData ?? {};
   const payloadGameState =
     typeof gamePayload?.action === "string" ? (gamePayload as unknown as FeudGameState) : null;
-  const eventGameState = (
-    gameEvents?.["game-state"] ??
+  const eventGameState = (gameEvents?.["game-state"] ??
     gameEvents?.["survey-smash-state"] ??
-    null
-  ) as FeudGameState | null;
-  const roomPhase =
-    typeof phase === "string" && phase.length > 0 ? phase : undefined;
+    null) as FeudGameState | null;
+  const roomPhase = typeof phase === "string" && phase.length > 0 ? phase : undefined;
   const eventPhase =
     typeof eventGameState?.phase === "string" && eventGameState.phase.length > 0
       ? eventGameState.phase
@@ -313,7 +310,9 @@ export function SurveySmashGame({
   const prevPhaseRef = useRef(phase);
   const revealTimersRef = useRef<number[]>([]);
   const gameStatePhase =
-    typeof gameState?.phase === "string" && gameState.phase.length > 0 ? gameState.phase : undefined;
+    typeof gameState?.phase === "string" && gameState.phase.length > 0
+      ? gameState.phase
+      : undefined;
   const canonicalGameState = gameState ?? eventGameState ?? payloadGameState;
   const canonicalStatePhase =
     gameStatePhase ??
@@ -462,8 +461,7 @@ export function SurveySmashGame({
     Number.isFinite(canonicalGameState.lightningQuestionCount)
       ? canonicalGameState.lightningQuestionCount
       : null;
-  const isAssignedLightningPlayer =
-    mySessionId !== null && publicLightningPlayerId === mySessionId;
+  const isAssignedLightningPlayer = mySessionId !== null && publicLightningPlayerId === mySessionId;
   const hasLightningQuestionBank =
     (privateLightningQuestionCount !== null && privateLightningQuestionCount > 0) ||
     (publicLightningQuestionCount !== null && publicLightningQuestionCount > 0);
@@ -623,7 +621,9 @@ export function SurveySmashGame({
       data-round={hostRound}
       data-total-rounds={hostTotalRounds}
       data-strikes={
-        typeof canonicalGameState?.strikes === "number" ? String(canonicalGameState.strikes) : undefined
+        typeof canonicalGameState?.strikes === "number"
+          ? String(canonicalGameState.strikes)
+          : undefined
       }
       data-current-guesser-index={
         typeof canonicalGameState?.currentGuesserIndex === "number"

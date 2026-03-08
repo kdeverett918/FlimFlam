@@ -39,6 +39,7 @@
     ".next-e2e-host-5470-62048/types/**/*.ts",
     ".next-e2e-host-5470-62048/types/**/*.ts",
     ".next-e2e-host-5550-116132/types/**/*.ts",
+    ".next-e2e-host-5550-122632/types/**/*.ts",
     ".next-e2e-host-5550-138352/types/**/*.ts",
     ".next-e2e-host-5550-56732/types/**/*.ts",
     ".next-e2e-host-5550-56732/types/**/*.ts",
@@ -48,11 +49,12 @@
     ".next-e2e-host-5630-51996/types/**/*.ts",
     ".next-e2e-host-5630-76676/types/**/*.ts",
     ".next-e2e-host-5630-90116/types/**/*.ts",
+    ".next-e2e-host-5770-57508/types/**/*.ts",
     ".next/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "next-env.d.ts",
-    ".next-e2e-host-5770-57508/types/**/*.ts"
+    ".next-e2e-host-5730-54396/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
