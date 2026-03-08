@@ -1,0 +1,113 @@
+{
+  "relay": {
+    "director_role": "director",
+    "create_director_copy": true,
+    "message_type": "relay.dispatch",
+    "default_max_attempts": 3,
+    "base_backoff_seconds": 5,
+    "max_backoff_seconds": 120,
+    "retry_on_degraded_transport": true,
+    "send_input_command": [
+      "python3",
+      ".codex/tools/game_team_bus_send_input.py",
+      "--transport",
+      "auto",
+      "--agent-id",
+      "{agent_id}",
+      "--thread-id",
+      "{thread_id}",
+      "--role-map-path",
+      "{role_map_path}",
+      "--role",
+      "{target_role}",
+      "--message",
+      "{message}",
+      "--metadata-json",
+      "{metadata_json}"
+    ]
+  },
+  "broadcast": {
+    "include_sender": false,
+    "exclude_roles": ["default", "director"]
+  },
+  "groups": {
+    "preprod_leads": [
+      "engine_lead",
+      "gameplay_lead",
+      "art_director",
+      "ux_designer",
+      "qa_lead",
+      "performance_lead",
+      "audio_lead",
+      "level_designer",
+      "explorer"
+    ],
+    "production_core": ["developer", "tester", "build_watcher", "playtest_specialist"],
+    "review_gate": ["reviewer", "qa_lead", "polish_critic"],
+    "design_gate": ["art_director", "ux_designer", "audio_lead"]
+  },
+  "sla": {
+    "message_ack_seconds": 300,
+    "task_stale_seconds": 900
+  },
+  "role_validation": {
+    "extra_roles": ["director"]
+  },
+  "message_schemas": {
+    "task-handoff": {
+      "required": ["task_id"],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "artifact_paths": {
+          "type": "array"
+        }
+      }
+    },
+    "inline-review": {
+      "required": ["task_id", "result"],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "result": {
+          "type": "string",
+          "enum": ["pass", "fail"]
+        },
+        "requested_fixes": {
+          "type": "array"
+        }
+      }
+    },
+    "review-verdict": {
+      "required": ["phase", "verdict"],
+      "properties": {
+        "phase": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["MERGE", "FIX", "BLOCK"]
+        },
+        "task_ids": {
+          "type": "array"
+        }
+      }
+    },
+    "task-plan-ready": {
+      "required": ["phase", "task_count"],
+      "properties": {
+        "phase": {
+          "type": "string"
+        },
+        "task_count": {
+          "type": "integer"
+        }
+      }
+    }
+  }
+}

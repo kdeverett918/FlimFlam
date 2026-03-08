@@ -23,3 +23,20 @@ playwright-report-production-remote
 
 .gemini/
 gha-creds-*.json
+
+/.codex/tmp/
+/.codex/tools/__pycache__/
+/.codex/environments/
+/.codex/skills/skills.lock.json
+
+/outputs/game-dev/.active_epic
+/outputs/game-dev/**/logs/
+/outputs/game-dev/**/run.json
+/outputs/game-dev/**/team-bus/
+/outputs/game-dev/**/team-bus-archive/
+
+/tmp-*.log
+/tmp-*.json
+/tmp-*.out.log
+/tmp-*.err.log
+/tmp-*.exit
