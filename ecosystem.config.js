@@ -10,6 +10,26 @@
 // - any preloaded runtime (e.g. `node_args: --import tsx`) must be resolvable
 //   from the repository root `node_modules/`.
 
+const FORWARDED_ENV_KEYS = [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "OPENROUTER_API_KEY",
+  "OPENROUTER_BASE_URL",
+  "OPENROUTER_HTTP_REFERER",
+  "OPENROUTER_X_TITLE",
+  "FLIMFLAM_AI_MODEL",
+  "FLIMFLAM_OPENROUTER_MODEL",
+  "FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL",
+  "FLIMFLAM_DISABLE_AI",
+];
+
+const forwardedEnv = Object.fromEntries(
+  FORWARDED_ENV_KEYS.flatMap((key) => {
+    const value = process.env[key];
+    return typeof value === "string" && value.trim().length > 0 ? [[key, value]] : [];
+  }),
+);
+
 module.exports = {
   apps: [
     {
@@ -42,6 +62,7 @@ module.exports = {
         // are compiled using the new proposal semantics and Colyseus schema
         // decorators (`@type()`) crash at runtime.
         TSX_TSCONFIG_PATH: "packages/server/tsconfig.json",
+        ...forwardedEnv,
       },
     },
   ],
