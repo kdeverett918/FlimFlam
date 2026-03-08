@@ -11,6 +11,7 @@ import {
   AnswerJudgeSchema,
   BrainBoardChatResponseSchema,
   BrainBoardGeneratedBoardSchema,
+  type BrainBoardGeneratedBoardRaw,
 } from "@flimflam/shared";
 import type { Complexity, GameManifest } from "@flimflam/shared";
 import {
@@ -41,8 +42,10 @@ const BRAIN_BOARD_E2E_ALL_IN_REVEAL_MIN_MS = 6000;
 const FUZZY_THRESHOLD = 0.7;
 const BRAIN_BOARD_JUDGE_TIMEOUT_MS = 15000;
 const BRAIN_BOARD_JUDGE_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_JUDGE_MODEL;
-const BRAIN_BOARD_CHAT_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_CHAT_MODEL;
-const BRAIN_BOARD_GENERATION_MODEL = process.env.FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL;
+const BRAIN_BOARD_CHAT_MODEL =
+  process.env.FLIMFLAM_BRAIN_BOARD_CHAT_MODEL ?? "claude-sonnet-4-5-20250929";
+const BRAIN_BOARD_GENERATION_MODEL =
+  process.env.FLIMFLAM_BRAIN_BOARD_GENERATION_MODEL ?? "claude-opus-4-6";
 const DEFAULT_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY = 3;
 export const BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY = (() => {
   const rawValue = process.env.FLIMFLAM_BRAIN_BOARD_AI_JUDGE_MAX_CONCURRENCY;
@@ -63,10 +66,58 @@ const TOPIC_CHAT_FALLBACK_TOPICS = [
   "technology",
   "animals",
 ];
+const GENERIC_TOPIC_ANCHORS = new Set(
+  [
+    ...TOPIC_CHAT_FALLBACK_TOPICS,
+    "movie",
+    "movies",
+    "music",
+    "songs",
+    "sports",
+    "science",
+    "history",
+    "pop culture",
+    "food",
+    "travel",
+    "technology",
+    "tech",
+    "animals",
+    "animal",
+    "games",
+    "game",
+    "video games",
+    "gaming",
+    "anime",
+    "manga",
+    "tv",
+    "tv shows",
+    "television",
+    "books",
+    "book",
+    "geography",
+    "nature",
+    "art",
+    "comics",
+    "superheroes",
+  ].map((topic) => topic.toLowerCase()),
+);
+
+interface TopicAnchorValidation {
+  valid: boolean;
+  reason: string | null;
+}
+
+interface TopicAnchorProfile {
+  raw: string;
+  normalized: string;
+  tokens: string[];
+  strict: boolean;
+}
 
 export function normalizeTopicSuggestion(raw: string): string | null {
   const cleaned = raw
     .trim()
+    .replace(/^(["'`“”‘’]+)|(["'`“”‘’]+)$/g, "")
     .replace(
       /^(i (love|like|want|am into)|anything about|let'?s do|how about|maybe|more|topics? like)\s+/i,
       "",
@@ -101,6 +152,110 @@ export function extractTopicSuggestions(messages: string[]): string[] {
   }
 
   return suggestions;
+}
+
+function normalizeTopicAnchorText(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTopicAnchorToken(token: string): string {
+  // Simple plural normalization: just strip trailing "s".
+  // Avoids the "ies→y" rule which mishandles words like "movies" → "movy".
+  if (token.endsWith("s") && token.length > 3) {
+    return token.slice(0, -1);
+  }
+  return token;
+}
+
+function tokenizeTopicAnchor(raw: string): string[] {
+  return normalizeTopicAnchorText(raw)
+    .split(" ")
+    .map((token) => normalizeTopicAnchorToken(token))
+    .filter(Boolean);
+}
+
+function isStrictTopicAnchor(topic: string): boolean {
+  const normalized = normalizeTopicAnchorText(topic);
+  if (!normalized) return false;
+  if (GENERIC_TOPIC_ANCHORS.has(normalized)) return false;
+
+  const tokens = tokenizeTopicAnchor(topic);
+  if (tokens.length >= 2) return true;
+
+  const [singleToken] = tokens;
+  return typeof singleToken === "string" && !GENERIC_TOPIC_ANCHORS.has(singleToken);
+}
+
+function buildTopicAnchorProfiles(topics: string[]): TopicAnchorProfile[] {
+  const seen = new Set<string>();
+  const profiles: TopicAnchorProfile[] = [];
+
+  for (const topic of topics) {
+    const normalized = normalizeTopicAnchorText(topic);
+    if (!normalized || seen.has(normalized)) continue;
+    const tokens = tokenizeTopicAnchor(topic);
+    if (tokens.length === 0) continue;
+    seen.add(normalized);
+    profiles.push({
+      raw: topic.trim(),
+      normalized,
+      tokens,
+      strict: isStrictTopicAnchor(topic),
+    });
+  }
+
+  return profiles;
+}
+
+function categoryAnchorsTopic(categoryName: string, topic: TopicAnchorProfile): boolean {
+  const categoryTokens = new Set(tokenizeTopicAnchor(categoryName));
+  if (topic.strict) {
+    return topic.tokens.every((token) => categoryTokens.has(token));
+  }
+  return topic.tokens.some((token) => categoryTokens.has(token));
+}
+
+export function validateGeneratedCategoryAnchors(
+  categoryNames: string[],
+  submittedTopics: string[],
+): TopicAnchorValidation {
+  const allProfiles = buildTopicAnchorProfiles(submittedTopics);
+  if (allProfiles.length === 0) {
+    return { valid: true, reason: null };
+  }
+
+  const strictProfiles = allProfiles.filter((profile) => profile.strict);
+  const profilesToCheck = strictProfiles.length > 0 ? strictProfiles : allProfiles;
+
+  const unanchoredCategories = categoryNames.filter(
+    (categoryName) => !profilesToCheck.some((profile) => categoryAnchorsTopic(categoryName, profile)),
+  );
+  if (unanchoredCategories.length > 0) {
+    return {
+      valid: false,
+      reason: `These category names drifted away from the submitted topics: ${unanchoredCategories.join(", ")}. Each category should stay visibly tied to one of: ${profilesToCheck.map((profile) => profile.raw).join(", ")}.`,
+    };
+  }
+
+  if (profilesToCheck.length <= categoryNames.length) {
+    const unusedTopics = profilesToCheck.filter(
+      (profile) => !categoryNames.some((categoryName) => categoryAnchorsTopic(categoryName, profile)),
+    );
+    if (unusedTopics.length > 0) {
+      return {
+        valid: false,
+        reason: `The generated board ignored these submitted topics: ${unusedTopics.map((profile) => profile.raw).join(", ")}.`,
+      };
+    }
+  }
+
+  return { valid: true, reason: null };
 }
 
 export function createAsyncLimiter(maxConcurrency: number) {
@@ -1508,6 +1663,94 @@ class BrainBoardPlugin extends BaseGamePlugin {
     return normalized.slice(0, 160);
   }
 
+  private mapGeneratedBoard(result: BrainBoardGeneratedBoardRaw): JeopardyBoard {
+    return {
+      categories: result.categories.map((cat) => ({
+        name: cat.name.trim() || "Unknown",
+        clues: cat.clues.map((clue, index) => ({
+          question: clue.question.trim(),
+          answer: clue.answer.trim(),
+          value: CLUE_VALUES[index] ?? (index + 1) * 200,
+        })),
+      })),
+    };
+  }
+
+  private installRoundOneGeneratedBoard(aiBoard: JeopardyBoard): void {
+    this.round1Board = aiBoard;
+    this.board = aiBoard;
+    this._aiGeneratedBoard = true;
+
+    for (const cat of aiBoard.categories) {
+      this._usedCategories.add(cat.name.toLowerCase());
+    }
+
+    this.powerPlays = placePowerPlays(
+      getPowerPlayCount(this.complexity, 1),
+      CATEGORIES_PER_BOARD,
+      CLUES_PER_CATEGORY,
+    );
+  }
+
+  private async generatePersonalizedBoard(
+    room: Room,
+    playerNames: string[],
+    promptTopics: string[],
+    playerProvidedTopics: string[],
+    chatContext: string,
+  ): Promise<JeopardyBoard> {
+    const prompt = buildBrainBoardGenerationPrompt(
+      promptTopics,
+      this.complexity,
+      playerNames,
+      chatContext,
+      [...this._usedCategories],
+    );
+
+    let userPrompt = prompt.user;
+    let lastError: Error | null = null;
+    const maxAttempts = playerProvidedTopics.length > 0 ? 2 : 1;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const result = await enqueueAIRequest(room.roomId, () =>
+        aiRequest(prompt.system, userPrompt, BrainBoardGeneratedBoardSchema, {
+          model: BRAIN_BOARD_GENERATION_MODEL,
+          maxTokens: 4096,
+          timeoutMs: 30000,
+          retries: 1,
+        }),
+      );
+
+      const aiBoard = this.mapGeneratedBoard(result.parsed);
+      const validation = validateGeneratedCategoryAnchors(
+        aiBoard.categories.map((category) => category.name),
+        playerProvidedTopics,
+      );
+
+      if (validation.valid) {
+        return aiBoard;
+      }
+
+      lastError = new Error(validation.reason ?? "Generated board drifted off-topic.");
+      console.warn(
+        `[BrainBoard] Rejecting AI board attempt ${attempt}/${maxAttempts} for drifting topics:`,
+        validation.reason,
+      );
+
+      userPrompt = [
+        prompt.user,
+        "",
+        "CRITICAL REWRITE:",
+        validation.reason ?? "The category names drifted away from the submitted topics.",
+        `Use ONLY categories that stay visibly anchored to these submitted topics: ${playerProvidedTopics.join(", ")}.`,
+        "If a topic is a specific title like Marvel Rivals, reuse that exact phrase in the category names.",
+        "Regenerate the entire board from scratch and output only valid JSON.",
+      ].join("\n");
+    }
+
+    throw lastError ?? new Error("AI board generation failed to stay anchored to submitted topics.");
+  }
+
   // ─── Final Scores ───────────────────────────────────────────────────
 
   private goToFinalScores(room: Room, state: Schema): void {
@@ -1703,53 +1946,20 @@ class BrainBoardPlugin extends BaseGamePlugin {
           ? `Players submitted these category ideas: ${allCategories.join(", ")}`
           : "No player categories submitted; use varied default topics.";
 
-      const prompt = buildBrainBoardGenerationPrompt(
-        promptTopics,
-        this.complexity,
+      const aiBoard = await this.generatePersonalizedBoard(
+        room,
         playerNames,
+        promptTopics,
+        allCategories,
         chatContext,
-        [...this._usedCategories],
       );
 
-      const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
-          model: BRAIN_BOARD_GENERATION_MODEL,
-          maxTokens: 4096,
-          timeoutMs: 30000,
-          retries: 1,
-        }),
-      );
-
-      const aiBoard: JeopardyBoard = {
-        categories: result.parsed.categories.map((cat) => ({
-          name: cat.name.trim() || "Unknown",
-          clues: cat.clues.map((c, i) => ({
-            question: c.question.trim(),
-            answer: c.answer.trim(),
-            value: CLUE_VALUES[i] ?? (i + 1) * 200,
-          })),
-        })),
-      };
-
-      this.round1Board = aiBoard;
-      this.board = aiBoard;
-      this._aiGeneratedBoard = true;
+      this.installRoundOneGeneratedBoard(aiBoard);
       this._personalizationStatus = allCategories.length > 0 ? "ai" : "curated";
       this._personalizationMessage =
         allCategories.length > 0
           ? `Board personalized from your picks: ${promptTopics.slice(0, 6).join(", ")}`
           : "No player categories were submitted in time, so this round is using our curated house mix.";
-
-      // Track used categories for dedup
-      for (const cat of aiBoard.categories) {
-        this._usedCategories.add(cat.name.toLowerCase());
-      }
-
-      this.powerPlays = placePowerPlays(
-        getPowerPlayCount(this.complexity, 1),
-        CATEGORIES_PER_BOARD,
-        CLUES_PER_CATEGORY,
-      );
 
       console.log(
         "[BrainBoard] AI-generated board (Quick Pick) accepted with",
@@ -1896,55 +2106,21 @@ class BrainBoardPlugin extends BaseGamePlugin {
         );
       }
 
-      const prompt = buildBrainBoardGenerationPrompt(
-        promptTopics,
-        this.complexity,
+      const aiBoard = await this.generatePersonalizedBoard(
+        room,
         playerNames,
+        promptTopics,
+        extractedTopics,
         chatContext.slice(0, 2000),
-        [...this._usedCategories],
       );
-
-      const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequest(prompt.system, prompt.user, BrainBoardGeneratedBoardSchema, {
-          model: BRAIN_BOARD_GENERATION_MODEL,
-          maxTokens: 4096,
-          timeoutMs: 30000,
-          retries: 1,
-        }),
-      );
-
-      const aiBoard: JeopardyBoard = {
-        categories: result.parsed.categories.map((cat) => ({
-          name: cat.name.trim() || "Unknown",
-          clues: cat.clues.map((c, i) => ({
-            question: c.question.trim(),
-            answer: c.answer.trim(),
-            value: CLUE_VALUES[i] ?? (i + 1) * 200,
-          })),
-        })),
-      };
 
       // Override the Round 1 board with the AI-generated one.
-      this.round1Board = aiBoard;
-      this.board = aiBoard;
-      this._aiGeneratedBoard = true;
+      this.installRoundOneGeneratedBoard(aiBoard);
       this._personalizationStatus = extractedTopics.length > 0 ? "ai" : "curated";
       this._personalizationMessage =
         extractedTopics.length > 0
           ? `Board personalized from your chat: ${promptTopics.slice(0, 6).join(", ")}`
           : "No clear player topics were captured, so this round is using a curated house mix.";
-
-      // Track used categories for dedup across rounds
-      for (const cat of aiBoard.categories) {
-        this._usedCategories.add(cat.name.toLowerCase());
-      }
-
-      // Re-place Power Plays on the new board.
-      this.powerPlays = placePowerPlays(
-        getPowerPlayCount(this.complexity, 1),
-        CATEGORIES_PER_BOARD,
-        CLUES_PER_CATEGORY,
-      );
 
       console.log(
         "[BrainBoard] AI-generated board accepted with",
