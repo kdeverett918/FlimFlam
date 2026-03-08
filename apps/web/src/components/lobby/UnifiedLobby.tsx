@@ -82,7 +82,7 @@ function LobbyContent({
   }, [sendMessage, amReady]);
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-x-hidden">
+    <div className="relative flex min-h-[100dvh] flex-col overflow-x-hidden overflow-y-auto">
       <AnimatedBackground variant="subtle" />
 
       {/* Mobile: single column. Desktop: two columns */}
@@ -109,7 +109,7 @@ function LobbyContent({
         </div>
 
         {/* RIGHT COLUMN — Game config, action buttons */}
-        <div className="flex flex-1 flex-col gap-8">
+        <div className="flex flex-col gap-8 lg:flex-1">
           {/* Game selection */}
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">

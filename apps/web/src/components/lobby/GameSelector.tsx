@@ -27,7 +27,7 @@ export function GameSelector({ selectedGameId, isHost, onSelect }: GameSelectorP
   return (
     <div className="relative w-full">
       {/* Mobile: horizontal scroll. Desktop: grid */}
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3">
+      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide sm:grid sm:grid-cols-2 sm:overflow-visible lg:grid-cols-3" style={{ WebkitOverflowScrolling: "touch" }}>
         {GAME_MANIFESTS.map((game) => {
           const isSelected = game.id === selectedGameId;
           const accentGradient = GAME_ACCENT_GRADIENT[game.id];

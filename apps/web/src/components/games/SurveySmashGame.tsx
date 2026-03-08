@@ -288,7 +288,11 @@ export function SurveySmashGame({
   const pd = privateData ?? {};
   const payloadGameState =
     typeof gamePayload?.action === "string" ? (gamePayload as unknown as FeudGameState) : null;
-  const eventGameState = (gameEvents?.["survey-smash-state"] ?? null) as FeudGameState | null;
+  const eventGameState = (
+    gameEvents?.["game-state"] ??
+    gameEvents?.["survey-smash-state"] ??
+    null
+  ) as FeudGameState | null;
   const roomPhase =
     typeof phase === "string" && phase.length > 0 ? phase : undefined;
   const eventPhase =
@@ -310,12 +314,14 @@ export function SurveySmashGame({
   const revealTimersRef = useRef<number[]>([]);
   const gameStatePhase =
     typeof gameState?.phase === "string" && gameState.phase.length > 0 ? gameState.phase : undefined;
-  const canonicalGameState = payloadGameState ?? eventGameState ?? gameState;
+  const canonicalGameState = gameState ?? eventGameState ?? payloadGameState;
   const canonicalStatePhase =
-    typeof canonicalGameState?.phase === "string" && canonicalGameState.phase.length > 0
-      ? canonicalGameState.phase
-      : null;
-  const canonicalPhase = isHost ? canonicalStatePhase ?? roomPhase ?? phase : roomPhase ?? canonicalStatePhase ?? phase;
+    gameStatePhase ??
+    eventPhase ??
+    (typeof payloadGameState?.phase === "string" && payloadGameState.phase.length > 0
+      ? payloadGameState.phase
+      : null);
+  const canonicalPhase = canonicalStatePhase ?? roomPhase ?? phase;
 
   const clearRevealTimers = useCallback(() => {
     for (const timerId of revealTimersRef.current) {

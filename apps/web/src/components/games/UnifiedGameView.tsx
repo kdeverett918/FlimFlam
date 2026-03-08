@@ -4,9 +4,9 @@ import type { PlayerData } from "@flimflam/shared";
 import { GameThemeProvider } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 
-import { BrainBoardOrchestrator } from "@/components/games/brain-board";
 import { LuckyLettersGame } from "@/components/games/LuckyLettersGame";
 import { SurveySmashGame } from "@/components/games/SurveySmashGame";
+import { BrainBoardOrchestrator } from "@/components/games/brain-board";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
