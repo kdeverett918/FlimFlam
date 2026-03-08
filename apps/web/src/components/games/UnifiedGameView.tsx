@@ -4,7 +4,7 @@ import type { PlayerData } from "@flimflam/shared";
 import { GameThemeProvider } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 
-import { BrainBoardGame } from "@/components/games/BrainBoardGame";
+import { BrainBoardOrchestrator } from "@/components/games/brain-board";
 import { LuckyLettersGame } from "@/components/games/LuckyLettersGame";
 import { SurveySmashGame } from "@/components/games/SurveySmashGame";
 
@@ -76,7 +76,7 @@ export function UnifiedGameView({
 
   switch (gameId) {
     case "brain-board":
-      gameContent = <BrainBoardGame {...commonProps} />;
+      gameContent = <BrainBoardOrchestrator {...commonProps} />;
       break;
     case "lucky-letters":
       gameContent = <LuckyLettersGame {...commonProps} />;
