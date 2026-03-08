@@ -18,6 +18,15 @@ import { getRoomIdByCode } from "./rooms/room-registry";
 // Register all games (this triggers the side-effect of loading game factories into the registry)
 import "./register-games";
 
+// ─── Startup Env Diagnostics (remove once Colyseus Cloud env injection is confirmed) ───
+if (process.env.COLYSEUS_CLOUD !== undefined) {
+  const allKeys = Object.keys(process.env).sort();
+  console.log(`[FlimFlam:env] ${allKeys.length} env vars available: ${allKeys.join(", ")}`);
+  console.log(`[FlimFlam:env] ANTHROPIC_API_KEY present: ${!!process.env.ANTHROPIC_API_KEY}`);
+  console.log(`[FlimFlam:env] ANTHROPIC_AUTH_TOKEN present: ${!!process.env.ANTHROPIC_AUTH_TOKEN}`);
+  console.log(`[FlimFlam:env] OPENROUTER_API_KEY present: ${!!process.env.OPENROUTER_API_KEY}`);
+}
+
 const require = createRequire(import.meta.url);
 const { Server, matchMaker } = require("colyseus") as typeof import("colyseus");
 
