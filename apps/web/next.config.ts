@@ -31,6 +31,7 @@ function validateEnv() {
 validateEnv();
 const e2eDistDir =
   process.env.FLIMFLAM_NEXT_DIST_DIR?.trim() ?? process.env.FLIMFLAM_E2E_HOST_DIST_DIR?.trim();
+const nextTsconfigPath = process.env.FLIMFLAM_NEXT_TSCONFIG_PATH?.trim();
 const isE2E = process.env.NEXT_PUBLIC_FLIMFLAM_E2E === "1" || process.env.FLIMFLAM_E2E === "1";
 
 const securityHeaders = [
@@ -45,6 +46,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   ...(e2eDistDir ? { distDir: e2eDistDir } : {}),
+  ...(nextTsconfigPath ? { typescript: { tsconfigPath: nextTsconfigPath } } : {}),
   transpilePackages: ["@flimflam/shared", "@flimflam/ui"],
   webpack: (config) => {
     if (isE2E) {

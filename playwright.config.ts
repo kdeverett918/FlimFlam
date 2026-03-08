@@ -105,6 +105,8 @@ const e2eAppDistDir =
   configuredDistDir && configuredDistDir.length > 0 && configuredDistDir !== legacyDistDirName
     ? configuredDistDir
     : `${legacyDistDirName}-${E2E_RUN_ID}`;
+const e2eTsconfigPath =
+  process.env.FLIMFLAM_NEXT_TSCONFIG_PATH?.trim() || `tsconfig.e2e-${e2eAppPort}.json`;
 
 const e2eArtifactsDir = path.join(process.cwd(), ".tmp", "playwright-artifacts");
 const e2eReportDir = path.join(process.cwd(), ".tmp", "playwright-report");
@@ -122,6 +124,7 @@ process.env.FLIMFLAM_E2E = "1";
 process.env.FLIMFLAM_E2E_RUNTIME = E2E_RUNTIME;
 process.env.FLIMFLAM_E2E_SKIP_BUILD = E2E_SKIP_BUILD;
 process.env.FLIMFLAM_E2E_HOST_DIST_DIR = e2eAppDistDir;
+process.env.FLIMFLAM_NEXT_TSCONFIG_PATH = e2eTsconfigPath;
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -163,6 +166,7 @@ export default defineConfig({
           FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
           FLIMFLAM_E2E_RUNTIME: E2E_RUNTIME,
           FLIMFLAM_E2E_SKIP_BUILD: E2E_SKIP_BUILD,
+          FLIMFLAM_NEXT_TSCONFIG_PATH: e2eTsconfigPath,
           FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
           FLIMFLAM_E2E_RECLAIM_PORTS: process.env.FLIMFLAM_E2E_RECLAIM_PORTS ?? "1",
           FLIMFLAM_E2E_RECLAIM_RUNNERS:

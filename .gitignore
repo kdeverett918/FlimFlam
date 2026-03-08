@@ -2,6 +2,7 @@ node_modules
 dist
 .next
 .next-e2e-*
+apps/web/tsconfig.e2e-*.json
 .turbo
 *.tsbuildinfo
 .env

@@ -2,7 +2,7 @@
 
 import type { PlayerData } from "@flimflam/shared";
 import { AnimatedCounter, GlassPanel, haptics, sounds } from "@flimflam/ui";
-import { Check, Sparkles, X } from "lucide-react";
+import { Check, Sparkles, X, Zap } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useMemo } from "react";
 import { getPlayerColor, getPlayerName } from "./bb-helpers";
@@ -35,16 +35,37 @@ export function ClueResultController({
 
   const judgeExplanation = results.find((r) => r.judgeExplanation)?.judgeExplanation;
 
+  const hasSpeedBonus = myResult?.speedBonus && myResult.speedBonus > 0;
+
+  // Build answer distribution data
+  const answerDistribution = useMemo(() => {
+    const groups = new Map<string, { answer: string; count: number; correct: boolean }>();
+    for (const r of results) {
+      const key = (r.answer || "(no answer)").toLowerCase().trim();
+      const existing = groups.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        groups.set(key, { answer: r.answer || "(no answer)", count: 1, correct: r.correct });
+      }
+    }
+    return [...groups.values()].sort((a, b) => b.count - a.count);
+  }, [results]);
+
   // Haptic + sound feedback on mount
   useEffect(() => {
     if (myResult?.correct) {
       sounds.correct();
-      haptics.confirm();
+      if (value >= 600) {
+        haptics.celebrate();
+      } else {
+        haptics.confirm();
+      }
     } else {
       sounds.strike();
       haptics.error();
     }
-  }, [myResult?.correct]);
+  }, [myResult?.correct, value]);
 
   return (
     <motion.div
@@ -73,39 +94,67 @@ export function ClueResultController({
           transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.1 }}
         >
           <GlassPanel
+            data-testid="my-result"
             glow
             glowColor={
               myResult.correct ? "oklch(0.72 0.18 150 / 0.35)" : "oklch(0.65 0.2 25 / 0.25)"
             }
-            className={`flex flex-col items-center gap-3 px-5 py-5 border ${
+            className={`flex flex-col items-center gap-4 px-5 py-8 border min-h-[40vh] justify-center ${
               myResult.correct
                 ? "border-success/30 bg-success/10"
                 : "border-destructive/30 bg-destructive/8"
             }`}
           >
-            <div className="flex items-center gap-2">
+            {/* Large 64px check/X icon */}
+            <div className="flex items-center gap-3">
               {myResult.correct ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-success/20">
-                  <Check className="h-5 w-5 text-success" strokeWidth={3} />
-                </div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 12, delay: 0.2 }}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-success/20"
+                >
+                  <Check className="h-10 w-10 text-success" strokeWidth={3} />
+                </motion.div>
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/20">
-                  <X className="h-5 w-5 text-destructive" strokeWidth={3} />
-                </div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 12, delay: 0.2 }}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/20"
+                >
+                  <X className="h-10 w-10 text-destructive" strokeWidth={3} />
+                </motion.div>
               )}
-              <span className="font-display text-lg font-bold text-text-primary">
-                {myResult.correct ? "You got it!" : "Not quite..."}
-              </span>
             </div>
+            <span className="font-display text-2xl font-bold text-text-primary">
+              {myResult.correct ? "You got it!" : "Not quite..."}
+            </span>
             <span className="font-body text-sm text-text-muted italic">
               Your answer: {myResult.answer || "(no answer)"}
             </span>
+            {/* Score delta - large 36px bold */}
             <AnimatedCounter
               value={myResult.delta}
               duration={1000}
               format={(v) => `${v >= 0 ? "+" : ""}$${Math.abs(v).toLocaleString()}`}
-              className={`text-xl font-bold ${myResult.delta >= 0 ? "text-success" : "text-destructive"}`}
+              className={`text-4xl font-bold ${myResult.delta >= 0 ? "text-success" : "text-destructive"}`}
             />
+            {/* Speed bonus gold badge */}
+            {hasSpeedBonus && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.5 }}
+              >
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-4 py-2 font-display text-sm font-bold text-amber-400 uppercase tracking-wider"
+                  style={{ boxShadow: "0 0 12px oklch(0.82 0.18 85 / 0.3)" }}
+                >
+                  <Zap className="h-4 w-4" />+{myResult.speedBonus} SPEED BONUS
+                </span>
+              </motion.div>
+            )}
           </GlassPanel>
         </motion.div>
       )}
@@ -152,6 +201,41 @@ export function ClueResultController({
         </div>
       </motion.div>
 
+      {/* Answer distribution bar chart */}
+      {answerDistribution.length > 1 && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.3 }}
+          className="flex flex-col gap-2"
+        >
+          <span className="font-body text-xs font-semibold text-text-muted uppercase tracking-wider px-1">
+            Answer Distribution
+          </span>
+          {answerDistribution.map((group) => {
+            const pct = totalCount > 0 ? (group.count / totalCount) * 100 : 0;
+            return (
+              <div key={group.answer} className="flex items-center gap-2 px-1">
+                <span className="font-body text-xs text-text-muted w-24 truncate">
+                  {group.answer}
+                </span>
+                <div className="flex-1 h-4 rounded-full bg-white/10 overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.6, delay: 0.6 }}
+                    className={`h-full rounded-full ${group.correct ? "bg-success/60" : "bg-white/20"}`}
+                  />
+                </div>
+                <span className="font-mono text-xs text-text-muted w-8 text-right">
+                  {group.count}
+                </span>
+              </div>
+            );
+          })}
+        </motion.div>
+      )}
+
       {/* What Others Picked */}
       {otherResults.length > 0 && (
         <motion.div
@@ -192,6 +276,11 @@ export function ClueResultController({
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {result.speedBonus && result.speedBonus > 0 && (
+                      <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-400">
+                        +{result.speedBonus}
+                      </span>
+                    )}
                     {result.correct ? (
                       <Check className="h-4 w-4 text-success" strokeWidth={3} />
                     ) : (

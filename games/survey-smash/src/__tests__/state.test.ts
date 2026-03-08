@@ -54,6 +54,7 @@ function makeState(overrides: Partial<SurveySmashInternalState> = {}): SurveySma
     lightningCurrentIndex: 0,
     lightningAnswers: [],
     lightningTotalPoints: 0,
+    lightningAcceptsAnswersAt: 0,
     allPlayerIds: ["p1", "p2", "p3", "p4"],
     ...overrides,
   };

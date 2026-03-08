@@ -92,6 +92,12 @@ export type { MotionCardProps } from "./components/motion-card";
 export { AnimatedCounter } from "./components/animated-counter";
 export type { AnimatedCounterProps } from "./components/animated-counter";
 
+export { VerdictStamp } from "./components/verdict-stamp";
+export type { VerdictStampProps } from "./components/verdict-stamp";
+
+export { PodiumLayout } from "./components/podium-layout";
+export type { PodiumLayoutProps, PodiumPlayer } from "./components/podium-layout";
+
 // Audio
 export { emitAudioEvent, emitMotionEvent, soundManager, sounds } from "./lib/audio";
 export type { PlaySfxOptions, SoundCategory, SoundConfig } from "./lib/audio";

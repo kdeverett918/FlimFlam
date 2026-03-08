@@ -172,6 +172,59 @@ const SYNTH_EFFECTS: Record<string, SynthStep[]> = {
     { frequency: 1320, duration: 0.08, wave: "triangle", gain: 0.09 },
     { frequency: 1540, duration: 0.1, wave: "triangle", gain: 0.08 },
   ],
+  // Brain Board premium All-In reveal sounds
+  "brain.board.allin.sustain": [{ frequency: 200, duration: 2.0, wave: "sine", gain: 0.08 }],
+  "brain.board.allin.drum": [
+    { frequency: 800, duration: 0.03, wave: "square", gain: 0.1 },
+    { frequency: 800, duration: 0.03, wave: "square", gain: 0.11 },
+    { frequency: 800, duration: 0.03, wave: "square", gain: 0.12 },
+    { frequency: 800, duration: 0.03, wave: "square", gain: 0.14 },
+  ],
+  "brain.board.allin.verdict": [
+    { frequency: 80, slideTo: 120, duration: 0.3, wave: "sawtooth", gain: 0.18 },
+    { frequency: 1200, duration: 0.06, wave: "triangle", gain: 0.14 },
+  ],
+  // Survey Smash premium moments
+  "survey.drumroll": [{ frequency: 80, slideTo: 200, duration: 0.8, wave: "sawtooth", gain: 0.15 }],
+  "survey.faceoff": [
+    { frequency: 440, duration: 0.1, wave: "triangle", gain: 0.12 },
+    { frequency: 660, duration: 0.12, wave: "triangle", gain: 0.11 },
+  ],
+  "survey.alarm": [
+    { frequency: 880, duration: 0.08, wave: "square", gain: 0.14 },
+    { frequency: 660, duration: 0.08, wave: "square", gain: 0.14 },
+    { frequency: 880, duration: 0.08, wave: "square", gain: 0.12 },
+    { frequency: 660, duration: 0.1, wave: "square", gain: 0.1 },
+  ],
+  "survey.lightning": [
+    { frequency: 1800, slideTo: 600, duration: 0.12, wave: "sawtooth", gain: 0.16 },
+  ],
+  // Lucky Letters premium effects
+  "lucky.ding": [{ frequency: 1400, duration: 0.05, wave: "triangle", gain: 0.12 }],
+  "lucky.bonus.intro": [
+    { frequency: 330, duration: 0.1, wave: "triangle", gain: 0.11 },
+    { frequency: 440, duration: 0.1, wave: "triangle", gain: 0.11 },
+    { frequency: 550, duration: 0.1, wave: "triangle", gain: 0.11 },
+    { frequency: 660, duration: 0.15, wave: "triangle", gain: 0.1 },
+  ],
+  "lucky.drumroll": [{ frequency: 100, slideTo: 250, duration: 0.6, wave: "triangle", gain: 0.13 }],
+  "lucky.solve": [
+    { frequency: 440, duration: 0.1, wave: "triangle", gain: 0.12 },
+    { frequency: 550, duration: 0.1, wave: "triangle", gain: 0.12 },
+    { frequency: 660, duration: 0.12, wave: "triangle", gain: 0.11 },
+    { frequency: 880, duration: 0.18, wave: "triangle", gain: 0.1 },
+  ],
+  // Drumroll effect for answer reveals
+  "game:drumroll": [
+    { frequency: 120, duration: 0.04, wave: "square", gain: 0.08 },
+    { frequency: 140, duration: 0.04, wave: "square", gain: 0.09 },
+    { frequency: 120, duration: 0.04, wave: "square", gain: 0.08 },
+    { frequency: 140, duration: 0.04, wave: "square", gain: 0.09 },
+    { frequency: 160, duration: 0.04, wave: "square", gain: 0.1 },
+    { frequency: 180, duration: 0.04, wave: "square", gain: 0.1 },
+    { frequency: 200, duration: 0.04, wave: "square", gain: 0.11 },
+    { frequency: 220, duration: 0.04, wave: "square", gain: 0.11 },
+  ],
 };
 
 const MUSIC_THEMES: Record<MusicTheme, MusicThemeConfig> = {
@@ -815,4 +868,27 @@ export const sounds = {
   powerPlay: () => soundManager.playSfx("brain.board.powerplay"),
   allIn: () => soundManager.playSfx("brain.board.allin"),
   speedBonus: () => soundManager.playSfx("game:speed-bonus"),
+  drumroll: () => soundManager.playSfx("survey.drumroll"),
+  faceoff: () => soundManager.playSfx("survey.faceoff"),
+  alarm: () => soundManager.playSfx("survey.alarm"),
+  lightning: () => soundManager.playSfx("survey.lightning"),
+  ding: () => soundManager.playSfx("lucky.ding"),
+  bonusIntro: () => soundManager.playSfx("lucky.bonus.intro"),
+  luckyDrumroll: () => soundManager.playSfx("lucky.drumroll"),
+  solve: () => soundManager.playSfx("lucky.solve"),
+  allinSustain: () => soundManager.playSfx("brain.board.allin.sustain"),
+  allinDrum: () => soundManager.playSfx("brain.board.allin.drum"),
+  allinVerdict: () => soundManager.playSfx("brain.board.allin.verdict"),
+  gameDrumroll: () => soundManager.playSfx("game:drumroll"),
+  // Legacy aliases
+  allInSustain: () => soundManager.playSfx("brain.board.allin.sustain"),
+  allInDrum: () => soundManager.playSfx("brain.board.allin.drum"),
+  allInVerdict: () => soundManager.playSfx("brain.board.allin.verdict"),
+  luckyDing: () => soundManager.playSfx("lucky.ding"),
+  luckyBonusIntro: () => soundManager.playSfx("lucky.bonus.intro"),
+  luckySolve: () => soundManager.playSfx("lucky.solve"),
+  surveyDrumroll: () => soundManager.playSfx("survey.drumroll"),
+  surveyFaceoff: () => soundManager.playSfx("survey.faceoff"),
+  surveyAlarm: () => soundManager.playSfx("survey.alarm"),
+  surveyLightning: () => soundManager.playSfx("survey.lightning"),
 };

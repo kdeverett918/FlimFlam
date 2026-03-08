@@ -650,6 +650,68 @@
   animation: delta-pop 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* -- Lobby Redesign Keyframes -- */
+
+@keyframes portal-ring {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+    border-width: 4px;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+@keyframes avatar-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes gradient-sweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes tip-crossfade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-portal-ring {
+  animation: portal-ring 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-avatar-bob {
+  animation: avatar-bob 3s ease-in-out infinite;
+}
+.animate-gradient-sweep {
+  background-size: 200% 200%;
+  animation: gradient-sweep 3s ease-in-out infinite;
+}
+.animate-tip-crossfade-in {
+  animation: tip-crossfade-in 0.5s ease-out forwards;
+}
+
 /* ================================================================
    Base styles
    ================================================================ */
@@ -748,7 +810,11 @@ button:focus-visible,
   .animate-board-cell-reveal,
   .animate-timer-urgency,
   .animate-slide-up-spring,
-  .animate-delta-pop {
+  .animate-delta-pop,
+  .animate-portal-ring,
+  .animate-avatar-bob,
+  .animate-gradient-sweep,
+  .animate-tip-crossfade-in {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

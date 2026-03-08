@@ -5,8 +5,11 @@ import net from "node:net";
 import path from "node:path";
 
 const requireFromHere = createRequire(import.meta.url);
-const nextCliPath = requireFromHere.resolve("next/dist/bin/next");
-const tsxCliPath = path.join(path.dirname(requireFromHere.resolve("tsx/package.json")), "dist", "cli.mjs");
+const tsxCliPath = path.join(
+  path.dirname(requireFromHere.resolve("tsx/package.json")),
+  "dist",
+  "cli.mjs",
+);
 
 const isWin = process.platform === "win32";
 const PNPM_BIN = "pnpm";
@@ -27,6 +30,11 @@ const appDistDir =
   configuredDistDir && configuredDistDir.length > 0 && configuredDistDir !== legacyDistDirName
     ? configuredDistDir
     : `${legacyDistDirName}-${process.pid}`;
+const configuredTsconfigPath = process.env.FLIMFLAM_NEXT_TSCONFIG_PATH?.trim();
+const appTsconfigPath =
+  configuredTsconfigPath && configuredTsconfigPath.length > 0
+    ? configuredTsconfigPath
+    : `tsconfig.e2e-${appPort}.json`;
 
 const appUrl = process.env.FLIMFLAM_E2E_HOST_URL ?? `http://127.0.0.1:${appPort}`;
 const serverHealthUrl =
@@ -70,6 +78,44 @@ function sleep(ms) {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+}
+
+function ensureE2eTsconfig() {
+  const resolvedTsconfigPath = path.isAbsolute(appTsconfigPath)
+    ? appTsconfigPath
+    : path.join(webCwd, appTsconfigPath);
+  const relativeBaseTsconfigPath = path
+    .relative(path.dirname(resolvedTsconfigPath), path.join(webCwd, "tsconfig.json"))
+    .replaceAll("\\", "/");
+  const extendsPath =
+    relativeBaseTsconfigPath.startsWith(".") || relativeBaseTsconfigPath.startsWith("/")
+      ? relativeBaseTsconfigPath
+      : `./${relativeBaseTsconfigPath}`;
+  const relativeBaseUrl = path.relative(path.dirname(resolvedTsconfigPath), webCwd).replaceAll("\\", "/");
+  const baseUrl =
+    relativeBaseUrl.length === 0
+      ? "."
+      : relativeBaseUrl.startsWith(".") || relativeBaseUrl.startsWith("/")
+        ? relativeBaseUrl
+        : `./${relativeBaseUrl}`;
+  fs.mkdirSync(path.dirname(resolvedTsconfigPath), { recursive: true });
+  fs.writeFileSync(
+    resolvedTsconfigPath,
+    `${JSON.stringify(
+      {
+        extends: extendsPath,
+        compilerOptions: {
+          baseUrl,
+          paths: {
+            "@/*": ["./src/*"],
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
 }
 
 function reclaimStaleRunners() {
@@ -431,34 +477,6 @@ function spawnPnpmService(label, args, envOverrides = {}, options = {}) {
   );
 }
 
-function spawnNextService(label, cwd, command, port, distDir) {
-  const numericPort = Number.parseInt(String(port), 10);
-  if (Number.isFinite(numericPort)) {
-    managedServicePorts.add(numericPort);
-  }
-
-  launchManagedChild(
-    label,
-    () =>
-      spawn(
-        process.execPath,
-        [nextCliPath, command, "--hostname", "127.0.0.1", "--port", String(port)],
-        {
-          cwd,
-          stdio: ["ignore", "inherit", "inherit"],
-          env: {
-            ...process.env,
-            NODE_ENV: useProductionRuntime ? "production" : "development",
-            FLIMFLAM_NEXT_DIST_DIR: distDir,
-          },
-          shell: false,
-        },
-      ),
-    useProductionRuntime ? 0 : 3,
-    { daemonizedPort: Number.isFinite(numericPort) ? numericPort : null },
-  );
-}
-
 async function removeDirWithRetries(nextDir, maxAttempts = isWin ? 10 : 5) {
   let lastError = null;
 
@@ -684,6 +702,7 @@ async function prebuildIfNeeded() {
     FLIMFLAM_SKIP_NEXT_CLEAN: process.env.FLIMFLAM_SKIP_NEXT_CLEAN ?? "0",
     FLIMFLAM_E2E: process.env.FLIMFLAM_E2E ?? "1",
     NEXT_PUBLIC_FLIMFLAM_E2E: process.env.NEXT_PUBLIC_FLIMFLAM_E2E ?? "1",
+    FLIMFLAM_NEXT_TSCONFIG_PATH: appTsconfigPath,
   };
 
   runPnpmStep(
@@ -747,6 +766,7 @@ function startApp() {
       FLIMFLAM_DISABLE_AI: process.env.FLIMFLAM_DISABLE_AI ?? "1",
       FLIMFLAM_E2E_RUNTIME: runtimeMode,
       FLIMFLAM_NEXT_DIST_DIR: appDistDir,
+      FLIMFLAM_NEXT_TSCONFIG_PATH: appTsconfigPath,
     },
     {
       daemonizedPort: Number.isFinite(appPortNumber) ? appPortNumber : null,
@@ -788,6 +808,7 @@ async function main() {
     );
   }
   await cleanNextArtifacts();
+  ensureE2eTsconfig();
 
   if (!(await ensureRequiredPortsAvailable())) {
     throw new Error("required ports unavailable before startup");

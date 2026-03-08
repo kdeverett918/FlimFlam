@@ -52,6 +52,9 @@ export function AnswerRevealSequence({
 
   const tier = getCelebrationTier(clueResult.value);
 
+  // Check for speed bonuses
+  const hasSpeedBonus = clueResult.results.some((r) => r.speedBonus && r.speedBonus > 0);
+
   useEffect(() => {
     if (isReduced || !containerRef.current) return;
 
@@ -71,18 +74,43 @@ export function AnswerRevealSequence({
       0.4,
     );
 
-    // 800ms: Correct answer card flips in
+    // 800ms: Drumroll moment - "The answer is..." with pulsing
     tl.fromTo(
-      q('[data-anim="answer"]'),
-      { opacity: 0, scale: 0.8, rotateX: -15 },
-      { opacity: 1, scale: 1, rotateX: 0, duration: 0.4, ease: "back.out(1.4)" },
+      q('[data-anim="drumroll"]'),
+      { opacity: 0, scale: 0.8 },
+      { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" },
       0.8,
     );
+    tl.call(() => sounds.gameDrumroll(), [], 0.8);
 
-    // Sound at answer reveal
-    tl.call(() => sounds.cardFlip(), [], 0.8);
+    // Pulsing effect
+    tl.to(
+      q('[data-anim="drumroll"]'),
+      { scale: 1.08, duration: 0.3, repeat: 3, yoyo: true, ease: "power1.inOut" },
+      1.0,
+    );
 
-    // 1200ms: Confetti or shake
+    // Tempo ticks
+    tl.call(() => sounds.tick(), [], 1.0);
+    tl.call(() => sounds.tick(), [], 1.25);
+    tl.call(() => sounds.tick(), [], 1.45);
+    tl.call(() => sounds.tick(), [], 1.6);
+    tl.call(() => sounds.tick(), [], 1.72);
+
+    // Hide drumroll
+    tl.to(q('[data-anim="drumroll"]'), { opacity: 0, duration: 0.2 }, 1.85);
+
+    // 2.0s: Correct answer card flips in
+    tl.fromTo(
+      q('[data-anim="answer"]'),
+      { opacity: 0, scale: 0.8, rotateX: -90 },
+      { opacity: 1, scale: 1, rotateX: 0, duration: 0.5, ease: "back.out(1.4)" },
+      2.0,
+    );
+
+    tl.call(() => sounds.cardFlip(), [], 2.0);
+
+    // 2.5s: Verdict flash + confetti or shake
     if (anyCorrect) {
       tl.call(
         () => {
@@ -90,36 +118,55 @@ export function AnswerRevealSequence({
           sounds.correct();
         },
         [],
-        1.2,
+        2.5,
+      );
+      // Green flash
+      tl.fromTo(
+        q('[data-anim="verdict-flash"]'),
+        { opacity: 0.5 },
+        { opacity: 0, duration: 0.4 },
+        2.5,
       );
     } else {
       tl.fromTo(
         q('[data-anim="answer"]'),
         { x: 0 },
-        {
-          x: 8,
-          duration: 0.08,
-          repeat: 5,
-          yoyo: true,
-          ease: "power1.inOut",
-        },
-        1.2,
+        { x: 10, duration: 0.08, repeat: 5, yoyo: true, ease: "power1.inOut" },
+        2.5,
       );
-      tl.call(() => sounds.strike(), [], 1.2);
+      tl.call(() => sounds.strike(), [], 2.5);
+      // Red flash
+      tl.fromTo(
+        q('[data-anim="verdict-flash-wrong"]'),
+        { opacity: 0.4 },
+        { opacity: 0, duration: 0.4 },
+        2.5,
+      );
     }
 
-    // 1600ms+: Player results stagger in
+    // 3.0s: Speed bonus badge pop-in
+    if (hasSpeedBonus) {
+      tl.fromTo(
+        q('[data-anim="speed-bonus"]'),
+        { opacity: 0, scale: 0, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: "back.out(2)" },
+        3.0,
+      );
+      tl.call(() => sounds.speedBonus(), [], 3.0);
+    }
+
+    // 3.2s+: Player results stagger in
     tl.fromTo(
       q('[data-anim="result"]'),
       { opacity: 0, y: 20 },
       { opacity: 1, y: 0, duration: 0.3, stagger: 0.3 },
-      1.6,
+      3.2,
     );
 
     return () => {
       tl.kill();
     };
-  }, [isReduced, anyCorrect]);
+  }, [isReduced, anyCorrect, hasSpeedBonus]);
 
   return (
     <div
@@ -130,6 +177,16 @@ export function AnswerRevealSequence({
       <div
         data-anim="dim"
         className={`absolute inset-0 pointer-events-none ${isReduced ? "bg-black/30" : "bg-black/0"}`}
+      />
+
+      {/* Verdict flash overlays */}
+      <div
+        data-anim="verdict-flash"
+        className="absolute inset-0 pointer-events-none bg-success/20 opacity-0"
+      />
+      <div
+        data-anim="verdict-flash-wrong"
+        className="absolute inset-0 pointer-events-none bg-destructive/20 opacity-0"
       />
 
       {/* Power Play badge */}
@@ -151,10 +208,18 @@ export function AnswerRevealSequence({
         </GlassPanel>
       </div>
 
+      {/* Drumroll moment */}
+      <div data-anim="drumroll" className={isReduced ? "hidden" : "opacity-0"}>
+        <span className="font-display text-[clamp(28px,3.5vw,40px)] font-bold text-accent-brainboard animate-pulse">
+          The answer is...
+        </span>
+      </div>
+
       {/* Correct answer */}
       <div
         data-anim="answer"
         className={`flex flex-col items-center gap-3 ${isReduced ? "" : "opacity-0 scale-[0.8]"}`}
+        style={{ perspective: "800px" }}
       >
         <span className="font-display text-[clamp(20px,2vw,28px)] text-text-muted uppercase tracking-wider">
           Correct Answer
@@ -163,6 +228,18 @@ export function AnswerRevealSequence({
           {clueResult.correctAnswer}
         </span>
       </div>
+
+      {/* Speed bonus badge */}
+      {hasSpeedBonus && (
+        <div data-anim="speed-bonus" className={isReduced ? "" : "opacity-0"}>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-4 py-2 font-display text-sm font-bold text-amber-400 uppercase tracking-wider"
+            style={{ boxShadow: "0 0 16px oklch(0.82 0.18 85 / 0.3)" }}
+          >
+            +SPEED BONUS
+          </span>
+        </div>
+      )}
 
       {/* Correct count summary */}
       <div data-anim="result" className={isReduced ? "" : "opacity-0"}>
@@ -200,6 +277,11 @@ export function AnswerRevealSequence({
             >
               {r.answer || "(no answer)"}
             </span>
+            {r.speedBonus && r.speedBonus > 0 && (
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-400">
+                +{r.speedBonus} speed
+              </span>
+            )}
             {r.delta !== 0 && (
               <AnimatedCounter
                 value={r.delta}

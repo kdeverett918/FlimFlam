@@ -36,6 +36,7 @@ const PHASE_REVEAL_DELAY_MS = 3_000;
 const ANSWER_REVEAL_DELAY_MS = 5_000;
 const ROUND_RESULT_DELAY_MS = 5_000;
 const LIGHTNING_REVEAL_DELAY_MS = 8_000;
+const LIGHTNING_INPUT_ARM_DELAY_MS = 1_250;
 const SURVEY_SMASH_E2E_OPENING_MIN_MS = 3_000;
 const SURVEY_SMASH_E2E_INTERACTION_MIN_MS = 4_000;
 const SURVEY_SMASH_E2E_REVEAL_MIN_MS = 1_500;
@@ -135,6 +136,7 @@ interface SurveySmashInternalState {
   lightningCurrentIndex: number;
   lightningAnswers: FastMoneyAnswer[];
   lightningTotalPoints: number;
+  lightningAcceptsAnswersAt: number;
 
   // Track all player session IDs (excluding host)
   allPlayerIds: string[];
@@ -375,6 +377,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
       lightningCurrentIndex: 0,
       lightningAnswers: [],
       lightningTotalPoints: 0,
+      lightningAcceptsAnswersAt: 0,
       allPlayerIds: [],
     };
   }
@@ -551,6 +554,18 @@ class SurveySmashPlugin extends BaseGamePlugin {
       controllingTeamId: this.gs.controllingTeamId,
       teams: this.gs.teams.map((t) => ({ id: t.id, members: t.members, score: t.score })),
     });
+
+    if (this.gs.phase === "lightning-round" && client.sessionId === this.gs.lightningPlayerId) {
+      const currentLightningQuestion = this.gs.lightningQuestions[this.gs.lightningCurrentIndex];
+      if (currentLightningQuestion) {
+        this._sendPrivateToPlayer(room, client.sessionId, {
+          action: "lightning-question",
+          question: currentLightningQuestion.question,
+          questionIndex: this.gs.lightningCurrentIndex,
+          totalQuestions: this.gs.lightningQuestions.length,
+        });
+      }
+    }
   }
 
   isGameOver(_state: Schema): boolean {
@@ -577,7 +592,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     room.broadcast("game-data", buildHostData(this.gs));
   }
 
-  private _sendPrivateData(room: Room, client: Client, payload: Record<string, unknown>): void {
+  private _sendPrivateData(_room: Room, client: Client, payload: Record<string, unknown>): void {
     client.send("private-data", payload);
   }
 
@@ -1387,13 +1402,13 @@ class SurveySmashPlugin extends BaseGamePlugin {
     this.gs.lightningCurrentIndex = 0;
     this.gs.lightningAnswers = [];
     this.gs.lightningTotalPoints = 0;
+    this.gs.lightningAcceptsAnswersAt = 0;
 
     this.gs.phase = "lightning-round";
     this.setPhase(state, "lightning-round");
-    this._broadcastGameData(room);
-    this._refreshPrivateActions(room);
 
-    // Send first question to the player
+    // Bind the first lightning question before fanning shared state so the
+    // assigned player does not miss the initial action window.
     this._sendLightningQuestion(room);
   }
 
@@ -1402,6 +1417,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     if (!q) return;
 
     this.gs.currentSurvey = q;
+    this.gs.lightningAcceptsAnswersAt = Date.now() + LIGHTNING_INPUT_ARM_DELAY_MS;
 
     this._broadcastGameData(room);
     this._refreshPrivateActions(room);
@@ -1427,6 +1443,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
 
   private _handleLightningAnswer(room: Room, _state: Schema, client: Client, data: unknown): void {
     if (client.sessionId !== this.gs.lightningPlayerId) return;
+    if (Date.now() < this.gs.lightningAcceptsAnswersAt) return;
 
     const content =
       typeof (data as Record<string, unknown>)?.content === "string"
@@ -1565,7 +1582,9 @@ class SurveySmashPlugin extends BaseGamePlugin {
           this._goToRoundResult(room, state);
           break;
         case "lightning-round":
-          this._finishLightning(room);
+          if (Date.now() >= this.gs.lightningAcceptsAnswersAt) {
+            this._finishLightning(room);
+          }
           break;
         case "round-result":
           if (this.gs.round >= this.gs.totalRounds) {

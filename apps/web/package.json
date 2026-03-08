@@ -6,7 +6,7 @@
     "dev": "next dev --port 3000",
     "build": "node ../../scripts/next-with-prod-env.mjs build",
     "start": "node ../../scripts/next-with-prod-env.mjs start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@flimflam/ai": "workspace:*",

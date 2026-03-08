@@ -5,6 +5,7 @@ import {
   closeAllControllers,
   driveSurveySmashToFinalScores,
   driveSurveySmashToLightningRound,
+  finishSurveySmashLightningRound,
   startGame,
 } from "./e2e-helpers";
 
@@ -34,13 +35,14 @@ test.describe("Survey Smash Lightning Round", () => {
     const { controllers } = await startGame(page, browser, {
       game: "Survey Smash",
       complexity: "standard",
-      playerNames: ["Leo", "Ivy", "Max"],
+      playerNames: ["Leo"],
     });
     try {
       const controllerPages = controllers.map((c) => c.controllerPage);
       const lightningResults = page.getByText(/lightning round results/i).first();
 
       await answerSurveySmashLightningQuestion(page, controllerPages, "guess-1");
+      await finishSurveySmashLightningRound(page, controllerPages);
 
       // The round should still resolve into shared results after the quick guess.
       await expect(lightningResults).toBeVisible({
@@ -55,13 +57,14 @@ test.describe("Survey Smash Lightning Round", () => {
     const { controllers } = await startGame(page, browser, {
       game: "Survey Smash",
       complexity: "standard",
-      playerNames: ["Leo", "Ivy", "Max"],
+      playerNames: ["Leo"],
     });
     try {
       const controllerPages = controllers.map((c) => c.controllerPage);
       const lightningResults = page.getByText(/lightning round results/i).first();
 
       await answerSurveySmashLightningQuestion(page, controllerPages, "answer-1");
+      await finishSurveySmashLightningRound(page, controllerPages);
 
       // Lightning results should appear with per-answer breakdown
       await expect(lightningResults).toBeVisible({
@@ -72,9 +75,9 @@ test.describe("Survey Smash Lightning Round", () => {
         5,
         { timeout: 10_000 },
       );
-      await expect(page.locator('[data-testid="survey-smash-lightning-total"]').first()).toBeVisible(
-        { timeout: 10_000 },
-      );
+      await expect(
+        page.locator('[data-testid="survey-smash-lightning-total"]').first(),
+      ).toBeVisible({ timeout: 10_000 });
     } finally {
       await closeAllControllers(controllers);
     }

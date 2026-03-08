@@ -32,7 +32,16 @@ type LuckyLettersHostState = {
 
 async function readSurveySmashHostState(hostPage: Page): Promise<SurveySmashHostState> {
   const stateRoot = hostPage.locator('[data-testid="survey-smash-host-state"]').first();
-  const [phase, round, totalRounds, strikes, currentGuesserIndex, faceOffSubmissions, revealedAnswerCount, lightningQuestionIndex] = await Promise.all([
+  const [
+    phase,
+    round,
+    totalRounds,
+    strikes,
+    currentGuesserIndex,
+    faceOffSubmissions,
+    revealedAnswerCount,
+    lightningQuestionIndex,
+  ] = await Promise.all([
     stateRoot.getAttribute("data-phase").catch(() => null),
     stateRoot.getAttribute("data-round").catch(() => null),
     stateRoot.getAttribute("data-total-rounds").catch(() => null),
@@ -198,6 +207,7 @@ async function advanceSurveySmashToHostState(
   throw new Error(`Timed out advancing Survey Smash host to ${label}`);
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: utility available for E2E tests
 async function clickSurveySmashSkipAndWait(
   hostPage: Page,
   expected: { phase: string; round?: number },
@@ -316,7 +326,7 @@ export async function driveSurveySmashToFaceOff(
 
 export async function driveSurveySmashToStealChance(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 90_000,
   options: { allowPastStealWindow?: boolean } = {},
 ): Promise<boolean> {
@@ -411,7 +421,7 @@ export async function driveSurveySmashToStealChance(
 
 export async function driveSurveySmashToGuessing(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 90_000,
 ): Promise<void> {
   await advanceSurveySmashToHostState(
@@ -666,21 +676,57 @@ export async function submitQuickGuess(controllerPage: Page, answer: string): Pr
         if (previousProgress && progress && progress !== previousProgress) {
           return true;
         }
-        const textboxVisible = await textbox.isVisible().catch(() => false);
-        if (!textboxVisible) {
-          return true;
-        }
-        const inputValue = await textbox.inputValue().catch(() => null);
-        if (inputValue !== "") {
-          return false;
-        }
-        return await inputScope.getByText(/sent/i).first().isVisible().catch(() => false);
+        return false;
       },
       { timeout: 5_000 },
     )
     .toBe(true);
 
   await controllerPage.waitForTimeout(400);
+}
+
+async function waitForSurveySmashLightningAdvance(
+  hostPage: Page,
+  actorPage: Page,
+  previousHostState: SurveySmashHostState,
+  timeoutMs = 8_000,
+): Promise<void> {
+  const controlState = actorPage.locator('[data-testid="survey-smash-control-state"]').first();
+  const [previousActorPhase, previousActorQuestionIndex] = await Promise.all([
+    controlState.getAttribute("data-phase").catch(() => null),
+    controlState.getAttribute("data-lightning-question-index").catch(() => null),
+  ]);
+
+  await expect
+    .poll(
+      async () => {
+        const nextHostState = await readSurveySmashHostState(hostPage);
+        if (nextHostState.phase === "lightning-round-reveal") {
+          return true;
+        }
+        if (nextHostState.phase === "final-scores") {
+          throw new Error("Survey Smash reached final scores before lightning reveal");
+        }
+        if (
+          nextHostState.lightningQuestionIndex !== previousHostState.lightningQuestionIndex ||
+          nextHostState.phase !== previousHostState.phase
+        ) {
+          return true;
+        }
+
+        const [nextActorPhase, nextActorQuestionIndex] = await Promise.all([
+          controlState.getAttribute("data-phase").catch(() => null),
+          controlState.getAttribute("data-lightning-question-index").catch(() => null),
+        ]);
+
+        return (
+          nextActorPhase !== previousActorPhase ||
+          nextActorQuestionIndex !== previousActorQuestionIndex
+        );
+      },
+      { timeout: timeoutMs },
+    )
+    .toBe(true);
 }
 
 export async function submitSurveySmashLightningGuess(
@@ -702,12 +748,14 @@ export async function submitSurveySmashLightningGuess(
     }
   }
 
-  throw (lastError as Error | null) ?? new Error("Timed out submitting Survey Smash lightning guess");
+  throw (
+    (lastError as Error | null) ?? new Error("Timed out submitting Survey Smash lightning guess")
+  );
 }
 
 export async function answerSurveySmashLightningQuestion(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   answer: string,
   timeoutMs = 180_000,
 ): Promise<Page> {
@@ -725,8 +773,10 @@ export async function answerSurveySmashLightningQuestion(
       await actor.bringToFront().catch(() => {});
     }
     if (actor && (await waitForSurveySmashLightningInput(actor, 1_500))) {
+      const previousHostState = await readSurveySmashHostState(hostPage);
       try {
         await submitQuickGuess(actor, answer);
+        await waitForSurveySmashLightningAdvance(hostPage, actor, previousHostState);
         return actor;
       } catch (error) {
         lastError = error;
@@ -817,6 +867,54 @@ export async function answerSurveySmashLightningQuestion(
     (lastError as Error | null) ??
     new Error("Timed out driving and submitting a Survey Smash lightning answer")
   );
+}
+
+export async function finishSurveySmashLightningRound(
+  hostPage: Page,
+  _controllerPages: Page[],
+  timeoutMs = 45_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  const actorPages = [hostPage, ...controllerPages];
+  const lightningResults = hostPage.getByText(/lightning round results/i).first();
+  const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
+  let syntheticAnswerCounter = 0;
+
+  while (Date.now() < deadline) {
+    if (await lightningResults.isVisible().catch(() => false)) {
+      return;
+    }
+
+    const hostState = await readSurveySmashHostState(hostPage);
+    if (hostState.phase === "final-scores") {
+      throw new Error("Survey Smash reached final scores before exposing lightning results");
+    }
+
+    if (hostState.phase === "lightning-round") {
+      const actor = await findVisibleSurveySmashLightningActor(actorPages);
+      if (actor && (await waitForSurveySmashLightningInput(actor, 1_500))) {
+        const previousHostState = await readSurveySmashHostState(hostPage);
+        await submitQuickGuess(actor, `e2e-lightning-finish-${syntheticAnswerCounter++}`);
+        await waitForSurveySmashLightningAdvance(hostPage, actor, previousHostState).catch(
+          () => {},
+        );
+        await hostPage.waitForTimeout(180).catch(() => {});
+        continue;
+      }
+    }
+
+    if (hostState.phase === "lightning-round-reveal") {
+      if (await skipButton.isVisible().catch(() => false)) {
+        await skipButton.click().catch(() => {});
+        await hostPage.waitForTimeout(220).catch(() => {});
+        continue;
+      }
+    }
+
+    await hostPage.waitForTimeout(180).catch(() => {});
+  }
+
+  throw new Error("Timed out waiting for Survey Smash lightning results");
 }
 
 /**
@@ -1309,6 +1407,8 @@ export async function joinPlayerForRoom(
   await waitForHostHealthy(hostPage);
 
   const normalizedCode = code.toUpperCase();
+  const encodedName = encodeURIComponent(name);
+  const encodedColor = encodeURIComponent("#FF3366");
 
   let joined = false;
   let lastError: unknown = null;
@@ -1324,6 +1424,40 @@ export async function joinPlayerForRoom(
       context = await browser.newContext({ viewport: DEFAULT_MOBILE_VIEWPORT });
       controllerPage = await context.newPage();
 
+      const directJoinUrl = `${APP_URL}/room/${normalizedCode}?name=${encodedName}&color=${encodedColor}&e2e_join=${attempt}`;
+      await controllerPage.goto(directJoinUrl, { waitUntil: "domcontentloaded" });
+      const joinedViaDirectRoute = await expect
+        .poll(
+          async () => {
+            const currentUrl = controllerPage?.url() ?? "";
+            if (!new RegExp(`/room/${normalizedCode}(?:[/?#]|$)`, "i").test(currentUrl)) {
+              return false;
+            }
+
+            const hasRetrySurface = await controllerPage
+              ?.getByRole("button", { name: /try again/i })
+              .first()
+              .isVisible()
+              .catch(() => false);
+            if (hasRetrySurface) {
+              return false;
+            }
+
+            return hostPage
+              .getByText(name, { exact: true })
+              .isVisible()
+              .catch(() => false);
+          },
+          { timeout: 12_000 },
+        )
+        .toBe(true)
+        .then(() => true)
+        .catch(() => false);
+      if (joinedViaDirectRoute) {
+        joined = true;
+        break;
+      }
+
       // Navigate to the unified app landing page
       await controllerPage.goto(`${APP_URL}/`, { waitUntil: "domcontentloaded" });
       await expect(controllerPage.getByLabel("Room code character 1")).toBeVisible({
@@ -1332,7 +1466,7 @@ export async function joinPlayerForRoom(
       await expect(controllerPage.getByRole("button", { name: /^join$/i })).toBeVisible({
         timeout: 15_000,
       });
-      const avatarOptions = controllerPage.locator('button[aria-label^="Select color:"]');
+      const avatarOptions = controllerPage.locator('button[aria-label^="Select color"]');
       await expect(avatarOptions.first()).toBeVisible({ timeout: 15_000 });
 
       const codeInputs: Locator[] = [];
@@ -1441,12 +1575,22 @@ export async function selectGameAndStart(
     complexity = "kids",
   }: { gameName: string; complexity?: "kids" | "standard" | "advanced" },
 ): Promise<void> {
-  await hostPage
+  const gameButton = hostPage
     .getByRole("button", { name: new RegExp(`^${escapeRegex(gameName)}$`, "i") })
-    .click();
-  await hostPage
-    .getByRole("button", { name: new RegExp(`^${escapeRegex(complexity)}`, "i") })
-    .click();
+    .first();
+  await expect(gameButton).toBeVisible({ timeout: 30_000 });
+  await gameButton.click();
+
+  const complexityPattern = new RegExp(`^${escapeRegex(complexity)}`, "i");
+  const complexityButton = hostPage.getByRole("button", { name: complexityPattern }).first();
+  const complexityRadio = hostPage.getByRole("radio", { name: complexityPattern }).first();
+
+  if (await complexityButton.isVisible().catch(() => false)) {
+    await complexityButton.click();
+  } else {
+    await expect(complexityRadio).toBeVisible({ timeout: 30_000 });
+    await complexityRadio.click();
+  }
 
   const startButton = hostPage.getByRole("button", { name: /start game/i });
   await expect(startButton).toBeEnabled({ timeout: 30_000 });
@@ -1495,7 +1639,7 @@ export async function forceToFinalScores(hostPage: Page, maxSkips = 300): Promis
 
 export async function driveLuckyLettersToPhase(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   text: string | RegExp,
   controllerNames: string[] = [],
   maxSteps = 600,
@@ -1680,7 +1824,7 @@ async function detectLuckyLettersTurnMode(page: Page): Promise<LuckyLettersTurnM
 
 export async function findLuckyLettersTurnActor(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   controllerNames: string[] = [],
   timeoutMs = 20_000,
 ): Promise<LuckyLettersTurnActor> {
@@ -1738,7 +1882,7 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 export async function findControllerWithButton(
-  controllerPages: Page[],
+  _controllerPages: Page[],
   buttonName: RegExp,
   timeoutMs = 15_000,
 ): Promise<Page> {
@@ -1793,7 +1937,16 @@ async function describeSurveySmashLightningPages(pages: Page[]): Promise<string[
       const main = page.locator("main");
       const controlState = page.locator('[data-testid="survey-smash-control-state"]').first();
       const hostState = page.locator('[data-testid="survey-smash-host-state"]').first();
-      const [phaseAttr, mySessionAttr, isHostAttr, isLightningAttr, lastPrivateActionAttr, roomPhaseAttr, eventPhaseAttr, gameStatePhaseAttr] = await Promise.all([
+      const [
+        phaseAttr,
+        mySessionAttr,
+        isHostAttr,
+        isLightningAttr,
+        lastPrivateActionAttr,
+        roomPhaseAttr,
+        eventPhaseAttr,
+        gameStatePhaseAttr,
+      ] = await Promise.all([
         controlState.getAttribute("data-phase").catch(() => null),
         controlState.getAttribute("data-my-session-id").catch(() => null),
         controlState.getAttribute("data-is-host").catch(() => null),
@@ -1861,7 +2014,7 @@ async function waitForSurveySmashLightningInput(page: Page, timeoutMs = 5_000): 
         return textboxVisible && guessButtonVisible;
       },
       {
-      timeout: timeoutMs,
+        timeout: timeoutMs,
       },
     )
     .toBe(true)
@@ -1912,7 +2065,7 @@ async function findVisibleSurveySmashLightningActor(pages: Page[]): Promise<Page
 }
 
 export async function findBrainBoardSelectorController(
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 20_000,
 ): Promise<Page> {
   const deadline = Date.now() + timeoutMs;
@@ -1934,7 +2087,7 @@ export async function findBrainBoardSelectorController(
  */
 export async function findBrainBoardSelector(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 20_000,
 ): Promise<Page> {
   const allPages = [hostPage, ...controllerPages];
@@ -1953,7 +2106,7 @@ export async function findBrainBoardSelector(
 
 export async function driveBrainBoardToClueSelect(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 60_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -1996,7 +2149,7 @@ export async function driveBrainBoardToClueSelect(
 
 export async function driveBrainBoardToPhase(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   text: string | RegExp,
   maxSteps = 900,
 ): Promise<void> {
@@ -2135,7 +2288,7 @@ export async function driveBrainBoardToPhase(
 
 export async function driveBrainBoardToFinalScores(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 900_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -2292,14 +2445,14 @@ export async function driveBrainBoardToFinalScores(
 
 export async function driveSurveySmashKidsToFinalScores(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
 ): Promise<void> {
   await driveSurveySmashToFinalScores(hostPage, controllerPages);
 }
 
 export async function driveSurveySmashToFinalScores(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 120_000,
 ): Promise<void> {
   const finalScoresRoot = hostPage.locator('[data-testid="final-scores-root"]').first();
@@ -2314,7 +2467,7 @@ export async function driveSurveySmashToFinalScores(
       hostState.phase === "final-scores" ||
       (await finalScoresRoot.isVisible().catch(() => false)) ||
       (await finalScoresHeading.isVisible().catch(() => false))
-      ) {
+    ) {
       return;
     }
 
@@ -2354,7 +2507,7 @@ export async function driveSurveySmashToRoundResult(
 
 export async function driveSurveySmashToLightningRound(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 180_000,
 ): Promise<void> {
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
@@ -2482,7 +2635,7 @@ export async function driveSurveySmashToLightningRound(
 
 export async function driveSurveySmashToLightningQuestion(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   timeoutMs = 180_000,
 ): Promise<Page> {
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
@@ -2630,7 +2783,7 @@ async function submitSurveySmashInput(actorPages: Page[], seed: string): Promise
 
 export async function driveSurveySmashToPhase(
   hostPage: Page,
-  controllerPages: Page[],
+  _controllerPages: Page[],
   text: string | RegExp,
   timeoutMs = 120_000,
 ): Promise<void> {

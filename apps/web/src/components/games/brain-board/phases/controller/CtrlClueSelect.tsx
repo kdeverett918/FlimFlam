@@ -71,6 +71,20 @@ export function CtrlClueSelect({
   // Phone controller: show single interactive board
   return (
     <div className="flex flex-col gap-4 pb-4 pt-4">
+      {!isSelector && (
+        <div className="mx-4 flex justify-center">
+          <GlassPanel data-testid="controller-context-card" className="w-full max-w-md px-4 py-3">
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="font-display text-base uppercase tracking-[0.16em] text-text-primary">
+                Pick In Progress
+              </span>
+              <span className="font-body text-sm text-text-muted">
+                {selectorName ?? "Another player"} is choosing the next clue.
+              </span>
+            </div>
+          </GlassPanel>
+        </div>
+      )}
       <InteractiveBoard
         categories={categories}
         answeredClues={answeredClues}

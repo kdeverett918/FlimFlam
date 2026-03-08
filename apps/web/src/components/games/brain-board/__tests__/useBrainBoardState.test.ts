@@ -41,9 +41,7 @@ describe("bbStandings extraction", () => {
     gsStandings: unknown,
   ): Array<{ sessionId: string; score: number }> {
     const source = boardStateStandings ?? gsStandings;
-    return Array.isArray(source)
-      ? (source as Array<{ sessionId: string; score: number }>)
-      : [];
+    return Array.isArray(source) ? (source as Array<{ sessionId: string; score: number }>) : [];
   }
 
   it("returns boardState standings when present", () => {
