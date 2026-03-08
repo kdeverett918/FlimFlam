@@ -48,14 +48,34 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
     return null;
   }
 
-  const isUrgent = timeLeft < 10_000 && timeLeft > 0;
   const secondsLeft = Math.ceil(timeLeft / 1000);
 
-  // Color transitions: cyan -> amber -> red
+  // 5-phase urgency system
+  const getPhase = () => {
+    if (timeLeft <= 5000 && timeLeft > 0) return "critical" as const;
+    if (progress > 0.6) return "calm" as const;
+    if (progress > 0.4) return "aware" as const;
+    if (progress > 0.2) return "warning" as const;
+    return "danger" as const;
+  };
+
+  const phase = getPhase();
+  const isUrgent = phase === "danger" || phase === "critical";
+  const isCritical = phase === "critical";
+
   const getColor = () => {
-    if (progress > 0.5) return "oklch(0.72 0.16 195)"; // cyan-ish
-    if (progress > 0.2) return "oklch(0.82 0.18 85)"; // amber
-    return "oklch(0.65 0.25 25)"; // red
+    switch (phase) {
+      case "calm":
+        return "oklch(0.72 0.16 195)";
+      case "aware":
+        return "oklch(0.75 0.15 160)";
+      case "warning":
+        return "oklch(0.82 0.18 85)";
+      case "danger":
+        return "oklch(0.65 0.25 25)";
+      case "critical":
+        return "oklch(0.55 0.28 20)";
+    }
   };
 
   const color = getColor();
@@ -70,7 +90,11 @@ export function TimerBar({ timerEndsAt, durationMs }: TimerBarProps) {
       <div
         data-testid="timer-root"
         className={`pointer-events-auto relative mt-2 flex items-center gap-3 rounded-2xl border px-3 py-2 ${
-          isUrgent ? "border-red-500/30" : "border-white/10"
+          isCritical
+            ? "border-red-500/40 animate-timer-shake"
+            : isUrgent
+              ? "border-red-500/30"
+              : "border-white/10"
         }`}
         style={{
           background:

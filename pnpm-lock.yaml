@@ -33,6 +33,9 @@ importers:
       lefthook:
         specifier: ^1.9.4
         version: 1.13.6
+      playwright:
+        specifier: ^1.58.2
+        version: 1.58.2
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -54,12 +57,18 @@ importers:
       '@flimflam/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@gsap/react':
+        specifier: ^2.1.2
+        version: 2.1.2(gsap@3.14.2)(react@19.2.4)
       '@tailwindcss/postcss':
         specifier: ^4.1.4
         version: 4.2.1
       colyseus.js:
         specifier: ^0.15.27
         version: 0.15.28
+      gsap:
+        specifier: ^3.14.2
+        version: 3.14.2
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@19.2.4)
