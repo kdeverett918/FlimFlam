@@ -30,6 +30,7 @@ services:
     buildFilter:
       paths:
         - apps/web/**
+        - packages/ai/**
         - packages/shared/**
         - packages/ui/**
         - package.json
