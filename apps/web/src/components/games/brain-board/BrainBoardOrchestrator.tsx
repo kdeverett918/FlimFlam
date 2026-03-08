@@ -48,6 +48,7 @@ export function BrainBoardOrchestrator({
   privateData,
   gameEvents,
   mySessionId,
+  isHost,
   sendMessage,
   room,
   errorNonce,
@@ -199,7 +200,7 @@ export function BrainBoardOrchestrator({
     }
 
     if (activePhase === "final-scores") {
-      return <HostFinalScores players={players} room={room} />;
+      return <HostFinalScores players={players} room={isHost ? room : null} />;
     }
 
     return (
@@ -296,6 +297,7 @@ export function BrainBoardOrchestrator({
       return (
         <CtrlClueSelect
           isSelector={pd.isSelector === true}
+          isHost={isHost}
           selectorCategories={selectorCategories}
           selectorAnsweredClues={selectorAnsweredClues}
           boardCategories={boardCategories}
@@ -349,7 +351,14 @@ export function BrainBoardOrchestrator({
     }
 
     if (activePhase === "power-play-answer") {
-      const clueQ = typeof pd.clueQuestion === "string" ? pd.clueQuestion : "";
+      const clueQ =
+        typeof pd.clueQuestion === "string"
+          ? pd.clueQuestion
+          : typeof boardState?.currentClueQuestion === "string"
+            ? boardState.currentClueQuestion
+            : typeof gs.currentClueQuestion === "string"
+              ? (gs.currentClueQuestion as string)
+              : "";
       return (
         <CtrlPowerPlayAnswer
           isPowerPlayPlayer={pd.isPowerPlayPlayer === true}
@@ -388,7 +397,14 @@ export function BrainBoardOrchestrator({
 
     if (activePhase === "all-in-wager") {
       const playerScore = typeof pd.score === "number" ? pd.score : 0;
-      const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
+      const allInCat =
+        typeof pd.allInCategory === "string"
+          ? pd.allInCategory
+          : typeof boardState?.allInCategory === "string"
+            ? boardState.allInCategory
+            : typeof gs.allInCategory === "string"
+              ? (gs.allInCategory as string)
+              : "";
       return (
         <CtrlAllInWager
           canWagerFinal={pd.canWagerFinal === true}
@@ -400,8 +416,22 @@ export function BrainBoardOrchestrator({
     }
 
     if (activePhase === "all-in-answer") {
-      const allInCat = typeof pd.allInCategory === "string" ? pd.allInCategory : "";
-      const allInQ = typeof gs.allInQuestion === "string" ? gs.allInQuestion : "";
+      const allInCat =
+        typeof pd.allInCategory === "string"
+          ? pd.allInCategory
+          : typeof boardState?.allInCategory === "string"
+            ? boardState.allInCategory
+            : typeof gs.allInCategory === "string"
+              ? (gs.allInCategory as string)
+              : "";
+      const allInQ =
+        typeof pd.allInQuestion === "string"
+          ? pd.allInQuestion
+          : typeof boardState?.allInQuestion === "string"
+            ? boardState.allInQuestion
+            : typeof gs.allInQuestion === "string"
+              ? (gs.allInQuestion as string)
+              : "";
       return (
         <CtrlAllInAnswer
           canAnswerFinal={pd.canAnswerFinal === true}
