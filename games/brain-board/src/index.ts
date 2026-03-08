@@ -36,6 +36,8 @@ const CLUE_RESULT_DELAY_MS = 6000;
 const ROUND_TRANSITION_DELAY_MS = 4000;
 const ALL_IN_CATEGORY_DELAY_MS = 5000;
 const ALL_IN_REVEAL_DELAY_MS = 8000;
+const ALL_IN_REVEAL_STEP_MS = 3000;
+const ALL_IN_REVEAL_SETTLE_MS = 2000;
 const BRAIN_BOARD_E2E_CLUE_RESULT_MIN_MS = 5000;
 const BRAIN_BOARD_E2E_ALL_IN_REVEAL_MIN_MS = 6000;
 
@@ -477,6 +479,17 @@ export function judgeAnswer(playerAnswer: string, correctAnswer: string): boolea
   }
 
   return false;
+}
+
+export function computeAllInRevealDurationMs(resultCount: number): number {
+  const safeCount = Number.isFinite(resultCount) ? Math.max(0, Math.floor(resultCount)) : 0;
+  if (safeCount <= 1) {
+    return ALL_IN_REVEAL_DELAY_MS;
+  }
+  return Math.max(
+    ALL_IN_REVEAL_DELAY_MS,
+    safeCount * ALL_IN_REVEAL_STEP_MS + ALL_IN_REVEAL_SETTLE_MS,
+  );
 }
 
 interface BrainBoardPublicGameStateInput {
@@ -1654,7 +1667,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
       this.scheduleDelayed(
         room,
-        ALL_IN_REVEAL_DELAY_MS,
+        computeAllInRevealDurationMs(results.length),
         () => {
           this.goToFinalScores(room, state);
         },
@@ -2278,10 +2291,16 @@ class BrainBoardPlugin extends BaseGamePlugin {
       showCategories && this.board ? this.board.categories.map((cat) => cat.name) : undefined;
     const answeredClues = isSelector ? [...this.revealedClues] : undefined;
 
-    // Send the clue question to ALL players during answering phase
-    const clueQuestion = this.phase === "answering" ? (this.currentClue?.question ?? null) : null;
-    const clueCategory = this.phase === "answering" ? this.currentCategoryName : null;
-    const clueValue = this.phase === "answering" ? (this.currentClue?.value ?? null) : null;
+    const showLiveClueContext = this.phase === "answering" || this.phase === "power-play-answer";
+    const showAllInContext = this.phase === "all-in-wager" || this.phase === "all-in-answer";
+
+    // Send the active clue context to all players during shared-answer and Power Play turns.
+    const clueQuestion = showLiveClueContext ? (this.currentClue?.question ?? null) : null;
+    const clueCategory = showLiveClueContext ? this.currentCategoryName : null;
+    const clueValue = showLiveClueContext ? (this.currentClue?.value ?? null) : null;
+    const allInCategory = showAllInContext ? (this.finalRound?.category ?? null) : null;
+    const allInQuestion =
+      this.phase === "all-in-answer" ? (this.finalRound?.clue.question ?? null) : null;
 
     // Compute max wager for Power Play: max of score and highest clue value for current round
     const highestClueValue = this.currentRound === 2 ? 2000 : 1000;
@@ -2302,6 +2321,8 @@ class BrainBoardPlugin extends BaseGamePlugin {
       clueQuestion,
       clueCategory,
       clueValue,
+      allInCategory,
+      allInQuestion,
     });
   }
 
