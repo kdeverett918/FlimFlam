@@ -1,7 +1,6 @@
 import type { MapSchema, Schema } from "@colyseus/schema";
 import {
-  AI_PROXY_SCHEMA_KEYS,
-  aiRequestWithRenderFallback,
+  aiRequest,
   buildAnswerJudgePrompt,
   buildBrainBoardGenerationPrompt,
   buildBrainBoardTopicChatPrompt,
@@ -166,13 +165,9 @@ function normalizeTopicAnchorText(raw: string): string {
 }
 
 function normalizeTopicAnchorToken(token: string): string {
-  if (token.endsWith("ies") && token.length > 4) {
-    if (token.endsWith("ovies")) {
-      return token.slice(0, -1);
-    }
-    return `${token.slice(0, -3)}y`;
-  }
-  if (token.endsWith("s") && token.length > 4) {
+  // Simple plural normalization: just strip trailing "s".
+  // Avoids the "ies→y" rule which mishandles words like "movies" → "movy".
+  if (token.endsWith("s") && token.length > 3) {
     return token.slice(0, -1);
   }
   return token;
@@ -343,6 +338,9 @@ interface ClueResultEntry {
   delta: number;
   judgedBy?: AnswerJudgeSource;
   judgeExplanation?: string;
+  speedBonus?: number;
+  responseTimeMs?: number;
+  streak?: number;
 }
 
 interface AllInRevealResultEntry {
@@ -412,6 +410,45 @@ export function validateAllInWager(wager: number, playerScore: number): boolean 
   if (playerScore <= 0) return false;
   if (!Number.isFinite(wager) || wager < 0) return false;
   return wager <= playerScore;
+}
+
+// ─── Streak & Speed Bonus Helpers (exported for testing) ──────────────────
+
+/**
+ * Update a player's streak. Returns the new streak value.
+ */
+export function updateStreak(
+  streaks: Map<string, number>,
+  maxStreaks: Map<string, number>,
+  sessionId: string,
+  isCorrect: boolean,
+): number {
+  if (isCorrect) {
+    const current = (streaks.get(sessionId) ?? 0) + 1;
+    streaks.set(sessionId, current);
+    const max = maxStreaks.get(sessionId) ?? 0;
+    if (current > max) maxStreaks.set(sessionId, current);
+    return current;
+  }
+  streaks.set(sessionId, 0);
+  return 0;
+}
+
+/**
+ * Compute speed bonus for a correct answer.
+ * Returns bonus points (0 if not eligible).
+ */
+export function computeSpeedBonus(
+  isCorrect: boolean,
+  responseTimeMs: number | undefined,
+  timerDurationMs: number,
+  clueValue: number,
+): number {
+  if (!isCorrect || responseTimeMs === undefined || timerDurationMs <= 0) return 0;
+  if (responseTimeMs < timerDurationMs * 0.3) {
+    return Math.round(clueValue * 0.2);
+  }
+  return 0;
 }
 
 const LEADING_ARTICLES = /^(a|an|the)\s+/i;
@@ -566,6 +603,15 @@ class BrainBoardPlugin extends BaseGamePlugin {
   // All-answer tracking: every player submits, then we resolve
   private playerAnswers: Map<string, string> = new Map();
 
+  // Streak tracking
+  private playerStreaks: Map<string, number> = new Map();
+  private playerMaxStreaks: Map<string, number> = new Map();
+
+  // Answer timing for speed bonus
+  private answerPhaseStartedAt = 0;
+  private answerPhaseTimerDurationMs = 0;
+  private playerAnsweredAt: Map<string, number> = new Map();
+
   // Power Play wager stored separately so we don't mutate clue objects
   private powerPlayWager = 5;
   private lastClueResult: {
@@ -638,6 +684,10 @@ class BrainBoardPlugin extends BaseGamePlugin {
     this._personalizationMessage = null;
     this._personalizationTopics = [];
     this._answerJudgeCache.clear();
+    this.playerStreaks.clear();
+    this.playerMaxStreaks.clear();
+    this.playerAnsweredAt.clear();
+    this.answerPhaseStartedAt = 0;
 
     // Build player order from connected players
     players.forEach((player: unknown, key: string) => {
@@ -1042,6 +1092,9 @@ class BrainBoardPlugin extends BaseGamePlugin {
   private goToAnswering(room: Room, state: Schema): void {
     this.phase = "answering";
     this.playerAnswers.clear();
+    this.playerAnsweredAt.clear();
+    this.answerPhaseStartedAt = Date.now();
+    this.answerPhaseTimerDurationMs = this.getPhaseTimer("bb-answer", this.complexity);
     this.resolvingAllAnswers = false;
 
     this.setPhase(state, "answering");
@@ -1068,6 +1121,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     const answer = typeof data.answer === "string" ? data.answer : "";
     this.playerAnswers.set(client.sessionId, answer);
+    this.playerAnsweredAt.set(client.sessionId, Date.now());
 
     // Mark as submitted on schema
     this.markSubmitted(state, client.sessionId);
@@ -1143,13 +1197,38 @@ class BrainBoardPlugin extends BaseGamePlugin {
           this.adjustScore(state, sessionId, delta);
         }
 
+        // Streak tracking (skip for forced-blank disconnected players)
+        if (answer.length > 0) {
+          updateStreak(this.playerStreaks, this.playerMaxStreaks, sessionId, isCorrect);
+        }
+
+        // Speed bonus: 20% bonus if answered in < 30% of timer duration (not in kids mode)
+        let speedBonus = 0;
+        const answeredAt = this.playerAnsweredAt.get(sessionId);
+        const responseTimeMs =
+          answeredAt && this.answerPhaseStartedAt > 0
+            ? answeredAt - this.answerPhaseStartedAt
+            : undefined;
+        if (isCorrect && responseTimeMs !== undefined && this.complexity !== "kids") {
+          const timerDuration = this.answerPhaseTimerDurationMs;
+          if (timerDuration > 0 && responseTimeMs < timerDuration * 0.3) {
+            speedBonus = Math.round(value * 0.2);
+            if (speedBonus > 0) {
+              this.adjustScore(state, sessionId, speedBonus);
+            }
+          }
+        }
+
         results.push({
           sessionId,
           answer,
           correct: isCorrect,
-          delta,
+          delta: delta + speedBonus,
           judgedBy: judged.judgedBy,
           ...(judged.judgeExplanation ? { judgeExplanation: judged.judgeExplanation } : {}),
+          speedBonus,
+          responseTimeMs,
+          streak: this.playerStreaks.get(sessionId) ?? 0,
         });
       }
 
@@ -1310,6 +1389,7 @@ class BrainBoardPlugin extends BaseGamePlugin {
       value: this.currentClue?.value ?? 0,
       category: this.currentCategoryName,
       isPowerPlay: this.isPowerPlay,
+      streaks: Object.fromEntries(this.playerStreaks),
     });
 
     this.broadcastGameState(room, state);
@@ -1626,19 +1706,12 @@ class BrainBoardPlugin extends BaseGamePlugin {
       const { system, user } = buildAnswerJudgePrompt(clueAnswer, correctQuestion, answer);
       const response = await this._runAiJudgeWithLimit(() =>
         enqueueAIRequest(room.roomId, () =>
-          aiRequestWithRenderFallback(
-            room.roomId,
-            AI_PROXY_SCHEMA_KEYS.answerJudge,
-            system,
-            user,
-            AnswerJudgeSchema,
-            {
-              model: BRAIN_BOARD_JUDGE_MODEL,
-              timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
-              retries: 0,
-              maxTokens: 180,
-            },
-          ),
+          aiRequest(system, user, AnswerJudgeSchema, {
+            model: BRAIN_BOARD_JUDGE_MODEL,
+            timeoutMs: BRAIN_BOARD_JUDGE_TIMEOUT_MS,
+            retries: 0,
+            maxTokens: 180,
+          }),
         ),
       );
       const judged = {
@@ -1727,19 +1800,12 @@ class BrainBoardPlugin extends BaseGamePlugin {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequestWithRenderFallback(
-          room.roomId,
-          AI_PROXY_SCHEMA_KEYS.brainBoardGeneratedBoard,
-          prompt.system,
-          userPrompt,
-          BrainBoardGeneratedBoardSchema,
-          {
-            model: BRAIN_BOARD_GENERATION_MODEL,
-            maxTokens: 4096,
-            timeoutMs: 30000,
-            retries: 1,
-          },
-        ),
+        aiRequest(prompt.system, userPrompt, BrainBoardGeneratedBoardSchema, {
+          model: BRAIN_BOARD_GENERATION_MODEL,
+          maxTokens: 4096,
+          timeoutMs: 30000,
+          retries: 1,
+        }),
       );
 
       const aiBoard = this.mapGeneratedBoard(result.parsed);
@@ -2024,19 +2090,12 @@ class BrainBoardPlugin extends BaseGamePlugin {
       );
 
       const result = await enqueueAIRequest(room.roomId, () =>
-        aiRequestWithRenderFallback(
-          room.roomId,
-          AI_PROXY_SCHEMA_KEYS.brainBoardChat,
-          prompt.system,
-          prompt.user,
-          BrainBoardChatResponseSchema,
-          {
-            model: BRAIN_BOARD_CHAT_MODEL,
-            maxTokens: 256,
-            timeoutMs: 15000,
-            retries: 1,
-          },
-        ),
+        aiRequest(prompt.system, prompt.user, BrainBoardChatResponseSchema, {
+          model: BRAIN_BOARD_CHAT_MODEL,
+          maxTokens: 256,
+          timeoutMs: 15000,
+          retries: 1,
+        }),
       );
 
       const cleanText = result.parsed.response.trim();

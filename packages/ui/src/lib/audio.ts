@@ -121,6 +121,57 @@ const SYNTH_EFFECTS: Record<string, SynthStep[]> = {
     { frequency: 1560, duration: 0.07, wave: "triangle", gain: 0.09 },
     { frequency: 2080, duration: 0.08, wave: "triangle", gain: 0.08 },
   ],
+  // Brain Board premium moments
+  "game:dim": [
+    { frequency: 80, duration: 0.3, wave: "sine", gain: 0.15 },
+    { frequency: 60, duration: 0.2, wave: "sine", gain: 0.1 },
+  ],
+  "brain.board.cardflip": [
+    { frequency: 1200, duration: 0.03, wave: "square", gain: 0.08 },
+    { frequency: 800, duration: 0.04, wave: "triangle", gain: 0.1 },
+  ],
+  "game:near-miss": [
+    { frequency: 520, slideTo: 320, duration: 0.15, wave: "triangle", gain: 0.12 },
+    { frequency: 280, slideTo: 180, duration: 0.12, wave: "sine", gain: 0.1 },
+  ],
+  "celebration:golden-rain": [
+    { frequency: 1200, duration: 0.06, wave: "triangle", gain: 0.08 },
+    { frequency: 1600, duration: 0.07, wave: "triangle", gain: 0.07 },
+    { frequency: 2000, duration: 0.08, wave: "triangle", gain: 0.06 },
+    { frequency: 2400, duration: 0.1, wave: "sine", gain: 0.05 },
+  ],
+  "brain.board.powerplay": [
+    { frequency: 330, duration: 0.1, wave: "triangle", gain: 0.12 },
+    { frequency: 440, duration: 0.1, wave: "triangle", gain: 0.11 },
+    { frequency: 550, duration: 0.12, wave: "triangle", gain: 0.1 },
+    { frequency: 660, duration: 0.14, wave: "triangle", gain: 0.09 },
+  ],
+  "brain.board.allin": [
+    { frequency: 220, duration: 0.12, wave: "sawtooth", gain: 0.1 },
+    { frequency: 330, duration: 0.12, wave: "sawtooth", gain: 0.1 },
+    { frequency: 440, slideTo: 660, duration: 0.2, wave: "sawtooth", gain: 0.12 },
+  ],
+  "game:speed-bonus": [
+    { frequency: 880, duration: 0.04, wave: "square", gain: 0.1 },
+    { frequency: 1320, duration: 0.05, wave: "square", gain: 0.09 },
+    { frequency: 1760, duration: 0.06, wave: "square", gain: 0.08 },
+  ],
+  "game:streak.2": [
+    { frequency: 660, duration: 0.08, wave: "triangle", gain: 0.1 },
+    { frequency: 880, duration: 0.1, wave: "triangle", gain: 0.09 },
+  ],
+  "game:streak.3": [
+    { frequency: 660, duration: 0.06, wave: "triangle", gain: 0.1 },
+    { frequency: 880, duration: 0.08, wave: "triangle", gain: 0.1 },
+    { frequency: 1100, duration: 0.1, wave: "triangle", gain: 0.09 },
+  ],
+  "game:streak.5": [
+    { frequency: 660, duration: 0.05, wave: "triangle", gain: 0.11 },
+    { frequency: 880, duration: 0.06, wave: "triangle", gain: 0.1 },
+    { frequency: 1100, duration: 0.07, wave: "triangle", gain: 0.1 },
+    { frequency: 1320, duration: 0.08, wave: "triangle", gain: 0.09 },
+    { frequency: 1540, duration: 0.1, wave: "triangle", gain: 0.08 },
+  ],
 };
 
 const MUSIC_THEMES: Record<MusicTheme, MusicThemeConfig> = {
@@ -757,4 +808,11 @@ export const sounds = {
   strike: () => soundManager.playSfx("game:strike"),
   win: () => soundManager.playSfx("celebration:win"),
   confetti: () => soundManager.playSfx("celebration:confetti"),
+  dim: () => soundManager.playSfx("game:dim"),
+  cardFlip: () => soundManager.playSfx("brain.board.cardflip"),
+  nearMiss: () => soundManager.playSfx("game:near-miss"),
+  goldenRain: () => soundManager.playSfx("celebration:golden-rain"),
+  powerPlay: () => soundManager.playSfx("brain.board.powerplay"),
+  allIn: () => soundManager.playSfx("brain.board.allin"),
+  speedBonus: () => soundManager.playSfx("game:speed-bonus"),
 };

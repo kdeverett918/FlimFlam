@@ -11,7 +11,7 @@ vi.mock("@flimflam/ai", async () => {
   const actual = await vi.importActual<typeof import("@flimflam/ai")>("@flimflam/ai");
   return {
     ...actual,
-    aiRequestWithRenderFallback: aiRequestMock,
+    aiRequest: aiRequestMock,
     enqueueAIRequest: enqueueAIRequestMock,
   };
 });

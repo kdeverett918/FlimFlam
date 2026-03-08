@@ -59,6 +59,14 @@ export type { GlassPanelProps } from "./components/glass-panel";
 export { ConfettiBurst } from "./components/confetti-burst";
 export type { ConfettiBurstProps } from "./components/confetti-burst";
 
+export {
+  fireParticleEffect,
+  getCelebrationTier,
+  celebrateCorrectAnswer,
+  ParticleEffect,
+} from "./components/particle-effects";
+export type { ParticlePreset, FireParticleOptions } from "./components/particle-effects";
+
 export { ScoreReveal } from "./components/score-reveal";
 export type { ScoreRevealProps } from "./components/score-reveal";
 
@@ -87,10 +95,18 @@ export type { AnimatedCounterProps } from "./components/animated-counter";
 // Audio
 export { emitAudioEvent, emitMotionEvent, soundManager, sounds } from "./lib/audio";
 export type { PlaySfxOptions, SoundCategory, SoundConfig } from "./lib/audio";
-export { ANIMATION_DURATIONS, ANIMATION_EASINGS, ANIMATION_STAGGERS } from "./lib/animation";
+export {
+  ANIMATION_DURATIONS,
+  ANIMATION_EASINGS,
+  ANIMATION_STAGGERS,
+  PARTICLE_LIMITS,
+} from "./lib/animation";
+export { createScopedTimeline, withReducedMotion } from "./lib/gsap-utils";
 
 // Hooks
 export { useReducedMotion } from "./hooks/useReducedMotion";
+export { useMotionFidelity } from "./hooks/useMotionFidelity";
+export type { MotionFidelity, MotionFidelityResult } from "./hooks/useMotionFidelity";
 export { useAudio } from "./hooks/useAudio";
 export type { UseAudioReturn } from "./hooks/useAudio";
 

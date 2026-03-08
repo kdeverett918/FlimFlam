@@ -1,7 +1,6 @@
 "use client";
 
-import type { PlayerData } from "@flimflam/shared";
-import { AVATAR_COLORS, generateAwards } from "@flimflam/shared";
+import { generateAwards } from "@flimflam/shared";
 import {
   ANIMATION_DURATIONS,
   ANIMATION_EASINGS,
@@ -9,12 +8,10 @@ import {
   AnimatedCounter,
   ConfettiBurst,
   GlassPanel,
-  sounds,
   useReducedMotion,
 } from "@flimflam/ui";
 import { Zap } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { FinalScoresLayout, buildScores } from "@/components/game/FinalScoresLayout";
 import { GameBoard } from "@/components/game/GameBoard";
@@ -31,150 +28,28 @@ import { NumberInput } from "@/components/controls/NumberInput";
 import { TextInput } from "@/components/controls/TextInput";
 import { WaitingScreen } from "@/components/game/WaitingScreen";
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-interface BrainBoardGameProps {
-  phase: string;
-  round: number;
-  totalRounds: number;
-  players: PlayerData[];
-  gamePayload: Record<string, unknown>;
-  privateData: Record<string, unknown> | null;
-  gameEvents: Record<string, Record<string, unknown>>;
-  mySessionId: string | null;
-  isHost: boolean;
-  timerEndTime: number | null;
-  sendMessage: (type: string, data?: Record<string, unknown>) => void;
-  room: {
-    onMessage: (type: string, cb: (data: Record<string, unknown>) => void) => () => void;
-  } | null;
-  errorNonce?: number;
-}
-
-interface BoardCategory {
-  name: string;
-  clues: { value: number }[];
-}
-
-interface Standing {
-  sessionId: string;
-  score: number;
-}
-
-interface ClueResultEntry {
-  sessionId: string;
-  answer: string;
-  correct: boolean;
-  delta: number;
-  judgedBy?: "local" | "ai" | "fallback";
-  judgeExplanation?: string;
-}
-
-interface ClueResultData {
-  correctAnswer: string;
-  question: string;
-  value: number;
-  isPowerPlay: boolean;
-  results: ClueResultEntry[];
-  anyCorrect?: boolean;
-  correctCount?: number;
-  correct?: boolean;
-}
-
-interface FinalRevealResult {
-  sessionId: string;
-  answer: string;
-  correct: boolean;
-  wager: number;
-  delta: number;
-  judgedBy?: "local" | "ai" | "fallback";
-  judgeExplanation?: string;
-}
-
-interface FinalRevealData {
-  correctAnswer: string;
-  question: string;
-  results: FinalRevealResult[];
-}
-
-interface BrainBoardGameState {
-  phase: string;
-  board: BoardCategory[];
-  revealedClues: string[];
-  selectorSessionId: string | null;
-  currentClueValue: number | null;
-  currentClueQuestion: string | null;
-  currentCategoryName: string;
-  isPowerPlay: boolean;
-  standings: Standing[];
-  allInCategory: string | null;
-  allInQuestion: string | null;
-  answeredCount: number;
-  totalPlayerCount: number;
-  currentRound: number;
-  doubleDownValues: boolean;
-  chatMessages?: Array<{
-    id: string;
-    sender: string;
-    senderSessionId: string;
-    message: string;
-    isAI: boolean;
-    timestamp: number;
-  }>;
-  serverTimeOffset?: number;
-  timerEndsAt?: number;
-  submissions?: Record<string, { name: string; submitted: boolean; categories?: string[] }>;
-  clueResult?: ClueResultData | null;
-  allInReveal?: FinalRevealData | null;
-  personalizationStatus?: "pending" | "ai" | "curated";
-  personalizationMessage?: string | null;
-  personalizationTopics?: string[];
-}
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getPlayerName(players: PlayerData[], sessionId: string | null): string {
-  if (!sessionId) return "???";
-  return players.find((p) => p.sessionId === sessionId)?.name ?? "???";
-}
-
-function getPlayerColor(players: PlayerData[], sessionId: string | null): string {
-  if (!sessionId) return AVATAR_COLORS[0] ?? "#FF3366";
-  const player = players.find((p) => p.sessionId === sessionId);
-  if (player?.avatarColor) return player.avatarColor;
-  const idx = players.findIndex((p) => p.sessionId === sessionId);
-  return AVATAR_COLORS[idx >= 0 ? idx % AVATAR_COLORS.length : 0] ?? "#FF3366";
-}
-
-function PlayerAvatar({ name, color, size = 64 }: { name: string; color: string; size?: number }) {
-  return (
-    <div
-      className="flex items-center justify-center rounded-full font-bold text-bg-deep"
-      style={{
-        width: size,
-        height: size,
-        backgroundColor: color,
-        fontSize: size * 0.45,
-        boxShadow: `0 0 12px ${color}40`,
-      }}
-    >
-      {name.charAt(0).toUpperCase()}
-    </div>
-  );
-}
+import { useBrainBoardActions } from "./brain-board/hooks/useBrainBoardActions";
+import { useBrainBoardState } from "./brain-board/hooks/useBrainBoardState";
+import { PlayerAvatar, getPlayerColor, getPlayerName } from "./brain-board/shared/bb-helpers";
+// Extracted types, helpers, and hooks
+import type {
+  BrainBoardGameProps,
+  BrainBoardGameState,
+  ClueResultEntry,
+} from "./brain-board/shared/bb-types";
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export function BrainBoardGame({
   phase,
-  round,
-  totalRounds,
+  round: _round,
+  totalRounds: _totalRounds,
   players,
   privateData,
   gameEvents,
   mySessionId,
-  isHost,
-  timerEndTime,
+  isHost: _isHost,
+  timerEndTime: _timerEndTime,
   sendMessage,
   room,
   errorNonce,
@@ -182,189 +57,40 @@ export function BrainBoardGame({
   const reducedMotion = useReducedMotion();
   const pd = privateData ?? {};
 
-  // ─── Host-side state from room messages ─────────────────────────
-  const [gameState, setGameState] = useState<BrainBoardGameState | null>(null);
-  const [clueResult, setClueResult] = useState<ClueResultData | null>(null);
-  const [finalReveal, setFinalReveal] = useState<FinalRevealData | null>(null);
-  const [powerPlayWager, setPowerPlayWager] = useState<number | null>(null);
-  const [revealIndex, setRevealIndex] = useState(0);
-  const [_lastSubmittedText, setLastSubmittedText] = useState<string | null>(null);
-  const prevPhaseRef = useRef(phase);
+  // ─── State & Actions via extracted hooks ─────────────────────────
+  const {
+    gameState,
+    clueResult,
+    finalReveal,
+    powerPlayWager,
+    revealIndex,
+    boardState,
+    boardCategories,
+    topicPreview,
+    bbStandings,
+    currentRound,
+    resolvedPhase,
+    doubleDownValues,
+    answeredCount,
+    totalPlayerCount,
+    selectorSessionId: _selectorSessionId,
+    selectorName,
+    isMyTurn,
+    gs,
+  } = useBrainBoardState({ phase, players, gameEvents, privateData, room });
 
-  // Reset reveal index on all-in-reveal
-  useEffect(() => {
-    if (phase === "all-in-reveal" && prevPhaseRef.current !== "all-in-reveal") {
-      setRevealIndex(0);
-    }
-    prevPhaseRef.current = phase;
-  }, [phase]);
-
-  // Stagger all-in reveals
-  useEffect(() => {
-    if (phase !== "all-in-reveal" || !finalReveal) return;
-    if (revealIndex >= finalReveal.results.length) return;
-    const timer = setTimeout(() => {
-      setRevealIndex((i) => i + 1);
-      sounds.reveal();
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [phase, finalReveal, revealIndex]);
-
-  // Listen for game-data messages (board state from server)
-  const handleMessage = useCallback((data: Record<string, unknown>) => {
-    const type = data.type as string | undefined;
-    if (type === "game-state") {
-      setGameState(data as unknown as BrainBoardGameState);
-    } else if (type === "clue-result") {
-      const results = Array.isArray(data.results) ? (data.results as ClueResultEntry[]) : [];
-      if (results.some((r) => r.correct)) sounds.correct();
-      else sounds.buzz();
-      setClueResult({ ...(data as unknown as ClueResultData), results });
-    } else if (type === "all-in-reveal") {
-      setFinalReveal(data as unknown as FinalRevealData);
-      sounds.reveal();
-    } else if (type === "power-play-wager-set") {
-      setPowerPlayWager((data.wager as number) ?? null);
-      sounds.tick();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!room) return;
-    const unsub = room.onMessage("game-data", handleMessage);
-    return () => unsub();
-  }, [room, handleMessage]);
-
-  // ─── Controller message handlers ───────────────────────────────
-  const handleBrainBoardAnswer = useCallback(
-    (text: string) => {
-      setLastSubmittedText(text.trim());
-      sendMessage("player:answer", { answer: text });
-    },
-    [sendMessage],
-  );
-
-  const handleClueSelect = useCallback(
-    (clueId: string) => {
-      const [catStr, clueStr] = clueId.split(",");
-      const categoryIndex = Number(catStr);
-      const clueIndex = Number(clueStr);
-      if (!Number.isNaN(categoryIndex) && !Number.isNaN(clueIndex)) {
-        sendMessage("player:select-clue", { categoryIndex, clueIndex });
-      }
-    },
-    [sendMessage],
-  );
-
-  const handlePowerPlayWagerSubmit = useCallback(
-    (wager: number) => sendMessage("player:power-play-wager", { wager }),
-    [sendMessage],
-  );
-
-  const handlePowerPlayAnswer = useCallback(
-    (text: string) => {
-      setLastSubmittedText(text.trim());
-      sendMessage("player:power-play-answer", { answer: text });
-    },
-    [sendMessage],
-  );
-
-  const handleAllInWager = useCallback(
-    (wager: number) => sendMessage("player:all-in-wager", { wager }),
-    [sendMessage],
-  );
-
-  const handleAllInAnswer = useCallback(
-    (text: string) => {
-      setLastSubmittedText(text.trim());
-      sendMessage("player:all-in-answer", { answer: text });
-    },
-    [sendMessage],
-  );
-
-  const handleConfirmCategories = useCallback(
-    () => sendMessage("player:confirm-categories"),
-    [sendMessage],
-  );
-  const handleRerollBoard = useCallback(() => sendMessage("player:reroll-board"), [sendMessage]);
-  const handleChatMessage = useCallback(
-    (text: string) => sendMessage("player:chat-message", { message: text }),
-    [sendMessage],
-  );
-  const handleSubmitCategories = useCallback(
-    (categories: string[]) => sendMessage("player:submit-categories", { categories }),
-    [sendMessage],
-  );
-
-  // ─── Derived data from gameEvents (controller-side) ────────────
-  const gs = (gameEvents?.["game-state"] ?? {}) as Record<string, unknown>;
-  const fallbackState = useMemo(() => {
-    if (typeof gs.phase !== "string") return null;
-    return gs as unknown as BrainBoardGameState;
-  }, [gs]);
-  const boardState = gameState ?? fallbackState;
-  const boardCategories = useMemo(() => {
-    if (Array.isArray(gs.board)) {
-      return (gs.board as Array<{ name?: string }>)
-        .map((entry) => (typeof entry.name === "string" ? entry.name : ""))
-        .filter((name) => name.length > 0);
-    }
-    return [];
-  }, [gs.board]);
-  const topicPreview = useMemo(() => {
-    const source = Array.isArray(boardState?.personalizationTopics)
-      ? boardState.personalizationTopics
-      : Array.isArray(gs.personalizationTopics)
-        ? (gs.personalizationTopics as unknown[])
-        : [];
-    return source
-      .filter((topic): topic is string => typeof topic === "string" && topic.trim().length > 0)
-      .map((topic) => topic.trim())
-      .slice(0, 8);
-  }, [boardState?.personalizationTopics, gs.personalizationTopics]);
-
-  const bbStandings = useMemo(() => {
-    const source = boardState?.standings ?? gs.standings;
-    return Array.isArray(source) ? (source as Standing[]) : [];
-  }, [boardState?.standings, gs.standings]);
-
-  const currentRound =
-    typeof boardState?.currentRound === "number"
-      ? boardState.currentRound
-      : typeof gs.currentRound === "number"
-        ? gs.currentRound
-        : 1;
-  const resolvedPhase =
-    typeof boardState?.phase === "string"
-      ? boardState.phase
-      : typeof gs.phase === "string"
-        ? gs.phase
-        : phase;
-  const doubleDownValues = boardState?.doubleDownValues === true || gs.doubleDownValues === true;
-  const answeredCount =
-    typeof boardState?.answeredCount === "number"
-      ? boardState.answeredCount
-      : typeof gs.answeredCount === "number"
-        ? gs.answeredCount
-        : 0;
-  const totalPlayerCount =
-    typeof boardState?.totalPlayerCount === "number"
-      ? boardState.totalPlayerCount
-      : typeof gs.totalPlayerCount === "number"
-        ? gs.totalPlayerCount
-        : 0;
-
-  const selectorSessionId =
-    typeof boardState?.selectorSessionId === "string"
-      ? boardState.selectorSessionId
-      : typeof gs.selectorSessionId === "string"
-        ? gs.selectorSessionId
-        : null;
-  const selectorName = selectorSessionId
-    ? (players.find((p) => p.sessionId === selectorSessionId)?.name ?? null)
-    : null;
-
-  const isMyTurn = pd.isSelector === true || pd.isPowerPlayPlayer === true;
+  const {
+    handleClueSelect,
+    handleBrainBoardAnswer,
+    handlePowerPlayWagerSubmit,
+    handlePowerPlayAnswer,
+    handleAllInWager,
+    handleAllInAnswer,
+    handleConfirmCategories,
+    handleRerollBoard,
+    handleChatMessage,
+    handleSubmitCategories,
+  } = useBrainBoardActions({ sendMessage });
 
   // ─── Render helpers ─────────────────────────────────────────────
 
@@ -1167,6 +893,7 @@ export function BrainBoardGame({
           accentColorClass="text-accent-brainboard"
           gameId="brain-board"
           gameAwards={awards}
+          // biome-ignore lint/suspicious/noExplicitAny: FinalScoresLayout expects Room type
           room={room as any}
         />
       );
