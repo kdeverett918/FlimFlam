@@ -4,7 +4,6 @@ import {
   closeAllControllers,
   driveLuckyLettersToPhase,
   findLuckyLettersTurnActor,
-  forceToFinalScores,
   skipToPhase,
   startGame,
 } from "./e2e-helpers";
@@ -743,14 +742,16 @@ test.describe("Lucky Letters Gameplay", () => {
     page,
     browser,
   }) => {
+    const names = ["Ada", "Ben"];
     // Test advanced mode reaches final scores (covers the full lifecycle)
     const { controllers } = await startGame(page, browser, {
       game: "Lucky Letters",
       complexity: "advanced",
-      playerNames: ["Ada", "Ben"],
+      playerNames: names,
     });
+    const controllerPages = controllers.map((c) => c.controllerPage);
 
-    await forceToFinalScores(page);
+    await driveLuckyLettersToPhase(page, controllerPages, /final scores/i, names, 1_200);
 
     await expect(page.locator('[data-testid="final-scores-root"]').first()).toBeVisible();
 
@@ -766,42 +767,55 @@ test.describe("Lucky Letters Gameplay", () => {
     });
     const controllerPages = controllers.map((c) => c.controllerPage);
     const skipBtn = page.getByRole("button", { name: /^skip$/i });
+    const hostConsonantPrompt = page.getByText(/pick a consonant!?/i).first();
 
-    // round-intro -> spinning
     await skipToPhase(page, /choose your categories/i);
     await skipBtn.click();
 
-    const { activePage } = await findLuckyLettersTurnActor(page, controllerPages, names);
-
-    // Active player spins the wheel
-    await activePage.getByRole("button", { name: /spin the wheel/i }).click();
-
-    // Wait for spin to resolve — look for "Pick a consonant!" on host
-    // (If the spin landed on bust/pass, this won't appear, so we check with a fallback)
-    const hostConsonantPrompt = page.getByText("Pick a consonant!");
-    const deadline = Date.now() + 15_000;
-    let sawConsonantPrompt = false;
+    const deadline = Date.now() + 30_000;
+    let activePage: Page | null = null;
 
     while (Date.now() < deadline) {
       if (await hostConsonantPrompt.isVisible().catch(() => false)) {
-        sawConsonantPrompt = true;
         break;
       }
-      // If spinning phase restarted (bust/pass result), spin again
-      const spinBtn = activePage.getByRole("button", { name: /spin the wheel/i });
-      if (await spinBtn.isVisible().catch(() => false)) {
-        await spinBtn.click();
+
+      const turnActor = await findLuckyLettersTurnActor(page, controllerPages, names, 2_000).catch(
+        () => null,
+      );
+      activePage = turnActor?.activePage ?? null;
+      if (!turnActor) {
+        await page.waitForTimeout(200);
+        continue;
       }
-      await page.waitForTimeout(300);
+
+      if (turnActor.mode === "guess-consonant") {
+        break;
+      }
+
+      if (turnActor.mode === "spinning") {
+        const spinBtn = turnActor.activePage.getByRole("button", { name: /spin the wheel/i }).first();
+        const canSpin =
+          (await spinBtn.isVisible().catch(() => false)) &&
+          (await spinBtn.isEnabled().catch(() => false));
+        if (canSpin) {
+          await spinBtn.click();
+          await page.waitForTimeout(400);
+          continue;
+        }
+      }
+
+      await page.waitForTimeout(250);
     }
 
-    // If we eventually got to consonant guessing, verify the prompt
-    if (sawConsonantPrompt) {
-      await expect(hostConsonantPrompt).toBeVisible();
+    await expect(hostConsonantPrompt).toBeVisible({ timeout: 10_000 });
 
-      // Active controller should also show "Pick a consonant" text
-      await expect(activePage.getByText("Pick a consonant")).toBeVisible({ timeout: 10_000 });
+    if (!activePage || activePage.isClosed()) {
+      activePage = (await findLuckyLettersTurnActor(page, controllerPages, names)).activePage;
     }
+    await expect(activePage.getByText(/^Pick a consonant!?$/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
 
     await closeAllControllers(controllers);
   });

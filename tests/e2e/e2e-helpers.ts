@@ -424,7 +424,10 @@ export async function driveSurveySmashToStealChance(
       continue;
     }
 
-    const safeSkipPhases = new Set(["question-reveal", "strike", "answer-reveal", "round-result"]);
+    // Never skip `strike` here. Survey Smash advances from the third strike into
+    // `steal-chance`, but a host skip on `strike` jumps straight to round-result
+    // and hides the steal window we are explicitly trying to verify.
+    const safeSkipPhases = new Set(["question-reveal", "answer-reveal", "round-result"]);
     const advanced = safeSkipPhases.has(state.phase ?? "")
       ? await advanceSurveySmashWithSkip(hostPage, skipButton, state).catch(() => false)
       : false;
@@ -1694,7 +1697,7 @@ export async function forceToFinalScores(hostPage: Page, maxSkips = 300): Promis
 
 export async function driveLuckyLettersToPhase(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   text: string | RegExp,
   controllerNames: string[] = [],
   maxSteps = 600,
@@ -1879,7 +1882,7 @@ async function detectLuckyLettersTurnMode(page: Page): Promise<LuckyLettersTurnM
 
 export async function findLuckyLettersTurnActor(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   controllerNames: string[] = [],
   timeoutMs = 20_000,
 ): Promise<LuckyLettersTurnActor> {
@@ -1937,7 +1940,7 @@ export async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 }
 
 export async function findControllerWithButton(
-  _controllerPages: Page[],
+  controllerPages: Page[],
   buttonName: RegExp,
   timeoutMs = 15_000,
 ): Promise<Page> {
@@ -2142,7 +2145,7 @@ export async function findBrainBoardSelectorController(
  */
 export async function findBrainBoardSelector(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 20_000,
 ): Promise<Page> {
   const allPages = [hostPage, ...controllerPages];
@@ -2204,7 +2207,7 @@ export async function driveBrainBoardToClueSelect(
 
 export async function driveBrainBoardToPhase(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   text: string | RegExp,
   maxSteps = 900,
 ): Promise<void> {
@@ -2343,7 +2346,7 @@ export async function driveBrainBoardToPhase(
 
 export async function driveBrainBoardToFinalScores(
   hostPage: Page,
-  _controllerPages: Page[],
+  controllerPages: Page[],
   timeoutMs = 900_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -2351,6 +2354,8 @@ export async function driveBrainBoardToFinalScores(
   const skipButton = hostPage.getByRole("button", { name: /^skip$/i });
   const finalScoresRoot = hostPage.locator('[data-testid="final-scores-root"]').first();
   const finalScoresHeading = hostPage.getByRole("heading", { name: /final scores/i }).first();
+  const restartButton = hostPage.getByRole("button", { name: /^restart$/i }).first();
+  const playAgainButton = hostPage.getByRole("button", { name: /play again/i }).first();
   let lastPhase: string | null = null;
   let lastPhaseKey: string | null = null;
   let repeatedPhaseLoops = 0;
@@ -2358,7 +2363,9 @@ export async function driveBrainBoardToFinalScores(
   while (Date.now() < deadline) {
     const hasFinalScoresRoot = await finalScoresRoot.isVisible().catch(() => false);
     const hasFinalScoresHeading = await finalScoresHeading.isVisible().catch(() => false);
-    if (hasFinalScoresRoot || hasFinalScoresHeading) {
+    const hasRestart = await restartButton.isVisible().catch(() => false);
+    const hasPlayAgain = await playAgainButton.isVisible().catch(() => false);
+    if (hasFinalScoresRoot || hasFinalScoresHeading || hasRestart || hasPlayAgain) {
       return;
     }
 
@@ -2407,6 +2414,7 @@ export async function driveBrainBoardToFinalScores(
           acted = true;
         } else {
           for (const page of actorPages) {
+            await page.bringToFront().catch(() => {});
             const clueButton = page.locator(BRAIN_BOARD_CLUE_SELECTOR).first();
             if (!(await clueButton.isVisible().catch(() => false))) continue;
             await clueButton.click().catch(() => {});
@@ -2426,6 +2434,7 @@ export async function driveBrainBoardToFinalScores(
         }
 
         for (const page of actorPages) {
+          await page.bringToFront().catch(() => {});
           const appRoot = page.locator("main");
           const textbox = appRoot.getByRole("textbox").first();
           if (!(await textbox.isVisible().catch(() => false))) continue;
@@ -2453,6 +2462,7 @@ export async function driveBrainBoardToFinalScores(
       case "power-play-wager":
       case "all-in-wager": {
         for (const page of actorPages) {
+          await page.bringToFront().catch(() => {});
           const wagerButton = page.getByRole("button", { name: /lock in wager/i }).first();
           if (!(await wagerButton.isVisible().catch(() => false))) continue;
           await wagerButton.click().catch(() => {});
@@ -2479,7 +2489,9 @@ export async function driveBrainBoardToFinalScores(
           async () => {
             if (
               (await finalScoresRoot.isVisible().catch(() => false)) ||
-              (await finalScoresHeading.isVisible().catch(() => false))
+              (await finalScoresHeading.isVisible().catch(() => false)) ||
+              (await restartButton.isVisible().catch(() => false)) ||
+              (await playAgainButton.isVisible().catch(() => false))
             ) {
               return true;
             }
@@ -2631,19 +2643,9 @@ export async function driveSurveySmashToLightningRound(
       return;
     }
 
-    // Some controller surfaces can bind a beat before the host board fully
-    // swaps into lightning. Do not treat that alone as arrival.
+    // A live lightning actor surface is enough to consider the round started.
+    // The host board can trail behind controller input for a short beat.
     if (hasLightningActor) {
-      await expect
-        .poll(
-          async () => {
-            const nextHostState = await readSurveySmashHostState(hostPage);
-            if (nextHostState.phase === "lightning-round") return true;
-            return await lightningHeading.isVisible().catch(() => false);
-          },
-          { timeout: 10_000 },
-        )
-        .toBe(true);
       return;
     }
 

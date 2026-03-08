@@ -371,16 +371,27 @@ test.describe("Brain Board Comprehensive", () => {
       // Wait for clue-select phase on host
       await expect(page.getByText("$200").first()).toBeVisible({ timeout: 15_000 });
 
-      // Find the selector controller
-      const selector = await findBrainBoardSelector(page, controllerPages, 20_000);
+      const findWatcher = async (): Promise<Page | null> => {
+        for (const controllerPage of controllerPages) {
+          const isWatcher =
+            (await controllerPage.getByText(/'s pick/i).first().isVisible().catch(() => false)) ||
+            (await controllerPage
+              .locator('[data-testid="controller-context-card"]')
+              .first()
+              .isVisible()
+              .catch(() => false));
+          if (isWatcher) {
+            return controllerPage;
+          }
+        }
+        return null;
+      };
 
-      // Find a non-selector controller
-      const nonSelectors = controllerPages.filter((cp) => cp !== selector);
-      expect(nonSelectors.length).toBeGreaterThanOrEqual(1);
-      const watcher = nonSelectors[0] as Page;
+      await expect.poll(findWatcher, { timeout: 15_000 }).not.toBeNull();
+      const watcher = (await findWatcher()) as Page;
 
       // Non-selector should see the brain-board-grid
-      await expect(watcher.locator('[data-testid="brain-board-grid"]')).toBeVisible({
+      await expect(watcher.locator('[data-testid="brain-board-grid"]').first()).toBeVisible({
         timeout: 15_000,
       });
 
@@ -534,15 +545,29 @@ test.describe("Brain Board Comprehensive", () => {
       await expect(page.getByText(/everyone is answering/i)).toBeVisible({ timeout: 20_000 });
 
       // Submit wrong answers from every player so the round resolves deterministically
-      await submitTextAnswer(controllerPages[0] as Page, "definitely wrong");
-      await submitTextAnswer(controllerPages[1] as Page, "also definitely wrong");
-      await submitTextAnswer(page, "host definitely wrong");
+      const wrongAnswers = [
+        "zzqxj-alpha-9173",
+        "zzqxj-beta-1827",
+        "zzqxj-host-4451",
+      ] as const;
+      await submitTextAnswer(controllerPages[0] as Page, wrongAnswers[0]);
+      await submitTextAnswer(controllerPages[1] as Page, wrongAnswers[1]);
+      await submitTextAnswer(page, wrongAnswers[2]);
 
       // Wait for result
       await expect(page.getByText(/correct answer/i).first()).toBeVisible({ timeout: 20_000 });
 
-      // Since both answers are wrong, "No one got it!" should appear
-      await expect(page.getByText(/no one got it/i)).toBeVisible({ timeout: 10_000 });
+      for (const answer of wrongAnswers) {
+        await expect(page.getByText(answer).first()).toBeVisible({ timeout: 10_000 });
+      }
+
+      await expect
+        .poll(
+          async () =>
+            (await page.locator("svg.text-destructive, span.text-destructive").count()) >= 3,
+          { timeout: 10_000 },
+        )
+        .toBe(true);
     } finally {
       await closeAllControllers(controllers);
     }

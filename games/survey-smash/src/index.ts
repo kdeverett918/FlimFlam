@@ -638,6 +638,7 @@ class SurveySmashPlugin extends BaseGamePlugin {
     for (const pid of this.gs.allPlayerIds) {
       const payload: Record<string, unknown> = {
         action: null,
+        phase: this.gs.phase,
         question: this.gs.currentSurvey?.question ?? "",
       };
 

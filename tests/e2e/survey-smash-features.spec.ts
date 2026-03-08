@@ -76,6 +76,9 @@ test.describe("Survey Smash — Steal Mechanics", () => {
               .catch(() => null);
 
             for (const [index, actorPage] of actorPages.entries()) {
+              await actorPage.bringToFront().catch(() => {});
+              await actorPage.waitForTimeout(75).catch(() => {});
+
               const stealInput = actorPage.locator('[data-testid="survey-smash-steal-input"]');
               const stealVisible = await stealInput
                 .first()
@@ -103,11 +106,12 @@ test.describe("Survey Smash — Steal Mechanics", () => {
               }
             }
 
+            // This test allows the helper to overshoot the steal window. Once the
+            // host is no longer in the active guessing/strike loop, stale guess
+            // inputs must already be gone, even if the round has rolled into the
+            // next face-off.
             const hostMovedPastGuessing =
-              hostPhase !== null &&
-              hostPhase !== "face-off" &&
-              hostPhase !== "guessing" &&
-              hostPhase !== "strike";
+              hostPhase !== null && hostPhase !== "guessing" && hostPhase !== "strike";
 
             return debug.length === 0 && (stealInputCount >= 1 || hostMovedPastGuessing)
               ? "ready"

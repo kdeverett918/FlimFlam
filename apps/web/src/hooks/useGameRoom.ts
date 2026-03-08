@@ -67,6 +67,8 @@ export interface UseGameRoomReturn {
 const RECONNECT_TOKEN_KEY = "flimflam_reconnect_token";
 const ROOM_CODE_KEY = "flimflam_room_code";
 const ROOM_CODE_TIMEOUT_MS = 5000;
+const CREATE_MAX_ATTEMPTS = 6;
+const CREATE_RETRY_BASE_DELAY_MS = 250;
 const JOIN_MAX_ATTEMPTS = 6;
 const JOIN_RETRY_BASE_DELAY_MS = 250;
 
@@ -185,6 +187,20 @@ export function useGameRoom(): UseGameRoomReturn {
         }
         previousPhaseRef.current = phase;
         setState((prev) => (prev ? { ...prev, phase } : prev));
+        setPrivateData((prev) => {
+          if (!prev) return prev;
+          const action = typeof prev.action === "string" ? prev.action : null;
+          if (!action) return prev;
+
+          const actionMatchesPhase =
+            (phase === "face-off" && action === "face-off-your-turn") ||
+            (phase === "guessing" &&
+              (action === "your-turn-to-guess" || action === "guess-along")) ||
+            (phase === "steal-chance" && action === "snag-your-turn") ||
+            (phase === "lightning-round" && action === "lightning-question");
+
+          return actionMatchesPhase ? prev : { ...prev, action: null };
+        });
       });
 
       listenField("selectedGameId", (value) => {
@@ -448,19 +464,49 @@ export function useGameRoom(): UseGameRoomReturn {
   const createRoom = useCallback(
     async (opts: { name: string; color: string }): Promise<string> => {
       setError(null);
+      setGameData(null);
+      setPrivateData(null);
+      setGameEvents({});
       const client = getColyseusClient();
 
-      let joinedRoom: Room;
-      try {
-        joinedRoom = await client.create("party", {
-          name: opts.name,
-          color: opts.color,
-          isCreator: true,
-        });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Failed to create room";
+      let joinedRoom: Room | null = null;
+
+      for (let attempt = 0; attempt < CREATE_MAX_ATTEMPTS; attempt += 1) {
+        try {
+          joinedRoom = await client.create("party", {
+            name: opts.name,
+            color: opts.color,
+            isCreator: true,
+          });
+          break;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Failed to create room";
+          const normalizedMessage = message.toLowerCase();
+          const isRetryable =
+            normalizedMessage.includes('room name "party" not defined') ||
+            normalizedMessage.includes("room name 'party' not defined") ||
+            normalizedMessage.includes("not defined") ||
+            normalizedMessage.includes("timeout") ||
+            normalizedMessage.includes("network") ||
+            normalizedMessage.includes("websocket") ||
+            normalizedMessage.includes("transport");
+
+          if (isRetryable && attempt < CREATE_MAX_ATTEMPTS - 1) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, CREATE_RETRY_BASE_DELAY_MS * (attempt + 1)),
+            );
+            continue;
+          }
+
+          setError(message);
+          throw err;
+        }
+      }
+
+      if (!joinedRoom) {
+        const message = "Failed to create room";
         setError(message);
-        throw err;
+        throw new Error(message);
       }
 
       attachListeners(joinedRoom);
@@ -512,6 +558,9 @@ export function useGameRoom(): UseGameRoomReturn {
   const joinRoom = useCallback(
     async (code: string, name: string, color: string): Promise<boolean> => {
       setError(null);
+      setGameData(null);
+      setPrivateData(null);
+      setGameEvents({});
       const client = getColyseusClient();
       const normalizedCode = code.toUpperCase().trim();
       const trimmedName = name.trim();

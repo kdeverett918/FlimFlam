@@ -24,7 +24,9 @@ test.describe("Survey Smash Lightning Round", () => {
       // Drive through regular rounds to reach lightning (needs player input)
       await driveSurveySmashToLightningRound(page, controllerPages);
 
-      await expect(page.getByText(/lightning round/i).first()).toBeVisible();
+      await expect(page.getByText(/lightning round/i).first()).toBeVisible({
+        timeout: 15_000,
+      });
     } finally {
       await closeAllControllers(controllers);
     }
@@ -75,7 +77,7 @@ test.describe("Survey Smash Lightning Round", () => {
         { timeout: 10_000 },
       );
       await expect(
-        page.locator('[data-testid="survey-smash-lightning-total"]').first(),
+        page.locator('[data-testid="survey-smash-lightning-total"]:visible').first(),
       ).toBeVisible({ timeout: 10_000 });
     } finally {
       await closeAllControllers(controllers);

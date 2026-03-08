@@ -313,14 +313,23 @@ export function SurveySmashGame({
     typeof gameState?.phase === "string" && gameState.phase.length > 0
       ? gameState.phase
       : undefined;
-  const canonicalGameState = gameState ?? eventGameState ?? payloadGameState;
-  const canonicalStatePhase =
-    gameStatePhase ??
-    eventPhase ??
-    (typeof payloadGameState?.phase === "string" && payloadGameState.phase.length > 0
+  const payloadPhase =
+    typeof payloadGameState?.phase === "string" && payloadGameState.phase.length > 0
       ? payloadGameState.phase
-      : null);
-  const canonicalPhase = canonicalStatePhase ?? roomPhase ?? phase;
+      : null;
+  const freshestSharedPhase = eventPhase ?? payloadPhase ?? gameStatePhase ?? null;
+  const canonicalStatePhase =
+    freshestSharedPhase === "lightning-round" ||
+    freshestSharedPhase === "lightning-round-reveal" ||
+    freshestSharedPhase === "final-scores"
+      ? freshestSharedPhase
+      : roomPhase ?? freshestSharedPhase;
+  const baseCanonicalGameState = eventGameState ?? payloadGameState ?? gameState;
+  const canonicalGameState =
+    baseCanonicalGameState && canonicalStatePhase && baseCanonicalGameState.phase !== canonicalStatePhase
+      ? { ...baseCanonicalGameState, phase: canonicalStatePhase }
+      : baseCanonicalGameState;
+  const canonicalPhase = canonicalStatePhase ?? phase;
 
   const clearRevealTimers = useCallback(() => {
     for (const timerId of revealTimersRef.current) {
@@ -440,6 +449,8 @@ export function SurveySmashGame({
   const isFaceOffPlayer = pd.action === "face-off-your-turn";
   const isCurrentGuesser = pd.action === "your-turn-to-guess";
   const isSnagTeam = pd.action === "snag-your-turn";
+  const privatePhase =
+    typeof pd.phase === "string" && pd.phase.length > 0 ? (pd.phase as string) : undefined;
   const publicPhase = canonicalStatePhase;
   const publicLightningPlayerId =
     typeof gs.lightningPlayerId === "string" ? (gs.lightningPlayerId as string) : null;
@@ -488,6 +499,19 @@ export function SurveySmashGame({
     if (isHost) return canonicalPhase;
 
     if (pd.action === "lightning-question") return "lightning-round";
+
+    if (
+      privatePhase === "question-reveal" ||
+      privatePhase === "face-off" ||
+      privatePhase === "guessing" ||
+      privatePhase === "strike" ||
+      privatePhase === "steal-chance" ||
+      privatePhase === "answer-reveal" ||
+      privatePhase === "round-result" ||
+      privatePhase === "final-scores"
+    ) {
+      return privatePhase;
+    }
 
     // Keep lightning interaction alive until the shared room phase exits the
     // round. Public game-data can jump to reveal slightly ahead of the room
@@ -545,6 +569,7 @@ export function SurveySmashGame({
     isLightningPlayer,
     isSnagTeam,
     pd.action,
+    privatePhase,
     publicPhase,
     roomPhase,
   ]);
