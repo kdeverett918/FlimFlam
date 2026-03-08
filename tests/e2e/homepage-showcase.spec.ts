@@ -7,19 +7,19 @@ test.describe("Homepage Landing", () => {
     await page.goto("/");
 
     await expect(page.locator('img[alt="FLIMFLAM Party Game"]').first()).toBeVisible();
-    await expect(page.getByText(/game night just got ridiculous\./i)).toBeVisible();
+    await expect(page.locator('[aria-label="Game night just got ridiculous."]')).toBeVisible();
     await expect(
       page.getByText(/everyone plays on one screen\. no app downloads\. no accounts\./i),
     ).toBeVisible();
 
+    await expect(page.getByRole("heading", { name: /^3 games included$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /^join game$/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /^create game$/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^create game$/i })).toHaveCount(0);
 
     await expect(page.locator('input[aria-label^="Room code character"]')).toHaveCount(4);
-    await expect(page.locator("#join-player-name")).toBeVisible();
-    await expect(page.locator("#host-name")).toBeVisible();
+    await expect(page.locator("#action-player-name")).toBeVisible();
     await expect(page.getByTestId("join-form-submit")).toBeVisible();
-    await expect(page.getByTestId("create-room-cta")).toBeVisible();
+    await expect(page.getByRole("button", { name: /or create a new game/i })).toBeVisible();
   });
 
   test("create flow supports keyboard submit and exposes color selection state", async ({
@@ -28,7 +28,11 @@ test.describe("Homepage Landing", () => {
     await page.goto("/");
     await waitForColyseusHealthy(page);
 
-    const hostNameInput = page.locator("#host-name");
+    await page.getByRole("button", { name: /or create a new game/i }).click();
+
+    await expect(page.getByRole("heading", { name: /^create game$/i })).toBeVisible();
+
+    const hostNameInput = page.locator("#create-host-name");
     const createColorButtons = page.locator('button[aria-label^="Select color "]');
 
     await expect(createColorButtons.first()).toHaveAttribute("aria-pressed", "true");

@@ -14,7 +14,7 @@ test.describe("Join Form Behavior", () => {
 
     const codeInputs = getCodeInputs(page);
     const joinButton = page.getByTestId("join-form-submit");
-    const joinNameInput = page.locator("#join-player-name");
+    const joinNameInput = page.locator("#action-player-name");
 
     await expect(joinButton).toBeDisabled();
 
@@ -42,7 +42,8 @@ test.describe("Join Form Behavior", () => {
     const codeInputs = getCodeInputs(page);
     const [firstInput, secondInput, thirdInput] = codeInputs;
 
-    await firstInput.pressSequentially("AB", { delay: 20 });
+    await firstInput.fill("A");
+    await secondInput.fill("B");
     await expect(thirdInput).toBeFocused();
 
     await thirdInput.press("Backspace");
