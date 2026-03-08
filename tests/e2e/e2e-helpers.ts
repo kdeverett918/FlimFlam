@@ -424,12 +424,7 @@ export async function driveSurveySmashToStealChance(
       continue;
     }
 
-    const safeSkipPhases = new Set([
-      "question-reveal",
-      "strike",
-      "answer-reveal",
-      "round-result",
-    ]);
+    const safeSkipPhases = new Set(["question-reveal", "strike", "answer-reveal", "round-result"]);
     const advanced = safeSkipPhases.has(state.phase ?? "")
       ? await advanceSurveySmashWithSkip(hostPage, skipButton, state).catch(() => false)
       : false;
