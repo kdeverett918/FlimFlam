@@ -194,7 +194,6 @@ test.describe("HUD Safe Zones Contract", () => {
         await expect(controllerPage.locator(TIMER_ROOT)).toBeVisible({ timeout: 15_000 });
         await expect(page.locator(TIMER_PROGRESS)).toBeVisible({ timeout: 15_000 });
         await expect(controllerPage.locator(TIMER_PROGRESS)).toBeVisible({ timeout: 15_000 });
-
       } finally {
         await closeAllControllers(controllers);
       }
@@ -248,9 +247,7 @@ test.describe("HUD Safe Zones Contract", () => {
           ["Ada", "Ben"],
           240,
         );
-        const spinButton = activePage
-          .locator('button[aria-label="Spin the wheel"]:visible')
-          .last();
+        const spinButton = activePage.locator('button[aria-label="Spin the wheel"]:visible').last();
         await expect(spinButton).toBeVisible({ timeout: 15_000 });
         await expect(spinButton).toBeEnabled({ timeout: 15_000 });
 
