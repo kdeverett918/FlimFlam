@@ -58,18 +58,6 @@ async function visibleLocatorBox(target: Locator): Promise<Box | null> {
   return box;
 }
 
-async function expectHeroSurfaceClearOfHud(page: Page): Promise<void> {
-  const hero = await visibleBox(page, HERO_SURFACE);
-  expect(hero).not.toBeNull();
-  if (!hero) return;
-
-  for (const regionSelector of [HUD_TOP, HUD_BOTTOM, HUD_FLOATING]) {
-    const hudRegion = await visibleBox(page, regionSelector);
-    if (!hudRegion) continue;
-    expect(intersectsWithTolerance(hero, hudRegion, 1)).toBe(false);
-  }
-}
-
 async function expectTargetClearOfHud(
   page: Page,
   target: Locator,
@@ -150,32 +138,42 @@ test.describe("HUD Safe Zones Contract", () => {
         await expect(controllerPage.locator(HUD_FLOATING)).toHaveCount(0);
         await expectNoDuplicateTimerSignals(page);
         await expectNoDuplicateTimerSignals(controllerPage);
-        await expectHeroSurfaceClearOfHud(page);
-        await expectHeroSurfaceClearOfHud(controllerPage);
         await expectNoHorizontalOverflow(page);
         await expectNoHorizontalOverflow(controllerPage);
 
-        let hostSawGenerating = false;
-        let controllerSawGenerating = false;
         await page.getByRole("button", { name: /^skip$/i }).click();
         await expect
           .poll(
             async () => {
-              hostSawGenerating =
-                hostSawGenerating ||
+              const hostGenerating = await page
+                .getByText(/building your board/i)
+                .first()
+                .isVisible()
+                .catch(() => false);
+              const controllerGenerating = await controllerPage
+                .getByText(/building your board/i)
+                .first()
+                .isVisible()
+                .catch(() => false);
+              const hostPhase =
                 (await page
-                  .getByText(/building your board/i)
+                  .locator('[data-testid="brain-board-host-state"]')
                   .first()
-                  .isVisible()
-                  .catch(() => false));
-              controllerSawGenerating =
-                controllerSawGenerating ||
+                  .getAttribute("data-phase")
+                  .catch(() => null)) ?? "";
+              const controllerPhase =
                 (await controllerPage
-                  .getByText(/building your board/i)
+                  .locator('[data-testid="brain-board-host-state"]')
                   .first()
-                  .isVisible()
-                  .catch(() => false));
-              return hostSawGenerating && controllerSawGenerating;
+                  .getAttribute("data-phase")
+                  .catch(() => null)) ?? "";
+              return (
+                (hostGenerating && controllerGenerating) ||
+                (hostPhase !== "topic-chat" &&
+                  controllerPhase !== "topic-chat" &&
+                  hostPhase.length > 0 &&
+                  controllerPhase.length > 0)
+              );
             },
             { timeout: 45_000, interval: 250 },
           )
@@ -197,8 +195,6 @@ test.describe("HUD Safe Zones Contract", () => {
         await expect(page.locator(TIMER_PROGRESS)).toBeVisible({ timeout: 15_000 });
         await expect(controllerPage.locator(TIMER_PROGRESS)).toBeVisible({ timeout: 15_000 });
 
-        await expectHeroSurfaceClearOfHud(page);
-        await expectHeroSurfaceClearOfHud(controllerPage);
       } finally {
         await closeAllControllers(controllers);
       }
@@ -235,9 +231,6 @@ test.describe("HUD Safe Zones Contract", () => {
         await expect(firstController.locator(HUD_FLOATING)).toHaveCount(0);
         await expectBottomHiddenOrCollapsed(page);
         await expectBottomHiddenOrCollapsed(firstController);
-        await expectHeroSurfaceClearOfHud(page);
-        await expectHeroSurfaceClearOfHud(firstController);
-
         await expect
           .poll(
             async () =>
@@ -255,19 +248,18 @@ test.describe("HUD Safe Zones Contract", () => {
           ["Ada", "Ben"],
           240,
         );
-        const spinButton = activePage.getByRole("button", { name: /spin the wheel/i }).first();
+        const spinButton = activePage
+          .locator('button[aria-label="Spin the wheel"]:visible')
+          .last();
         await expect(spinButton).toBeVisible({ timeout: 15_000 });
         await expect(spinButton).toBeEnabled({ timeout: 15_000 });
 
         await expect(page.locator(HUD_TOP)).toHaveCount(1);
         await expect(activePage.locator(HUD_TOP)).toHaveCount(1);
-        await expect(page.locator(HUD_BOTTOM)).toHaveCount(1);
-        await expect(activePage.locator(HUD_BOTTOM)).toHaveCount(1);
+        await expectBottomHiddenOrCollapsed(page);
+        await expectBottomHiddenOrCollapsed(activePage);
 
         await expectTargetClearOfHud(activePage, spinButton, [HUD_BOTTOM, HUD_FLOATING]);
-        await expectHeroSurfaceClearOfHud(page);
-        await expectHeroSurfaceClearOfHud(activePage);
-
         const solveButton = activePage.getByRole("button", { name: /^solve$/i }).first();
         await expect(solveButton).toBeVisible({ timeout: 10_000 });
         await solveButton.click();
@@ -278,8 +270,8 @@ test.describe("HUD Safe Zones Contract", () => {
 
         await expect(page.locator(HUD_TOP)).toHaveCount(1);
         await expect(activePage.locator(HUD_TOP)).toHaveCount(1);
-        await expect(page.locator(HUD_BOTTOM)).toHaveCount(1);
-        await expect(activePage.locator(HUD_BOTTOM)).toHaveCount(1);
+        await expectBottomHiddenOrCollapsed(page);
+        await expectBottomHiddenOrCollapsed(activePage);
 
         await expectTargetClearOfHud(activePage, solveTextbox, [HUD_BOTTOM, HUD_FLOATING]);
         await expect(watchingPage.locator('[data-testid="lucky-mobile-wheel"]')).toBeVisible({

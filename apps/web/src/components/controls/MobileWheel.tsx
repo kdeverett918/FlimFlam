@@ -43,7 +43,6 @@ const WHEEL_SEGMENTS: Array<{ type: string; label: string; color: string }> = [
   { type: "cash", label: "$400", color: "#16a34a" },
 ];
 
-const WHEEL_SIZE = 280;
 const FLICK_VELOCITY_THRESHOLD = 0.3;
 
 export function MobileWheel({
@@ -117,8 +116,8 @@ export function MobileWheel({
       <div
         className="relative"
         style={{
-          width: WHEEL_SIZE,
-          height: WHEEL_SIZE,
+          width: "clamp(188px, 44svh, 280px)",
+          height: "clamp(188px, 44svh, 280px)",
           touchAction: canSpin ? "none" : "auto",
         }}
         onTouchStart={handleTouchStart}
@@ -201,7 +200,7 @@ export function MobileWheel({
           aria-label="Spin the wheel"
           onClick={triggerSpin}
           disabled={!canSpin || isAnimating}
-          className="absolute left-1/2 top-1/2 z-20 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full font-display text-xs font-bold uppercase tracking-wider text-white transition-all active:scale-90 disabled:cursor-default disabled:opacity-45"
+          className="absolute left-1/2 top-1/2 z-20 flex h-[clamp(3.25rem,8svh,4rem)] w-[clamp(3.25rem,8svh,4rem)] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full font-display text-[clamp(0.6rem,1.8svh,0.75rem)] font-bold uppercase tracking-wider text-white transition-all active:scale-90 disabled:cursor-default disabled:opacity-45"
           style={{
             background: "linear-gradient(135deg, oklch(0.78 0.2 85), oklch(0.68 0.22 55))",
             boxShadow: "0 0 20px oklch(0.78 0.2 85 / 0.4)",
