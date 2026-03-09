@@ -9,8 +9,9 @@ import {
 } from "@flimflam/ui";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
-import Image from "next/image";
 import { useRef } from "react";
+
+import { FlimflamLogo } from "@/components/landing/FlimflamLogo";
 
 const TAGLINE = "Game night just got ridiculous.";
 
@@ -114,23 +115,16 @@ export function HeroSection() {
       />
 
       {/* Logo with deblur animation */}
-      <h1 className="relative flex w-full max-w-[480px] flex-col items-center gap-3 lg:max-w-[560px]">
+      <h1 className="relative flex w-full max-w-[680px] flex-col items-center gap-3">
         <div
           ref={logoRef}
           style={{
             opacity: reducedMotion ? 1 : 0,
           }}
         >
-          <Image
-            src="/flimflam-logo.png"
-            alt="FLIMFLAM Party Game"
-            width={688}
-            height={384}
-            priority
-            className="h-auto w-full max-w-[280px] object-contain drop-shadow-[0_0_40px_oklch(0.75_0.22_25/0.4)] sm:max-w-[400px] lg:max-w-[560px]"
-          />
+          <FlimflamLogo reducedMotion={reducedMotion} />
         </div>
-        <span className="sr-only">FLIMFLAM</span>
+        <span className="sr-only">FLIMFLAM arcade series</span>
       </h1>
 
       {/* Tagline with character-by-character animation */}
@@ -165,7 +159,7 @@ export function HeroSection() {
           animation: reducedMotion ? undefined : "fade-in-up 0.6s ease-out 2s forwards",
         }}
       >
-        Everyone plays on one screen. No app downloads. No accounts.
+        One screen. Every phone. Jump in instantly, save progress when you want.
       </p>
     </div>
   );

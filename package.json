@@ -4,9 +4,13 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "turbo dev",
+    "dev:flimflap": "node scripts/dev-with-flimflap.mjs",
+    "dev:trumpybird": "node scripts/dev-with-trumpybird.mjs",
     "build": "node scripts/cloud-build.mjs",
     "build:all": "turbo build --concurrency=1",
     "start": "pnpm --filter @flimflam/server start",
+    "flimflap:sync": "node scripts/sync-flimflap-client.mjs",
+    "trumpybird:sync": "node scripts/sync-trumpybird-client.mjs",
     "test": "turbo test",
     "test:coverage": "vitest run --coverage",
     "lint": "biome check .",

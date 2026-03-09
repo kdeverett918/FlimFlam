@@ -6,13 +6,18 @@ test.describe("Homepage Landing", () => {
   test("renders the current landing contract", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.locator('img[alt="FLIMFLAM Party Game"]').first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /flimflam arcade series/i })).toBeVisible();
     await expect(page.locator('[aria-label="Game night just got ridiculous."]')).toBeVisible();
     await expect(
-      page.getByText(/everyone plays on one screen\. no app downloads\. no accounts\./i),
+      page.getByText(
+        /one screen\. every phone\. jump in instantly, save progress when you want\./i,
+      ),
     ).toBeVisible();
 
-    await expect(page.getByRole("heading", { name: /^3 games included$/i })).toBeVisible();
+    await expect(page.getByText(/zero app installs/i)).toBeVisible();
+    await expect(page.getByText(/saved flimflap runs/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^4 games, one party$/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /flimflap/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /^join game$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /^create game$/i })).toHaveCount(0);
 

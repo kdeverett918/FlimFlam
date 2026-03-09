@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Body -->
+  <ellipse cx="32" cy="36" rx="18" ry="16" fill="#F5A623">
+    <animate attributeName="fill" values="#F5A623;#FFD700;#F5A623" dur="2s" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- Body shimmer highlight -->
+  <ellipse cx="26" cy="30" rx="8" ry="6" fill="#FFE066" opacity="0.4">
+    <animate attributeName="opacity" values="0.2;0.6;0.2" dur="1.5s" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- Tail feathers -->
+  <polygon points="13,36 4,30 6,36 3,42 13,38" fill="#D4891C"/>
+  <!-- Wing -->
+  <ellipse cx="22" cy="38" rx="7" ry="4" fill="#D4891C" transform="rotate(-15 22 38)"/>
+  <!-- Big eye (left, shifty) -->
+  <ellipse cx="36" cy="30" rx="6" ry="6.5" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="37.5" cy="30" r="3" fill="#222">
+    <animate attributeName="cy" values="30;29;30" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="38.5" cy="28.5" r="1" fill="white"/>
+  <!-- Big eye squint -->
+  <ellipse cx="36" cy="30" rx="6" ry="6.5" fill="none">
+    <animate attributeName="ry" values="6.5;6.5;6.5;3;6.5" dur="4s" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- Small eye (right/inner) -->
+  <ellipse cx="27" cy="31" rx="4" ry="4.5" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="28" cy="31" r="2" fill="#222"/>
+  <circle cx="28.8" cy="29.8" r="0.7" fill="white"/>
+  <!-- Sly smirk beak -->
+  <path d="M38,37 Q44,36 46,34 Q44,38 38,39 Z" fill="#E8751A"/>
+  <path d="M38,38 Q43,39 45,38" fill="none" stroke="#C0600A" stroke-width="0.7" stroke-linecap="round"/>
+  <!-- Crooked top hat -->
+  <g transform="rotate(-12 34 20)">
+    <animateTransform attributeName="transform" type="rotate" values="-12 34 20;-8 34 20;-15 34 20;-12 34 20" dur="2s" repeatCount="indefinite"/>
+    <rect x="25" y="14" width="18" height="12" rx="1" fill="#111"/>
+    <rect x="22" y="24" width="24" height="3" rx="1" fill="#111"/>
+    <rect x="25" y="14" width="18" height="3" fill="#222"/>
+    <rect x="25" y="21" width="18" height="1.5" fill="#F5A623"/>
+  </g>
+  <!-- Feet -->
+  <line x1="27" y1="50" x2="24" y2="56" stroke="#E8751A" stroke-width="2" stroke-linecap="round"/>
+  <line x1="35" y1="50" x2="38" y2="56" stroke="#E8751A" stroke-width="2" stroke-linecap="round"/>
+</svg>

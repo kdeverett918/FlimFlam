@@ -27,6 +27,8 @@ services:
         value: production
       - key: FLIMFLAM_STRICT_ENV
         value: "1"
+      - key: FLIMFLAP_BACKEND_URL
+        value: https://trumpybird.app
     buildFilter:
       paths:
         - apps/web/**

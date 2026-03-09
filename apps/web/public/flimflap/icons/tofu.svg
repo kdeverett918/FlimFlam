@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Meditation aura -->
+  <ellipse cx="32" cy="36" rx="22" ry="20" fill="none" stroke="#f0e68c" stroke-width="1.5" opacity="0.3">
+    <animate attributeName="opacity" values="0.15;0.4;0.15" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="rx" values="22;24;22" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="ry" values="20;22;20" dur="3s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="32" cy="36" rx="19" ry="17" fill="none" stroke="#ffe082" stroke-width="1" opacity="0.2">
+    <animate attributeName="opacity" values="0.1;0.3;0.1" dur="2.5s" repeatCount="indefinite" begin="0.5s"/>
+  </ellipse>
+  <!-- Floating body -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,0;0,-3;0,0" dur="4s" repeatCount="indefinite"/>
+    <!-- Body -->
+    <ellipse cx="32" cy="36" rx="16" ry="15" fill="#FFF8E7"/>
+    <ellipse cx="32" cy="36" rx="16" ry="15" fill="none" stroke="#e8dcc8" stroke-width="0.5"/>
+    <ellipse cx="28" cy="32" rx="7" ry="5" fill="#fff" opacity="0.4"/>
+    <!-- Tail -->
+    <polygon points="15,36 8,32 10,36 7,40 15,38" fill="#e8dcc8"/>
+    <!-- Wing tucked in (meditating) -->
+    <ellipse cx="24" cy="40" rx="5" ry="3" fill="#e8dcc8" transform="rotate(-5 24 40)"/>
+    <!-- Closed peaceful eyes (curved lines) -->
+    <path d="M25,30 Q28,33 31,30" fill="none" stroke="#555" stroke-width="1.2" stroke-linecap="round"/>
+    <path d="M33,30 Q36,33 39,30" fill="none" stroke="#555" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Tiny serene smile -->
+    <path d="M29,38 Q32,41 35,38" fill="none" stroke="#888" stroke-width="0.8" stroke-linecap="round"/>
+    <!-- Lotus flower on head -->
+    <g transform="translate(32,16)">
+      <!-- Petals swaying -->
+      <g>
+        <animateTransform attributeName="transform" type="rotate" values="-3,0,0;3,0,0;-3,0,0" dur="4s" repeatCount="indefinite"/>
+        <ellipse cx="-5" cy="0" rx="4" ry="2.5" fill="#f8a4c8" transform="rotate(-30)"/>
+        <ellipse cx="5" cy="0" rx="4" ry="2.5" fill="#f8a4c8" transform="rotate(30)"/>
+        <ellipse cx="-3" cy="-2" rx="3.5" ry="2.2" fill="#fbb4d4" transform="rotate(-50)"/>
+        <ellipse cx="3" cy="-2" rx="3.5" ry="2.2" fill="#fbb4d4" transform="rotate(50)"/>
+        <ellipse cx="0" cy="-3" rx="3" ry="2" fill="#fcc4e0"/>
+      </g>
+      <!-- Center -->
+      <circle cx="0" cy="0" r="2" fill="#ffe082"/>
+    </g>
+    <!-- Small beak -->
+    <path d="M36,34 Q39,33 40,32 Q39,35 36,36 Z" fill="#f0c87a"/>
+    <!-- Feet tucked (lotus position implied) -->
+    <line x1="28" y1="50" x2="27" y2="54" stroke="#f0c87a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="36" y1="50" x2="37" y2="54" stroke="#f0c87a" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

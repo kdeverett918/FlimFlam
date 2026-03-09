@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">Trumpy Bird</title>
+  <defs>
+    <filter id="g" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" />
+    </filter>
+  </defs>
+  <!-- Body -->
+  <ellipse cx="248" cy="280" rx="128" ry="140" fill="#0d4a6b" />
+  <ellipse cx="248" cy="274" rx="120" ry="132" fill="#15a3d6" />
+  <ellipse cx="248" cy="268" rx="108" ry="120" fill="#22d3ff" />
+  <ellipse cx="232" cy="252" rx="80" ry="88" fill="#4ae0ff" opacity="0.5" />
+  <!-- Glow aura -->
+  <ellipse cx="248" cy="274" rx="132" ry="144" fill="none" stroke="#22d3ff" stroke-width="6" opacity="0.35" filter="url(#g)" />
+  <!-- Left wing -->
+  <path d="M120 240 C60 200, 30 240, 50 290 C65 328, 95 355, 130 340 C108 320, 90 295, 100 268 Z" fill="#15a3d6" />
+  <path d="M118 248 C68 214, 44 248, 60 290 C72 322, 96 344, 126 334" fill="none" stroke="#22d3ff" stroke-width="8" />
+  <!-- Left wing feathers (pink) -->
+  <path d="M55 294 C30 270, 22 234, 48 210" fill="none" stroke="#e836a8" stroke-width="10" stroke-linecap="round" />
+  <path d="M70 318 C42 300, 28 264, 44 238" fill="none" stroke="#e836a8" stroke-width="8" stroke-linecap="round" />
+  <path d="M90 336 C62 322, 48 290, 56 262" fill="none" stroke="#d42ea0" stroke-width="7" stroke-linecap="round" />
+  <!-- Right wing -->
+  <path d="M376 240 C436 200, 466 240, 446 290 C431 328, 401 355, 366 340 C388 320, 406 295, 396 268 Z" fill="#15a3d6" />
+  <path d="M378 248 C428 214, 452 248, 436 290 C424 322, 400 344, 370 334" fill="none" stroke="#22d3ff" stroke-width="8" />
+  <!-- Right wing feathers -->
+  <path d="M440 290 C462 268, 470 236, 450 214" fill="none" stroke="#22d3ff" stroke-width="8" stroke-linecap="round" />
+  <path d="M426 314 C450 296, 460 262, 446 238" fill="none" stroke="#22d3ff" stroke-width="7" stroke-linecap="round" />
+  <!-- Hair -->
+  <path d="M170 178 C180 118, 220 82, 270 76 C320 71, 360 90, 380 68 C366 100, 340 106, 310 100 C270 92, 225 98, 200 130 C185 150, 178 168, 174 178 Z" fill="#b36800" />
+  <path d="M176 172 C186 116, 224 86, 272 80 C318 75, 354 92, 374 74 C360 102, 336 108, 308 103 C270 96, 228 102, 204 132 C190 150, 182 164, 178 174 Z" fill="#e89400" />
+  <path d="M184 166 C192 120, 228 92, 274 86 C314 82, 346 96, 366 82 C354 106, 332 112, 306 107 C272 101, 234 108, 212 134 C198 150, 190 160, 186 168 Z" fill="#ffad1a" />
+  <!-- Hair highlight stripes -->
+  <path d="M200 138 C226 106, 268 94, 310 100 C340 104, 356 98, 368 86" fill="none" stroke="#ffc94d" stroke-width="5" stroke-linecap="round" />
+  <path d="M194 156 C218 124, 258 108, 300 110 C332 112, 350 106, 362 94" fill="none" stroke="#ffc94d" stroke-width="4" stroke-linecap="round" />
+  <!-- Eye -->
+  <circle cx="296" cy="210" r="16" fill="#0a1428" />
+  <circle cx="296" cy="210" r="11" fill="#22d3ff" />
+  <circle cx="300" cy="206" r="5" fill="#fff" />
+  <!-- Brow -->
+  <path d="M268 192 C278 180, 296 176, 314 180" fill="none" stroke="#1a1300" stroke-width="7" stroke-linecap="round" />
+  <!-- Beak -->
+  <path d="M340 210 L408 222 L360 252 L322 240 Z" fill="#ffd429" stroke="#b38f00" stroke-width="3" stroke-linejoin="round" />
+  <path d="M350 224 L392 230" fill="none" stroke="#b38f00" stroke-width="3" />
+  <!-- Mouth line -->
+  <path d="M242 268 C268 276, 296 276, 322 268" fill="none" stroke="#e836a8" stroke-width="6" stroke-linecap="round" />
+  <!-- Tie -->
+  <path d="M238 340 L270 354 L258 420 L228 420 L216 354 Z" fill="#e8284a" />
+  <path d="M238 340 L270 354 L254 362 L232 362 L216 354 Z" fill="#ff3860" />
+  <rect x="224" y="330" width="38" height="16" rx="4" fill="#ff3860" />
+  <!-- Tie glow -->
+  <path d="M238 340 L270 354 L258 420 L228 420 L216 354 Z" fill="none" stroke="#ff3860" stroke-width="3" opacity="0.4" filter="url(#g)" />
+  <!-- Feet -->
+  <path d="M200 400 C195 420, 180 440, 160 446 M200 400 C198 424, 192 440, 186 448 M200 400 C202 425, 204 440, 210 446" fill="none" stroke="#5cff2a" stroke-width="8" stroke-linecap="round" />
+  <path d="M290 400 C285 420, 270 440, 250 446 M290 400 C288 424, 282 440, 276 448 M290 400 C292 425, 294 440, 300 446" fill="none" stroke="#5cff2a" stroke-width="8" stroke-linecap="round" />
+</svg>

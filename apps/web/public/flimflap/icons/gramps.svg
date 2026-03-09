@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Body - round muted brown bird -->
+  <circle cx="32" cy="34" r="24" fill="#c4a882">
+    <animateTransform attributeName="transform" type="rotate" values="-2 32 58;2 32 58;-2 32 58" dur="3s" repeatCount="indefinite"/>
+  </circle>
+  <!-- Belly -->
+  <ellipse cx="32" cy="40" rx="16" ry="14" fill="#ddd0b8"/>
+
+  <!-- Bushy eyebrows -->
+  <g>
+    <path d="M16 24 Q21 18 28 23" fill="#e8e8e8" stroke="#ccc" stroke-width="0.5">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,-1.5;0,0;0,1;0,0" dur="2.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M36 23 Q43 18 48 24" fill="#e8e8e8" stroke="#ccc" stroke-width="0.5">
+      <animateTransform attributeName="transform" type="translate" values="0,0;0,1;0,0;0,-1.5;0,0" dur="2.5s" repeatCount="indefinite" begin="0.3s"/>
+    </path>
+  </g>
+
+  <!-- Eyes (squinty old bird) -->
+  <ellipse cx="24" cy="30" rx="3.5" ry="2.5" fill="#fff"/>
+  <circle cx="25" cy="30" r="1.8" fill="#3a2a1a"/>
+  <circle cx="25.5" cy="29.5" r="0.7" fill="#fff"/>
+  <ellipse cx="40" cy="30" rx="3.5" ry="2.5" fill="#fff"/>
+  <circle cx="39" cy="30" r="1.8" fill="#3a2a1a"/>
+  <circle cx="39.5" cy="29.5" r="0.7" fill="#fff"/>
+
+  <!-- Glasses - round spectacles -->
+  <circle cx="24" cy="30" r="5.5" fill="none" stroke="#8b7355" stroke-width="1.5"/>
+  <circle cx="40" cy="30" r="5.5" fill="none" stroke="#8b7355" stroke-width="1.5"/>
+  <line x1="29.5" y1="29" x2="34.5" y2="29" stroke="#8b7355" stroke-width="1.2"/>
+  <!-- Glasses glint -->
+  <ellipse cx="22" cy="28" rx="2" ry="1" fill="#fff" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0.8;0;0;0;0;0;0" dur="4s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="38" cy="28" rx="2" ry="1" fill="#fff" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;0;0.8;0;0;0;0" dur="4s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Big nose-beak -->
+  <path d="M30 34 L32 40 L34 34 Z" fill="#e8a84c"/>
+  <ellipse cx="32" cy="35" rx="4" ry="2.5" fill="#e8a84c"/>
+
+  <!-- Cane -->
+  <g>
+    <line x1="52" y1="30" x2="50" y2="56" stroke="#8b6914" stroke-width="2" stroke-linecap="round"/>
+    <path d="M52 30 Q52 26 48 26" fill="none" stroke="#8b6914" stroke-width="2" stroke-linecap="round"/>
+  </g>
+
+  <!-- Tiny wing -->
+  <ellipse cx="12" cy="38" rx="5" ry="8" fill="#b09870" transform="rotate(15 12 38)"/>
+</svg>

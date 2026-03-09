@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trumpy Bird Brand Assets</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+        background: radial-gradient(circle at top, #18284c 0%, #0a0f1f 65%);
+        color: #eef5ff;
+      }
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        display: grid;
+        gap: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+      p {
+        margin: 0;
+        color: #c7d7f0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: rgba(10, 16, 33, 0.74);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 14px;
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+      }
+      .label {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+      img {
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        background: #060a15;
+      }
+      code {
+        color: #8ad7ff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Trumpy Bird Brand Assets</h1>
+      <p>Current production logo and bird-only favicon mark.</p>
+      <div class="grid">
+        <article class="card">
+          <div class="label">Primary Logo</div>
+          <img src="./logo-trumpy-bird-neon-line-20260303.webp" alt="Trumpy Bird neon line logo" />
+        </article>
+        <article class="card">
+          <div class="label">Bird Favicon (SVG)</div>
+          <img src="./favicon.svg" alt="Trumpy Bird bird-only favicon mark" />
+        </article>
+      </div>
+    </main>
+  </body>
+</html>

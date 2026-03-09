@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<defs>
+<linearGradient id="gs" x1="0%" y1="0%" x2="100%" y2="100%">
+<stop offset="0%" stop-color="#FFD700"/><stop offset="45%" stop-color="#FFF176"/><stop offset="100%" stop-color="#DAA520"/>
+</linearGradient>
+<filter id="gg"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<ellipse cx="32" cy="36" rx="24" ry="22" fill="#FFD700" opacity="0.12">
+<animate attributeName="opacity" values="0.08;0.18;0.08" dur="2.5s" repeatCount="indefinite"/>
+</ellipse>
+<ellipse cx="32" cy="36" rx="18" ry="16" fill="url(#gs)" stroke="#DAA520" stroke-width="0.8" filter="url(#gg)"/>
+<ellipse cx="26" cy="30" rx="7" ry="5" fill="#FFF8DC" opacity="0.3">
+<animate attributeName="opacity" values="0.15;0.5;0.15" dur="1.5s" repeatCount="indefinite"/>
+</ellipse>
+<ellipse cx="38" cy="40" rx="5" ry="3" fill="#FFF8DC" opacity="0">
+<animate attributeName="opacity" values="0;0.35;0" dur="2s" repeatCount="indefinite" begin="0.7s"/>
+</ellipse>
+<polygon points="13,36 4,30 6,36 3,42 13,38" fill="#B8860B"/>
+<ellipse cx="22" cy="38" rx="7" ry="4" fill="#B8860B" transform="rotate(-15 22 38)"/>
+<ellipse cx="36" cy="30" rx="6" ry="6.5" fill="white" stroke="#8B7500" stroke-width="0.5"/>
+<circle cx="37.5" cy="30" r="3" fill="#222">
+<animate attributeName="cy" values="30;29;30" dur="3s" repeatCount="indefinite"/>
+</circle>
+<circle cx="38.5" cy="28.5" r="1" fill="white"/>
+<ellipse cx="36" cy="30" rx="6" ry="6.5" fill="none">
+<animate attributeName="ry" values="6.5;6.5;6.5;3;6.5" dur="4s" repeatCount="indefinite"/>
+</ellipse>
+<path d="M38,37 Q44,36 46,34 Q44,38 38,39Z" fill="#DAA520"/>
+<g transform="rotate(-12 34 20)">
+<animateTransform attributeName="transform" type="rotate" values="-12 34 20;-8 34 20;-15 34 20;-12 34 20" dur="2s" repeatCount="indefinite"/>
+<rect x="25" y="14" width="18" height="12" rx="1" fill="#111"/>
+<rect x="22" y="24" width="24" height="3" rx="1" fill="#111"/>
+<rect x="25" y="14" width="18" height="3" fill="#222"/>
+<rect x="25" y="21" width="18" height="1.5" fill="#FFD700"/>
+<g filter="url(#gg)">
+<polygon points="30,18 31,16.5 32,18 31,19.5" fill="#E0F7FA" opacity="0.9">
+<animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.2s" repeatCount="indefinite"/>
+</polygon>
+<polygon points="35,17 36,15.5 37,17 36,18.5" fill="#E0F7FA" opacity="0.3">
+<animate attributeName="opacity" values="0.3;1;0.3" dur="1.2s" repeatCount="indefinite" begin="0.4s"/>
+</polygon>
+<polygon points="39,19 40,17.5 41,19 40,20.5" fill="#E0F7FA" opacity="0.5">
+<animate attributeName="opacity" values="0.5;1;0.5" dur="1.2s" repeatCount="indefinite" begin="0.8s"/>
+</polygon>
+</g>
+</g>
+<line x1="27" y1="50" x2="24" y2="56" stroke="#DAA520" stroke-width="2" stroke-linecap="round"/>
+<line x1="35" y1="50" x2="38" y2="56" stroke="#DAA520" stroke-width="2" stroke-linecap="round"/>
+</svg>

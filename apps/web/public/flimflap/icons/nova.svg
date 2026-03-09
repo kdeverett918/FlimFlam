@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <!-- Swirling nebula gradient -->
+    <radialGradient id="nebula" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#e040fb">
+        <animate attributeName="stop-color" values="#e040fb;#7c4dff;#00e5ff;#e040fb" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#7c4dff">
+        <animate attributeName="stop-color" values="#7c4dff;#00e5ff;#e040fb;#7c4dff" dur="3s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#1a0033">
+        <animate attributeName="stop-color" values="#1a0033;#0d003a;#1a0033" dur="4s" repeatCount="indefinite"/>
+      </stop>
+    </radialGradient>
+
+    <!-- Glow filter -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Star sparkle filter -->
+    <filter id="starGlow">
+      <feGaussianBlur stdDeviation="0.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background circle (head) -->
+  <circle cx="32" cy="32" r="28" fill="url(#nebula)" stroke="#b388ff" stroke-width="1.5" filter="url(#glow)">
+    <animate attributeName="stroke" values="#b388ff;#80d8ff;#ff80ab;#b388ff" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-width" values="1.5;2.5;1.5" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Swirling nebula arm 1 -->
+  <ellipse cx="28" cy="28" rx="14" ry="6" fill="none" stroke="#ff80ab" stroke-width="1.2" opacity="0.4" transform="rotate(-30 32 32)">
+    <animateTransform attributeName="transform" type="rotate" from="-30 32 32" to="330 32 32" dur="8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.3;0.6;0.3" dur="3s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Swirling nebula arm 2 -->
+  <ellipse cx="36" cy="34" rx="12" ry="5" fill="none" stroke="#80d8ff" stroke-width="1" opacity="0.35" transform="rotate(60 32 32)">
+    <animateTransform attributeName="transform" type="rotate" from="60 32 32" to="-300 32 32" dur="10s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.25;0.5;0.25" dur="4s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <!-- Star particles -->
+  <g filter="url(#starGlow)">
+    <!-- Star 1 -->
+    <circle cx="22" cy="20" r="1.2" fill="#fff">
+      <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="r" values="1.2;0.5;1.2" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <!-- Star 2 -->
+    <circle cx="42" cy="18" r="0.9" fill="#ffe082">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+      <animate attributeName="r" values="0.9;1.5;0.9" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+    </circle>
+    <!-- Star 3 -->
+    <circle cx="18" cy="38" r="1" fill="#b388ff">
+      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.8s" repeatCount="indefinite" begin="0.3s"/>
+    </circle>
+    <!-- Star 4 -->
+    <circle cx="44" cy="40" r="0.8" fill="#80d8ff">
+      <animate attributeName="opacity" values="1;0.1;1" dur="1.2s" repeatCount="indefinite" begin="0.8s"/>
+    </circle>
+    <!-- Star 5 -->
+    <circle cx="32" cy="14" r="1.1" fill="#fff">
+      <animate attributeName="opacity" values="0.2;1;0.2" dur="2.5s" repeatCount="indefinite" begin="1s"/>
+      <animate attributeName="r" values="1.1;0.4;1.1" dur="2.5s" repeatCount="indefinite" begin="1s"/>
+    </circle>
+    <!-- Star 6 -->
+    <circle cx="25" cy="46" r="0.7" fill="#ff80ab">
+      <animate attributeName="opacity" values="0.8;0.1;0.8" dur="1.6s" repeatCount="indefinite" begin="0.2s"/>
+    </circle>
+    <!-- Star 7 -->
+    <circle cx="40" cy="28" r="0.6" fill="#ffe082">
+      <animate attributeName="opacity" values="0.4;1;0.4" dur="1.4s" repeatCount="indefinite" begin="1.2s"/>
+    </circle>
+  </g>
+
+  <!-- Eyes -->
+  <g>
+    <!-- Left eye -->
+    <ellipse cx="24" cy="30" rx="4" ry="4.5" fill="#0d003a" opacity="0.85"/>
+    <ellipse cx="24" cy="30" rx="3" ry="3.5" fill="#e040fb">
+      <animate attributeName="fill" values="#e040fb;#00e5ff;#ff80ab;#e040fb" dur="5s" repeatCount="indefinite"/>
+    </ellipse>
+    <circle cx="24" cy="29" r="1.5" fill="#fff" opacity="0.9"/>
+    <!-- Left eye blink -->
+    <ellipse cx="24" cy="30" rx="4" ry="4.5" fill="url(#nebula)">
+      <animate attributeName="ry" values="0;0;0;0;4.5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0" dur="4s" repeatCount="indefinite"/>
+    </ellipse>
+
+    <!-- Right eye -->
+    <ellipse cx="40" cy="30" rx="4" ry="4.5" fill="#0d003a" opacity="0.85"/>
+    <ellipse cx="40" cy="30" rx="3" ry="3.5" fill="#e040fb">
+      <animate attributeName="fill" values="#e040fb;#00e5ff;#ff80ab;#e040fb" dur="5s" repeatCount="indefinite"/>
+    </ellipse>
+    <circle cx="40" cy="29" r="1.5" fill="#fff" opacity="0.9"/>
+    <!-- Right eye blink -->
+    <ellipse cx="40" cy="30" rx="4" ry="4.5" fill="url(#nebula)">
+      <animate attributeName="ry" values="0;0;0;0;4.5;0;0;0;0;0;0;0;0;0;0;0;0;0;0;0" dur="4s" repeatCount="indefinite"/>
+    </ellipse>
+  </g>
+
+  <!-- Subtle smile -->
+  <path d="M 27 38 Q 32 43 37 38" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round" opacity="0.7">
+    <animate attributeName="opacity" values="0.7;0.9;0.7" dur="3s" repeatCount="indefinite"/>
+  </path>
+
+  <!-- Outer cosmic ring -->
+  <circle cx="32" cy="32" r="30" fill="none" stroke="#b388ff" stroke-width="0.5" stroke-dasharray="4 6" opacity="0.5">
+    <animateTransform attributeName="transform" type="rotate" from="0 32 32" to="360 32 32" dur="12s" repeatCount="indefinite"/>
+    <animate attributeName="stroke" values="#b388ff;#80d8ff;#ff80ab;#b388ff" dur="6s" repeatCount="indefinite"/>
+  </circle>
+</svg>

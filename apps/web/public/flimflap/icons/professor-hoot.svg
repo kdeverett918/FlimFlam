@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Body (slightly taller owl shape) -->
+  <ellipse cx="32" cy="36" rx="15" ry="17" fill="#8B6914"/>
+  <ellipse cx="32" cy="36" rx="15" ry="17" fill="#a07828" opacity="0.5"/>
+  <!-- Belly patch -->
+  <ellipse cx="32" cy="40" rx="9" ry="10" fill="#d4a84b" opacity="0.4"/>
+  <!-- Ear tufts -->
+  <polygon points="20,20 18,10 24,18" fill="#6b4f10"/>
+  <polygon points="44,20 46,10 40,18" fill="#6b4f10"/>
+  <!-- Wing -->
+  <ellipse cx="20" cy="40" rx="5" ry="8" fill="#6b4f10" transform="rotate(10 20 40)"/>
+  <!-- Left eye (normal, unimpressed) -->
+  <circle cx="25" cy="28" r="6" fill="#f5e6c8" stroke="#5a4210" stroke-width="0.8"/>
+  <circle cx="25" cy="29" r="3" fill="#222"/>
+  <circle cx="26" cy="27.5" r="1" fill="white"/>
+  <!-- Left eyebrow (raised = unimpressed) -->
+  <line x1="20" y1="21" x2="29" y2="22" stroke="#3a2a08" stroke-width="1.2" stroke-linecap="round">
+    <animate attributeName="y1" values="21;21;21;18;21" dur="4s" repeatCount="indefinite"/>
+  </line>
+  <!-- Right eye (with monocle) -->
+  <circle cx="39" cy="28" r="6" fill="#f5e6c8" stroke="#5a4210" stroke-width="0.8"/>
+  <circle cx="39" cy="29" r="3" fill="#222"/>
+  <circle cx="40" cy="27.5" r="1" fill="white"/>
+  <!-- Monocle -->
+  <circle cx="39" cy="28" r="7" fill="none" stroke="#c0a040" stroke-width="1.2"/>
+  <line x1="39" y1="35" x2="36" y2="46" stroke="#c0a040" stroke-width="0.6"/>
+  <!-- Monocle glint -->
+  <circle cx="36" cy="25" r="1.5" fill="#fff" opacity="0">
+    <animate attributeName="opacity" values="0;0;0.7;0;0;0" dur="3.5s" repeatCount="indefinite"/>
+  </circle>
+  <!-- Right eyebrow (flat, unimpressed) -->
+  <line x1="34" y1="22" x2="43" y2="21" stroke="#3a2a08" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- Small disappointed beak -->
+  <path d="M30,34 L32,37 L34,34" fill="#d4891c" stroke="#b8720a" stroke-width="0.5"/>
+  <!-- Disappointed frown -->
+  <path d="M27,40 Q32,38 37,40" fill="none" stroke="#5a4210" stroke-width="0.8" stroke-linecap="round"/>
+  <!-- Bow tie -->
+  <g transform="translate(32,48)">
+    <animateTransform attributeName="transform" type="rotate" values="0,32,48;0,32,48;0,32,48;360,32,48;0,32,48" dur="8s" repeatCount="indefinite" additive="replace"/>
+    <polygon points="-5,-2 0,0 -5,2" fill="#8b0000"/>
+    <polygon points="5,-2 0,0 5,2" fill="#8b0000"/>
+    <circle cx="0" cy="0" r="1.5" fill="#a00000"/>
+  </g>
+  <!-- Feet -->
+  <line x1="27" y1="52" x2="25" y2="57" stroke="#d4891c" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="37" y1="52" x2="39" y2="57" stroke="#d4891c" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

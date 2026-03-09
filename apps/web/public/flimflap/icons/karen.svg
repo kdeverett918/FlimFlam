@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Body - peach/skin-tone round bird -->
+  <circle cx="32" cy="36" r="22" fill="#f5c6a0"/>
+  <!-- Belly -->
+  <ellipse cx="32" cy="42" rx="14" ry="12" fill="#fad7bc"/>
+
+  <!-- Angular blonde bob haircut (the Karen cut) -->
+  <g>
+    <!-- Hair back -->
+    <path d="M12 30 Q10 14 32 10 Q54 14 52 30 L50 26 Q48 16 32 13 Q16 16 14 26 Z" fill="#e8c84c"/>
+    <!-- Left side (longer) -->
+    <path d="M12 30 L10 40 L16 36 L14 26 Z" fill="#d4b43c"/>
+    <!-- Right side (shorter, asymmetric Karen cut) -->
+    <path d="M52 30 L50 34 L48 32 L50 26 Z" fill="#d4b43c"/>
+    <!-- Swoopy bangs -->
+    <path d="M14 24 Q20 16 40 18 Q42 20 38 22 Q28 18 18 26 Z" fill="#e8c84c"/>
+    <!-- Hair bounce animation -->
+    <animateTransform attributeName="transform" type="translate" values="0,0;0,-1;0,0.5;0,0" dur="1.5s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Angry narrowed eyes -->
+  <g>
+    <!-- Left eye -->
+    <ellipse cx="25" cy="32" rx="4" ry="2.5" fill="#fff"/>
+    <circle cx="26" cy="32" r="1.8" fill="#4a6e2a"/>
+    <circle cx="26.3" cy="31.5" r="0.5" fill="#fff"/>
+    <!-- Right eye -->
+    <ellipse cx="39" cy="32" rx="4" ry="2.5" fill="#fff"/>
+    <circle cx="38" cy="32" r="1.8" fill="#4a6e2a"/>
+    <circle cx="38.3" cy="31.5" r="0.5" fill="#fff"/>
+    <!-- Angry narrowing lids -->
+    <ellipse cx="25" cy="31" rx="5" ry="2" fill="#f5c6a0">
+      <animate attributeName="ry" values="2;1.2;2;2.5;2" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="39" cy="31" rx="5" ry="2" fill="#f5c6a0">
+      <animate attributeName="ry" values="2;2.5;2;1.2;2" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    <!-- Angry eyebrow lines -->
+    <line x1="20" y1="27" x2="28" y2="29" stroke="#c48a60" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="44" y1="27" x2="36" y2="29" stroke="#c48a60" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Pursed beak -->
+  <ellipse cx="32" cy="38" rx="3" ry="1.8" fill="#e07850"/>
+  <line x1="29" y1="38" x2="35" y2="38" stroke="#c06040" stroke-width="0.8"/>
+
+  <!-- Pointing accusatory wing (left side, jabbing right) -->
+  <g>
+    <!-- Wing arm -->
+    <path d="M8 36 L-2 30 L-6 30 L-3 32 L-6 31 L-2 33 Z" fill="#e8b080" stroke="#d4a070" stroke-width="0.5">
+    </path>
+    <animateTransform attributeName="transform" type="translate" values="0,0;6,0;0,0;0,0;0,0" dur="2s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Right wing (on hip, indignant) -->
+  <ellipse cx="53" cy="40" rx="4" ry="7" fill="#e8b080" transform="rotate(-10 53 40)"/>
+</svg>

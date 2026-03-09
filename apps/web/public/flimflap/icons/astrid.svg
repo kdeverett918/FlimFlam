@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <circle cx="8" cy="34" r="1" fill="#fff" opacity=".6">
+    <animate attributeName="opacity" values=".6;.1;.6" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="12" cy="28" r=".7" fill="#aad4ff" opacity=".5">
+    <animate attributeName="opacity" values=".2;.8;.2" dur="2.2s" repeatCount="indefinite" begin=".4s"/>
+  </circle>
+  <circle cx="6" cy="40" r=".8" fill="#ffe082" opacity=".4">
+    <animate attributeName="opacity" values=".4;1;.4" dur="1.5s" repeatCount="indefinite" begin=".7s"/>
+  </circle>
+  <circle cx="14" cy="42" r=".6" fill="#fff" opacity=".3">
+    <animate attributeName="opacity" values=".1;.7;.1" dur="2s" repeatCount="indefinite" begin="1s"/>
+  </circle>
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,0;0,-2;0,0;0,1;0,0" dur="3s" repeatCount="indefinite"/>
+    <ellipse cx="34" cy="36" rx="16" ry="15" fill="#2C3E7B"/>
+    <ellipse cx="34" cy="36" rx="16" ry="15" fill="#1a2456" opacity=".5"/>
+    <ellipse cx="30" cy="32" rx="8" ry="6" fill="#3d5aaf" opacity=".3"/>
+    <polygon points="17,36 10,31 12,36 9,41 17,38" fill="#1a1f4e"/>
+    <ellipse cx="25" cy="40" rx="6" ry="3.5" fill="#1a2456" transform="rotate(-10 25 40)"/>
+    <ellipse cx="38" cy="26" rx="12" ry="11" fill="none" stroke="#c0ddf0" stroke-width="1.5" opacity=".7"/>
+    <ellipse cx="38" cy="26" rx="11.5" ry="10.5" fill="#87CEEB" opacity=".12"/>
+    <ellipse cx="38" cy="22" rx="3" ry="8" fill="#fff" opacity="0" transform="rotate(-20 38 22)">
+      <animate attributeName="opacity" values="0;0;.5;0" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="cx" values="30;30;46;46" dur="3s" repeatCount="indefinite"/>
+    </ellipse>
+    <ellipse cx="35" cy="28" rx="3" ry="3.5" fill="white" stroke="#333" stroke-width=".5"/>
+    <circle cx="36" cy="28" r="2" fill="#222"/>
+    <circle cx="36.8" cy="27" r=".7" fill="white"/>
+    <ellipse cx="43" cy="28" rx="3" ry="3.5" fill="white" stroke="#333" stroke-width=".5"/>
+    <circle cx="44" cy="28" r="2" fill="#222"/>
+    <circle cx="44.8" cy="27" r=".7" fill="white"/>
+    <line x1="33" y1="24" x2="37" y2="25" stroke="#222" stroke-width=".8" stroke-linecap="round"/>
+    <line x1="41" y1="25" x2="45" y2="24" stroke="#222" stroke-width=".8" stroke-linecap="round"/>
+    <path d="M44,32 Q48,31 49,30 Q48,33 44,34Z" fill="#5a7abf"/>
+    <line x1="29" y1="50" x2="27" y2="55" stroke="#5a7abf" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="37" y1="50" x2="39" y2="55" stroke="#5a7abf" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

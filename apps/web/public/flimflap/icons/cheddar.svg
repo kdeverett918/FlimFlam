@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <ellipse cx="32" cy="36" rx="22" ry="15" fill="#FFA726">
+    <animate attributeName="ry" values="15;14;15;16;15" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="rx" values="22;22.5;22;21.5;22" dur="2s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="26" cy="30" rx="10" ry="6" fill="#FFB74D" opacity="0.5"/>
+  <ellipse cx="20" cy="38" rx="3" ry="2.5" fill="#E89320" opacity="0.7">
+    <animate attributeName="rx" values="3;3.5;3" dur="3s" repeatCount="indefinite"/>
+  </ellipse>
+  <ellipse cx="42" cy="40" rx="2.5" ry="2" fill="#E89320" opacity="0.6">
+    <animate attributeName="ry" values="2;2.5;2" dur="2.5s" repeatCount="indefinite"/>
+  </ellipse>
+  <circle cx="36" cy="44" r="1.8" fill="#E89320" opacity="0.5">
+    <animate attributeName="r" values="1.8;2.2;1.8" dur="2.8s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="25" cy="44" r="1.5" fill="#E89320" opacity="0.5">
+    <animate attributeName="r" values="1.5;1.9;1.5" dur="3.2s" repeatCount="indefinite"/>
+  </circle>
+  <polygon points="9,36 2,31 4,36 1,41 9,38" fill="#E08A1E"/>
+  <ellipse cx="18" cy="38" rx="6" ry="3.5" fill="#E08A1E" transform="rotate(-10 18 38)"/>
+  <ellipse cx="29" cy="31" rx="3" ry="3.5" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="30" cy="31.5" r="2" fill="#222"/>
+  <circle cx="30.8" cy="30.5" r="0.6" fill="white"/>
+  <ellipse cx="39" cy="31" rx="3" ry="3.5" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="40" cy="31.5" r="2" fill="#222"/>
+  <circle cx="40.8" cy="30.5" r="0.6" fill="white"/>
+  <rect x="25.5" y="27" width="7" height="3" fill="#FFA726" rx="1">
+    <animate attributeName="height" values="3;2.5;3;3.5;3" dur="3s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="35.5" y="27" width="7" height="3" fill="#FFA726" rx="1">
+    <animate attributeName="height" values="3;2.5;3;3.5;3" dur="3s" repeatCount="indefinite"/>
+  </rect>
+  <path d="M28,38 Q34,36 42,37 L41,39 Q34,38 28,39 Z" fill="#E86A1A"/>
+  <path d="M28,39 Q35,44 42,39" fill="none" stroke="#222" stroke-width="1.2" stroke-linecap="round">
+    <animate attributeName="d" values="M28,39 Q35,44 42,39;M27,39 Q35,46 43,39;M28,39 Q35,44 42,39" dur="3s" repeatCount="indefinite"/>
+  </path>
+  <line x1="27" y1="49" x2="24" y2="56" stroke="#E86A1A" stroke-width="2" stroke-linecap="round"/>
+  <line x1="37" y1="49" x2="40" y2="56" stroke="#E86A1A" stroke-width="2" stroke-linecap="round"/>
+</svg>

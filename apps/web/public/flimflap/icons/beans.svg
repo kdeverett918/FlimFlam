@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Energy lines -->
+  <g opacity="0.6" stroke="#44FF44" stroke-width="1.5" stroke-linecap="round">
+    <line x1="10" y1="30" x2="6" y2="28"><animate attributeName="opacity" values="0.6;0.1;0.8;0.3" dur="0.4s" repeatCount="indefinite"/></line>
+    <line x1="11" y1="42" x2="6" y2="44"><animate attributeName="opacity" values="0.3;0.7;0.2;0.6" dur="0.35s" repeatCount="indefinite"/></line>
+    <line x1="52" y1="28" x2="57" y2="26"><animate attributeName="opacity" values="0.5;0.2;0.8;0.3" dur="0.45s" repeatCount="indefinite"/></line>
+    <line x1="50" y1="44" x2="56" y2="46"><animate attributeName="opacity" values="0.2;0.7;0.4;0.8" dur="0.3s" repeatCount="indefinite"/></line>
+    <line x1="30" y1="14" x2="28" y2="9"><animate attributeName="opacity" values="0.7;0.2;0.5;0.1" dur="0.38s" repeatCount="indefinite"/></line>
+    <line x1="38" y1="14" x2="40" y2="9"><animate attributeName="opacity" values="0.4;0.8;0.2;0.7" dur="0.42s" repeatCount="indefinite"/></line>
+  </g>
+  <!-- Vibrating body -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,0;0.8,-0.5;-0.6,0.7;0.5,0.4;-0.7,-0.6;0.3,0.8;0,0" dur="0.2s" repeatCount="indefinite"/>
+    <circle cx="32" cy="36" r="13" fill="#44DD44"/>
+    <circle cx="27" cy="31" r="5" fill="#66EE66" opacity="0.4"/>
+    <polygon points="18,36 12,32 14,36 11,40 18,38" fill="#33BB33"/>
+    <ellipse cx="23" cy="39" rx="5" ry="3" fill="#33BB33" transform="rotate(-10 23 39)"/>
+    <!-- Huge left eye -->
+    <circle cx="27" cy="30" r="9" fill="white" stroke="#333" stroke-width="0.5"/>
+    <circle cx="28" cy="31" r="4.5" fill="#111">
+      <animate attributeName="cx" values="28;26;30;27;29;28" dur="0.6s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="31;29;32;30;33;31" dur="0.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="26" cy="28" r="2" fill="white"/>
+    <!-- Huge right eye -->
+    <circle cx="39" cy="30" r="9" fill="white" stroke="#333" stroke-width="0.5"/>
+    <circle cx="40" cy="31" r="4.5" fill="#111">
+      <animate attributeName="cx" values="40;38;42;39;41;40" dur="0.55s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="31;30;33;29;32;31" dur="0.48s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="38" cy="28" r="2" fill="white"/>
+    <!-- Tiny beak -->
+    <path d="M34,40 L38,42 L34,44 Z" fill="#FF8833"/>
+    <!-- Feet -->
+    <line x1="28" y1="48" x2="25" y2="54" stroke="#FF8833" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="36" y1="48" x2="39" y2="54" stroke="#FF8833" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+</svg>

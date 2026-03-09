@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <polyline points="4,44 10,40 16,42 22,36 28,38" fill="none" stroke="#4caf50" stroke-width="1.2" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;.7;.7;0;0;0" dur="6s" repeatCount="indefinite"/>
+  </polyline>
+  <polyline points="28,38 34,34 40,40 46,44 52,48" fill="none" stroke="#f44336" stroke-width="1.2" opacity="0">
+    <animate attributeName="opacity" values="0;0;0;0;.7;.7;0;0" dur="6s" repeatCount="indefinite"/>
+  </polyline>
+  <ellipse cx="32" cy="36" rx="16" ry="15" fill="#2196F3"/>
+  <ellipse cx="28" cy="32" rx="7" ry="5" fill="#42a5f5" opacity="0.4"/>
+  <polygon points="15,36 8,32 10,36 7,40 15,38" fill="#1565c0"/>
+  <ellipse cx="23" cy="40" rx="6" ry="3.5" fill="#1565c0" transform="rotate(-10 23 40)"/>
+  <ellipse cx="28" cy="30" rx="4.5" ry="5" fill="white" stroke="#333" stroke-width=".5"/>
+  <circle cx="29" cy="30" r="2.5" fill="#222"/>
+  <circle cx="30" cy="28.5" r=".8" fill="white"/>
+  <ellipse cx="40" cy="30" rx="4.5" ry="5" fill="white" stroke="#333" stroke-width=".5"/>
+  <circle cx="41" cy="30" r="2.5" fill="#222"/>
+  <circle cx="42" cy="28.5" r=".8" fill="white"/>
+  <line x1="29" y1="30" x2="20" y2="44" stroke="#ff1744" stroke-width="1.5" opacity=".6" stroke-linecap="round">
+    <animate attributeName="opacity" values=".3;.8;.3" dur="1.2s" repeatCount="indefinite"/>
+  </line>
+  <line x1="41" y1="30" x2="50" y2="44" stroke="#ff1744" stroke-width="1.5" opacity=".6" stroke-linecap="round">
+    <animate attributeName="opacity" values=".3;.8;.3" dur="1.2s" repeatCount="indefinite"/>
+  </line>
+  <circle cx="29" cy="30" r="3" fill="#ff1744" opacity=".15">
+    <animate attributeName="opacity" values=".05;.25;.05" dur="1.2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="41" cy="30" r="3" fill="#ff1744" opacity=".15">
+    <animate attributeName="opacity" values=".05;.25;.05" dur="1.2s" repeatCount="indefinite"/>
+  </circle>
+  <path d="M34,40 Q40,44 44,39" fill="none" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+  <g>
+    <animateTransform attributeName="transform" type="rotate" values="0 32 22;-3 32 22;0 32 22;2 32 22;0 32 22" dur="3s" repeatCount="indefinite"/>
+    <path d="M20,24 Q20,14 32,13 Q44,14 44,24Z" fill="#1a1a2e"/>
+    <path d="M20,24L44,24" stroke="#ffab00" stroke-width="1.5"/>
+    <path d="M20,23 Q14,22 12,25 Q14,26 20,25Z" fill="#1a1a2e"/>
+  </g>
+  <path d="M42,34 Q47,33 48,32 Q47,36 42,37Z" fill="#ff9800"/>
+  <line x1="27" y1="50" x2="25" y2="55" stroke="#ff9800" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="35" y1="50" x2="37" y2="55" stroke="#ff9800" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

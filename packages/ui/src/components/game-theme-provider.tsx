@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-type GameTheme = "default" | "brain-board" | "lucky-letters" | "survey-smash";
+type GameTheme = "default" | "brain-board" | "lucky-letters" | "survey-smash" | "flim-flap";
 
 interface GameThemeContextValue {
   theme: GameTheme;
@@ -38,6 +38,12 @@ const GAME_THEMES: Record<
     glow: "oklch(0.68 0.25 25 / 0.3)",
     primaryBlob: "oklch(0.68 0.25 25)",
     secondaryBlob: "oklch(0.72 0.22 40)",
+  },
+  "flim-flap": {
+    accent: "oklch(0.76 0.19 55)",
+    glow: "oklch(0.76 0.19 55 / 0.3)",
+    primaryBlob: "oklch(0.76 0.19 55)",
+    secondaryBlob: "oklch(0.72 0.16 205)",
   },
 };
 

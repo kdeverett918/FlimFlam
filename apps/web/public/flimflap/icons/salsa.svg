@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Body - round crimson bird -->
+  <ellipse cx="32" cy="36" rx="17" ry="15" fill="#DC143C">
+    <animateTransform attributeName="transform" type="rotate" values="-3 32 36;3 32 36;-3 32 36" dur="1.2s" repeatCount="indefinite"/>
+  </ellipse>
+  <!-- Body highlight -->
+  <ellipse cx="27" cy="30" rx="7" ry="5" fill="#FF6B6B" opacity="0.35"/>
+  <!-- Flame tail feathers -->
+  <g>
+    <path d="M14,34 Q6,28 8,22 Q10,28 14,30 Z" fill="#FF4500" opacity="0.9">
+      <animate attributeName="d" values="M14,34 Q6,28 8,22 Q10,28 14,30 Z;M14,34 Q4,26 7,20 Q11,27 14,30 Z;M14,34 Q6,28 8,22 Q10,28 14,30 Z" dur="0.4s" repeatCount="indefinite"/>
+    </path>
+    <path d="M15,36 Q5,34 4,28 Q8,33 15,34 Z" fill="#FF6347" opacity="0.85">
+      <animate attributeName="d" values="M15,36 Q5,34 4,28 Q8,33 15,34 Z;M15,36 Q3,32 3,26 Q9,32 15,34 Z;M15,36 Q5,34 4,28 Q8,33 15,34 Z" dur="0.5s" repeatCount="indefinite"/>
+    </path>
+    <path d="M15,38 Q7,40 5,36 Q9,38 15,37 Z" fill="#FF4500" opacity="0.8">
+      <animate attributeName="d" values="M15,38 Q7,40 5,36 Q9,38 15,37 Z;M15,38 Q6,42 4,37 Q8,39 15,37 Z;M15,38 Q7,40 5,36 Q9,38 15,37 Z" dur="0.35s" repeatCount="indefinite"/>
+    </path>
+  </g>
+  <!-- Wing -->
+  <ellipse cx="23" cy="38" rx="6" ry="3.5" fill="#B22222" transform="rotate(-20 23 38)"/>
+  <!-- Rose behind head -->
+  <g transform="translate(42,22)">
+    <circle cx="0" cy="0" r="3.5" fill="#FF1744">
+      <animate attributeName="r" values="3.5;4;3.5" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="0" cy="0" r="2" fill="#D50000"/>
+    <path d="M-1,3 Q-2,6 -1,8" fill="none" stroke="#2E7D32" stroke-width="1" stroke-linecap="round"/>
+    <ellipse cx="-2.5" cy="6" rx="1.5" ry="1" fill="#388E3C" transform="rotate(-30 -2.5 6)"/>
+  </g>
+  <!-- Eyes - fiery confident -->
+  <ellipse cx="28" cy="31" rx="3.5" ry="4" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="29" cy="31" r="2" fill="#222"/>
+  <circle cx="29.8" cy="29.8" r="0.7" fill="white"/>
+  <ellipse cx="38" cy="31" rx="3.5" ry="4" fill="white" stroke="#333" stroke-width="0.5"/>
+  <circle cx="39" cy="31" r="2" fill="#222"/>
+  <circle cx="39.8" cy="29.8" r="0.7" fill="white"/>
+  <!-- Confident eyelids (half-lowered) -->
+  <path d="M24.5,28 Q28,26 31.5,28" fill="#DC143C" stroke="none"/>
+  <path d="M34.5,28 Q38,26 41.5,28" fill="#DC143C" stroke="none"/>
+  <!-- Beak -->
+  <path d="M36,37 Q42,36 44,34 Q42,38 36,39 Z" fill="#FF8C00"/>
+  <!-- Feet -->
+  <line x1="28" y1="50" x2="25" y2="56" stroke="#FF8C00" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="36" y1="50" x2="39" y2="56" stroke="#FF8C00" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
