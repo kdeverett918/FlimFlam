@@ -9,6 +9,7 @@ const flimflapDistRoot = path.join(flimflapClientRoot, "dist");
 const flimflapPublicRoot = path.join(flimflapClientRoot, "public");
 const targetPublicRoot = path.join(repoRoot, "apps/web/public/flimflap");
 const manifestPath = path.join(repoRoot, "apps/web/src/lib/flimflap-client-manifest.ts");
+const FLIMFLAP_PUBLIC_BASE = "/flimflap";
 
 const captureSingle = (html, pattern, label) => {
   const match = html.match(pattern);
@@ -20,6 +21,12 @@ const captureSingle = (html, pattern, label) => {
 
 const captureMany = (html, pattern) => Array.from(html.matchAll(pattern), (match) => match[1]);
 
+const normalizeAssetPath = (value) => {
+  const [rawPath, search = ""] = value.split("?", 2);
+  const normalizedPath = rawPath.replace(/^\/play\/flimflap(?=\/|$)/, FLIMFLAP_PUBLIC_BASE);
+  return search ? `${normalizedPath}?${search}` : normalizedPath;
+};
+
 await rm(targetPublicRoot, { recursive: true, force: true });
 await mkdir(targetPublicRoot, { recursive: true });
 
@@ -30,9 +37,15 @@ await cp(path.join(flimflapDistRoot, "assets"), path.join(targetPublicRoot, "ass
 
 const indexHtml = await readFile(path.join(flimflapDistRoot, "index.html"), "utf8");
 const manifest = {
-  script: captureSingle(indexHtml, /<script[^>]+src="([^"]+)"/i, "module script"),
-  stylesheets: captureMany(indexHtml, /<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/gi),
-  modulePreloads: captureMany(indexHtml, /<link[^>]+rel="modulepreload"[^>]+href="([^"]+)"/gi),
+  script: normalizeAssetPath(
+    captureSingle(indexHtml, /<script[^>]+src="([^"]+)"/i, "module script"),
+  ),
+  stylesheets: captureMany(indexHtml, /<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/gi).map(
+    normalizeAssetPath,
+  ),
+  modulePreloads: captureMany(indexHtml, /<link[^>]+rel="modulepreload"[^>]+href="([^"]+)"/gi).map(
+    normalizeAssetPath,
+  ),
 };
 
 const manifestSource = `export const FLIMFLAP_CLIENT_ASSET_MANIFEST = ${JSON.stringify(

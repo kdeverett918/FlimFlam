@@ -1,8 +1,10 @@
 export const FLIMFLAP_CLIENT_ASSET_MANIFEST = {
-  script: "/flimflap/assets/index-B_IWsg0m.js",
-  stylesheets: ["/flimflap/assets/index-C6I9LXVZ.css"],
-  modulePreloads: [
-    "/flimflap/assets/react-vendor-g_Of5feq.js",
-    "/flimflap/assets/net-vendor-BAQV-Xvm.js",
+  "script": "/flimflap/assets/index-Bz6RL5dt.js",
+  "stylesheets": [
+    "/flimflap/assets/index-B_i_79z7.css"
   ],
+  "modulePreloads": [
+    "/flimflap/assets/react-vendor-CnCoWHoJ.js",
+    "/flimflap/assets/net-vendor-DAviQ-fn.js"
+  ]
 } as const;

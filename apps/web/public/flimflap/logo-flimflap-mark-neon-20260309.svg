@@ -1,5 +1,4 @@
-<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
-  <title id="title">FlimFlap</title>
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="body" x1="86" y1="100" x2="156" y2="164" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFE972" />

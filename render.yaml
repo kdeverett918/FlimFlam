@@ -29,6 +29,10 @@ services:
         value: "1"
       - key: FLIMFLAP_BACKEND_URL
         value: https://trumpybird.app
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
     buildFilter:
       paths:
         - apps/web/**
