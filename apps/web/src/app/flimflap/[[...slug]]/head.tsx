@@ -1,4 +1,4 @@
-import { FLIMFLAP_CLIENT_ASSET_MANIFEST } from "./flimflap-client-manifest";
+import { FLIMFLAP_CLIENT_ASSET_MANIFEST } from "@/lib/flimflap-client-manifest";
 
 export default function Head() {
   return (

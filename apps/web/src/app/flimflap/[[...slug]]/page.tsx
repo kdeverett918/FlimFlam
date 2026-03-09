@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 
-import { FLIMFLAP_CLIENT_ASSET_MANIFEST } from "./flimflap-client-manifest";
+import { FLIMFLAP_CLIENT_ASSET_MANIFEST } from "@/lib/flimflap-client-manifest";
 
 const normalizeBackendUrl = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
