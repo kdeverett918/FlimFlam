@@ -4,6 +4,13 @@ import { GAME_THEMES, type GameTheme, MotionCard, useReducedMotion } from "@flim
 import { motion } from "motion/react";
 import Link from "next/link";
 
+import {
+  FLIMFLAP_DESTINATION_IS_EXTERNAL,
+  FLIMFLAP_DESTINATION_NOTE,
+  FLIMFLAP_DESTINATION_STATUS,
+  FLIMFLAP_DESTINATION_URL,
+} from "@/lib/flimflap-destination";
+
 interface GamePreview {
   id: GameTheme;
   name: string;
@@ -16,6 +23,8 @@ interface GamePreview {
   gradient: string;
   status: string;
   href?: string;
+  external?: boolean;
+  launchNote?: string;
 }
 
 const GAMES: GamePreview[] = [
@@ -30,8 +39,10 @@ const GAMES: GamePreview[] = [
     players: "1-8",
     duration: "2-10 min",
     gradient: "linear-gradient(135deg, oklch(0.68 0.2 300 / 0.3), oklch(0.55 0.18 280 / 0.1))",
-    status: "Live now",
-    href: "/flimflap",
+    status: FLIMFLAP_DESTINATION_STATUS,
+    href: FLIMFLAP_DESTINATION_URL,
+    external: FLIMFLAP_DESTINATION_IS_EXTERNAL,
+    launchNote: FLIMFLAP_DESTINATION_NOTE,
   },
   {
     id: "brain-board",
@@ -195,9 +206,10 @@ export function GameShowcase() {
 
                 <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
                   <p className="font-body text-xs text-text-dim">
-                    {game.href
-                      ? "Save runs, chase daily scores, or jump into live multiplayer."
-                      : "Best experienced in FLIMFLAM party rooms with everyone on one screen."}
+                    {game.launchNote ??
+                      (game.href
+                        ? "Save runs, chase daily scores, or jump into live multiplayer."
+                        : "Best experienced in FLIMFLAM party rooms with everyone on one screen.")}
                   </p>
                   {game.href ? (
                     <span className="font-display text-xs font-semibold uppercase tracking-[0.22em] text-text-primary">
@@ -221,12 +233,21 @@ export function GameShowcase() {
               }}
             >
               {game.href ? (
-                <Link
-                  href={game.href}
-                  className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
-                >
-                  {cardContent}
-                </Link>
+                game.external ? (
+                  <a
+                    href={game.href}
+                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
+                  >
+                    {cardContent}
+                  </a>
+                ) : (
+                  <Link
+                    href={game.href}
+                    className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-deep"
+                  >
+                    {cardContent}
+                  </Link>
+                )
               ) : (
                 cardContent
               )}

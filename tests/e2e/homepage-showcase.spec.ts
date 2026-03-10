@@ -1,10 +1,34 @@
+import fs from "node:fs";
+import path from "node:path";
 import { expect, test } from "@playwright/test";
 
 import { waitForColyseusHealthy } from "./e2e-helpers";
 
+function readConfiguredFlimFlapHref() {
+  const envFiles = [
+    path.join(process.cwd(), "apps", "web", ".env.local"),
+    path.join(process.cwd(), "apps", "web", ".env.production"),
+  ];
+
+  for (const envFile of envFiles) {
+    if (!fs.existsSync(envFile)) continue;
+    const content = fs.readFileSync(envFile, "utf8");
+    const flimFlapMatch = content.match(/^NEXT_PUBLIC_FLIMFLAP_URL=(.+)$/m);
+    if (flimFlapMatch?.[1]) return flimFlapMatch[1].trim();
+    const legacyMatch = content.match(/^NEXT_PUBLIC_TRUMPYBIRD_URL=(.+)$/m);
+    if (legacyMatch?.[1]) return legacyMatch[1].trim();
+  }
+
+  return "/trumpybird";
+}
+
+const expectedFlimFlapHref = readConfiguredFlimFlapHref();
+
 test.describe("Homepage Landing", () => {
   test("renders the current landing contract", async ({ page }) => {
     await page.goto("/");
+
+    const flimFlapLink = page.getByRole("link", { name: /flimflap/i }).first();
 
     await expect(page.getByRole("heading", { name: /flimflam arcade series/i })).toBeVisible();
     await expect(page.locator('[aria-label="Game night just got ridiculous."]')).toBeVisible();
@@ -17,7 +41,8 @@ test.describe("Homepage Landing", () => {
     await expect(page.getByText(/zero app installs/i)).toBeVisible();
     await expect(page.getByText(/saved flimflap runs/i)).toBeVisible();
     await expect(page.getByRole("heading", { name: /^4 games, one party$/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /flimflap/i })).toBeVisible();
+    await expect(flimFlapLink).toBeVisible();
+    await expect(flimFlapLink).toHaveAttribute("href", expectedFlimFlapHref);
     await expect(page.getByRole("heading", { name: /^join game$/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /^create game$/i })).toHaveCount(0);
 

@@ -35,6 +35,12 @@ Services:
 - Host: `http://localhost:3000`
 - Controller: `http://localhost:3001`
 
+## Trumpybird Domain Handoff
+
+Set `NEXT_PUBLIC_FLIMFLAP_URL=https://flimflap.com` to make the
+FLIMFLAM homepage `FlimFlap` card open the standalone FlimFlap site. If this
+env var is unset, the card falls back to the temporary `/trumpybird` route.
+
 ## Production Build
 
 ```bash
