@@ -1,13 +1,15 @@
-const DEFAULT_FLIMFLAP_DESTINATION_URL = "/trumpybird";
+export const DEFAULT_FLIMFLAP_DESTINATION_URL = "https://flimflap.com";
 
-const configuredFlimFlapUrl =
-  process.env.NEXT_PUBLIC_FLIMFLAP_URL?.trim() ||
-  process.env.NEXT_PUBLIC_TRUMPYBIRD_URL?.trim();
+export function resolveFlimFlapDestinationUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const configuredFlimFlapUrl =
+    env.NEXT_PUBLIC_FLIMFLAP_URL?.trim() || env.NEXT_PUBLIC_TRUMPYBIRD_URL?.trim();
 
-export const FLIMFLAP_DESTINATION_URL =
-  configuredFlimFlapUrl && configuredFlimFlapUrl.length > 0
+  return configuredFlimFlapUrl && configuredFlimFlapUrl.length > 0
     ? configuredFlimFlapUrl
     : DEFAULT_FLIMFLAP_DESTINATION_URL;
+}
+
+export const FLIMFLAP_DESTINATION_URL = resolveFlimFlapDestinationUrl();
 
 export const FLIMFLAP_DESTINATION_IS_EXTERNAL = /^https?:\/\//i.test(FLIMFLAP_DESTINATION_URL);
 

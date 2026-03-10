@@ -37,9 +37,11 @@ Services:
 
 ## Trumpybird Domain Handoff
 
-Set `NEXT_PUBLIC_FLIMFLAP_URL=https://flimflap.com` to make the
-FLIMFLAM homepage `FlimFlap` card open the standalone FlimFlap site. If this
-env var is unset, the card falls back to the temporary `/trumpybird` route.
+The FLIMFLAM homepage `FlimFlap` card opens the standalone
+`https://flimflap.com` site by default. Set `NEXT_PUBLIC_FLIMFLAP_URL` to
+override that destination for a specific environment, or use
+`NEXT_PUBLIC_TRUMPYBIRD_URL` as a legacy override while `/trumpybird` remains
+available as an alias route.
 
 ## Production Build
 

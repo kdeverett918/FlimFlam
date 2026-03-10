@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
+import { resolveFlimFlapDestinationUrl } from "../../apps/web/src/lib/flimflap-destination";
 import { waitForColyseusHealthy } from "./e2e-helpers";
 
 function readConfiguredFlimFlapHref() {
@@ -9,17 +10,26 @@ function readConfiguredFlimFlapHref() {
     path.join(process.cwd(), "apps", "web", ".env.local"),
     path.join(process.cwd(), "apps", "web", ".env.production"),
   ];
+  const envOverrides: NodeJS.ProcessEnv = {};
 
   for (const envFile of envFiles) {
     if (!fs.existsSync(envFile)) continue;
+
     const content = fs.readFileSync(envFile, "utf8");
-    const flimFlapMatch = content.match(/^NEXT_PUBLIC_FLIMFLAP_URL=(.+)$/m);
-    if (flimFlapMatch?.[1]) return flimFlapMatch[1].trim();
-    const legacyMatch = content.match(/^NEXT_PUBLIC_TRUMPYBIRD_URL=(.+)$/m);
-    if (legacyMatch?.[1]) return legacyMatch[1].trim();
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+
+      const separatorIndex = line.indexOf("=");
+      if (separatorIndex <= 0) continue;
+
+      const key = line.slice(0, separatorIndex).trim();
+      const rawValue = line.slice(separatorIndex + 1).trim();
+      envOverrides[key] = rawValue.replace(/^(['"])(.*)\1$/, "$2");
+    }
   }
 
-  return "/trumpybird";
+  return resolveFlimFlapDestinationUrl(envOverrides);
 }
 
 const expectedFlimFlapHref = readConfiguredFlimFlapHref();
