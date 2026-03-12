@@ -2,16 +2,17 @@
 
 import { resolveNextPublicHostUrl } from "@flimflam/shared";
 import { GlassPanel, haptics, useReducedMotion } from "@flimflam/ui";
-import { Check, Copy, QrCode, Share2, X } from "lucide-react";
+import { ArrowLeft, Check, Copy, QrCode, Share2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useState } from "react";
 
 interface LobbyHeaderProps {
   roomCode: string;
+  onLeave?: () => void;
 }
 
-export function LobbyHeader({ roomCode }: LobbyHeaderProps) {
+export function LobbyHeader({ roomCode, onLeave }: LobbyHeaderProps) {
   const [copied, setCopied] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
@@ -78,6 +79,21 @@ export function LobbyHeader({ roomCode }: LobbyHeaderProps) {
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-1" data-testid="lobby-share-panel">
+        {/* Back/Leave button */}
+        {onLeave && (
+          <button
+            type="button"
+            onClick={() => {
+              haptics.tap();
+              onLeave();
+            }}
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/8 text-text-muted transition-colors hover:border-primary/40 hover:text-text-primary"
+            aria-label="Leave room"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
+
         {/* Room code — large monospace, copy on tap */}
         <button
           type="button"

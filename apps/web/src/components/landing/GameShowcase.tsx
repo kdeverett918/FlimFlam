@@ -5,7 +5,6 @@ import { motion } from "motion/react";
 import Link from "next/link";
 
 import {
-  FLIMFLAP_DESTINATION_IS_EXTERNAL,
   FLIMFLAP_DESTINATION_NOTE,
   FLIMFLAP_DESTINATION_STATUS,
   FLIMFLAP_DESTINATION_URL,
@@ -41,7 +40,7 @@ const GAMES: GamePreview[] = [
     gradient: "linear-gradient(135deg, oklch(0.68 0.2 300 / 0.3), oklch(0.55 0.18 280 / 0.1))",
     status: FLIMFLAP_DESTINATION_STATUS,
     href: FLIMFLAP_DESTINATION_URL,
-    external: FLIMFLAP_DESTINATION_IS_EXTERNAL,
+    external: false,
     launchNote: FLIMFLAP_DESTINATION_NOTE,
   },
   {

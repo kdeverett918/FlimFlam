@@ -1,3 +1,4 @@
+import { AppShell } from "@/components/navigation/AppShell";
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import Script from "next/script";
@@ -61,7 +62,7 @@ export default function RootLayout({
         <Script id="flimflam-runtime-config" strategy="beforeInteractive">
           {runtimeConfigScript}
         </Script>
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -2,7 +2,7 @@
 
 import type { Complexity, PlayerData } from "@flimflam/shared";
 import { MIN_PLAYERS } from "@flimflam/shared";
-import { AnimatedBackground, GameThemeProvider, haptics, useGameTheme } from "@flimflam/ui";
+import { AnimatedBackground, GameThemeProvider, GlassPanel, haptics, useGameTheme } from "@flimflam/ui";
 import type { GameTheme } from "@flimflam/ui";
 import { useCallback, useEffect } from "react";
 import { DifficultySelector } from "./DifficultySelector";
@@ -21,6 +21,7 @@ export interface UnifiedLobbyProps {
   isHost: boolean;
   mySessionId: string | null;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
+  onLeave?: () => void;
 }
 
 const GAME_ID_TO_THEME: Record<string, GameTheme> = {
@@ -47,6 +48,7 @@ function LobbyContent({
   isHost,
   mySessionId,
   sendMessage,
+  onLeave,
 }: UnifiedLobbyProps) {
   const { setTheme } = useGameTheme();
   const playerCount = players.length;
@@ -101,12 +103,12 @@ function LobbyContent({
 
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-4 pb-[env(safe-area-inset-bottom,16px)] sm:p-6 lg:gap-8 lg:p-10">
         {/* Header — Room code + Share + QR */}
-        <LobbyHeader roomCode={roomCode} />
+        <LobbyHeader roomCode={roomCode} onLeave={onLeave} />
 
         {/* Two-column layout on desktop */}
         <div className="flex flex-1 flex-col gap-6 lg:flex-row lg:gap-12">
           {/* LEFT COLUMN — Players */}
-          <div className="flex flex-col gap-6 lg:w-[380px] lg:shrink-0">
+          <GlassPanel rounded="2xl" className="flex flex-col gap-6 border border-white/[0.08] p-4 sm:p-5 lg:w-[380px] lg:shrink-0">
             <PlayerArena
               players={players}
               isHost={isHost}
@@ -126,7 +128,7 @@ function LobbyContent({
 
             {/* Readiness bar */}
             {players.length > 0 && <ReadinessBar players={players} />}
-          </div>
+          </GlassPanel>
 
           {/* RIGHT COLUMN — Game config, action buttons */}
           <div className="flex flex-col gap-6 lg:flex-1">

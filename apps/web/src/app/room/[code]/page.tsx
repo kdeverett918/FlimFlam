@@ -99,9 +99,19 @@ const ROOM_AUDIO_DEDUPE_MS = 2500;
 const ROOM_AUDIO_THROTTLE_MS = 120;
 
 const phaseTransition = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] as const } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.2 } },
+  initial: { opacity: 0, y: 12, scale: 0.98 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    filter: "blur(2px)",
+    transition: { duration: 0.25, ease: [0.4, 0, 1, 1] as const },
+  },
 };
 
 function shouldShowReactionBar(gameId: string, phase: string, isInputFocused: boolean): boolean {
@@ -161,6 +171,7 @@ export default function RoomPage() {
     createRoom,
     joinRoom,
     sendMessage,
+    leaveRoom,
     error,
     errorNonce,
     connected,
@@ -434,6 +445,7 @@ export default function RoomPage() {
         isHost={isHost}
         mySessionId={mySessionId}
         sendMessage={sendMessage}
+        onLeave={leaveRoom}
       />
     );
   }

@@ -50,6 +50,7 @@ export interface UseGameRoomReturn {
   createRoom: (opts: { name: string; color: string }) => Promise<string>;
   joinRoom: (code: string, name: string, color: string) => Promise<boolean>;
   sendMessage: (type: string, data?: Record<string, unknown>) => void;
+  leaveRoom: () => void;
   error: string | null;
   errorNonce: number;
   connected: boolean;
@@ -676,6 +677,18 @@ export function useGameRoom(): UseGameRoomReturn {
     roomRef.current.send(type, data ?? {});
   }, []);
 
+  /* ---------- leaveRoom ---------- */
+
+  const leaveRoom = useCallback(() => {
+    if (roomRef.current) {
+      roomRef.current.leave();
+    }
+    storageRemove(RECONNECT_TOKEN_KEY);
+    storageRemove(ROOM_CODE_KEY);
+    // Hard navigate to clear all React state
+    window.location.href = "/";
+  }, []);
+
   /* ---------- auto-reconnect on mount ---------- */
 
   useEffect(() => {
@@ -789,6 +802,7 @@ export function useGameRoom(): UseGameRoomReturn {
     createRoom,
     joinRoom,
     sendMessage,
+    leaveRoom,
     error,
     errorNonce,
     connected,

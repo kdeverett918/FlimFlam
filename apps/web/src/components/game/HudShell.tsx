@@ -1,11 +1,11 @@
 "use client";
 
-import { HostControls } from "@/components/game/HostControls";
+import { MenuTrigger } from "@/components/navigation/PlayerMenu";
 import { ReactionBar } from "@/components/game/ReactionBar";
 import { ScoreBadge } from "@/components/game/ScoreBadge";
 import { TimerBar } from "@/components/game/TimerBar";
 
-export const HUD_TOP_DOCK_HEIGHT = 120;
+export const HUD_TOP_DOCK_HEIGHT = 72;
 export const HUD_BOTTOM_DOCK_COLLAPSED_HEIGHT = 72;
 export const HUD_BOTTOM_DOCK_EXPANDED_HEIGHT = 144;
 const STANDINGS_EXPANDED_PHASES = new Set([
@@ -16,12 +16,7 @@ const STANDINGS_EXPANDED_PHASES = new Set([
   "final-scores",
 ]);
 
-const HOST_CONTROLS_HIDDEN_PHASES = new Set([
-  "category-reveal",
-  "clue-result",
-  "round-result",
-  "bonus-reveal",
-]);
+// Host controls now live in PlayerMenu bottom sheet
 
 interface PlayerStanding {
   sessionId: string;
@@ -59,7 +54,6 @@ export function HudShell({
   players,
   mySessionId,
 }: HudShellProps) {
-  const showHostControls = isHost && !HOST_CONTROLS_HIDDEN_PHASES.has(phase);
   const bottomHeight = showReactions
     ? HUD_BOTTOM_DOCK_EXPANDED_HEIGHT
     : HUD_BOTTOM_DOCK_COLLAPSED_HEIGHT;
@@ -70,18 +64,17 @@ export function HudShell({
     <div data-testid="hud-root">
       <div
         data-testid="hud-top"
-        className="pointer-events-none fixed inset-x-0 top-0 z-50"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-bg-deep/60 backdrop-blur-xl border-b border-white/[0.06]"
         style={{ height: `calc(env(safe-area-inset-top) + ${HUD_TOP_DOCK_HEIGHT}px)` }}
       >
-        <div className="mx-auto flex h-full max-w-7xl flex-col gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4 md:flex-row md:items-start md:justify-between">
-          <div className="flex min-w-0 flex-1 justify-center md:justify-start">
+        <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+          <div className="pointer-events-auto shrink-0">
+            <MenuTrigger className="h-10 w-10 border-white/10 bg-white/5" />
+          </div>
+          <div className="flex min-w-0 flex-1 justify-center">
             <TimerBar timerEndsAt={timerEndTime ?? 0} />
           </div>
-          {showHostControls && (
-            <div className="flex justify-center md:flex-none md:justify-end">
-              <HostControls isHost={isHost} sendMessage={sendMessage} phase={phase} />
-            </div>
-          )}
+          <div className="w-10 shrink-0" />
         </div>
       </div>
 
